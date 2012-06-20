@@ -1,0 +1,3 @@
+#!/bin/bash
+set -ux
+awk -v min_diff=$1 '{if(substr($13,1,4)!="Null" || $5 >= substr($13,6,3) + min_diff) print}'

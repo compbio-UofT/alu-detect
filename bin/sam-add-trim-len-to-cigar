@@ -1,0 +1,25 @@
+#!/usr/bin/awk -f
+
+BEGIN {
+    OFS="\t";
+    if (trim_side == "") trim_side = "3p";
+}
+
+{
+    split($1, a, ":");
+    if (a[2] == 0) {
+	real_len = a[3];
+    } else {
+	real_len = a[2 + a[2]];
+    }
+    crt_len = length($10);
+    if (crt_len < real_len) {
+	hard_clip_string = (real_len - crt_len) "H"
+	if ((and($2, 0x10) == 0) == (trim_side == "5p")) {
+	    $6 = hard_clip_string $6
+	} else {
+	    $6 = $6 hard_clip_string
+	}
+    }
+    print;
+}

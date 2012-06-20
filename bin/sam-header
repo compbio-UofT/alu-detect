@@ -1,0 +1,7 @@
+#!/bin/bash
+exec 0< <(zc "$@")
+IFS=$'\n'
+while read -r LINE ; do
+    [ ! "${LINE:0:1}" = "@" ] && break
+    echo $LINE
+done

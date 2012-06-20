@@ -1,0 +1,11 @@
+#!/bin/bash
+
+if [ $# -lt 1 ]; then
+  1>&2 echo "use: $0 <text_to_grep_in_seq_name>"
+  exit 1
+fi
+
+TARGET="$1"
+shift
+
+exec awk -v target="$TARGET" '/^>/ {if (match($0, target) > 0) {o = 1; print;} else {o = 0;} next;} {if (o == 1) print;}' "$@"

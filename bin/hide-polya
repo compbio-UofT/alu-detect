@@ -1,0 +1,53 @@
+#!/bin/bash extend-hashbang
+#/usr/bin/awk --re-interval -f
+
+function hide_tail_polya(name, seq) {
+    n = match(seq, "[aA]{5,}$");
+    if (n == 0) {
+	print "warning: did not find tail polya" >"/dev/stderr";
+	return seq;
+    }
+    seq_trim = substr(seq, 1, n + 4);
+    seq_tail = substr(seq, n + 5);
+    gsub("[aA]", "N", seq_tail);
+    seq = seq_trim seq_tail;
+    return seq
+}
+
+function hide_middle_polya(name, seq) {
+    n = match(seq, "[aA][aA][aA][aA]+....[aA][aA][aA][aA]+");
+    if (n == 0) {
+	print "warning: did not find middle polya" >"/dev/stderr";
+	return seq;
+    }
+    seq = substr(seq, 1, n + 2) "N" substr(seq, n + 4, RLENGTH - 8) "N" substr(seq, n + RLENGTH - 3);
+    return seq;
+}
+
+function flush(name, seq) {
+    if (name == "")
+	return;
+
+    seq = hide_tail_polya(name, seq);
+    seq = hide_middle_polya(name, seq);
+
+    print name;
+    while (seq != "") {
+	print substr(seq, 1, 50);
+	seq=substr(seq, 51);
+    }
+}
+
+/^>/ {
+    flush(name, seq);
+    name = $1;
+    seq = "";
+}
+
+/^[^>]/ {
+    seq = seq $1;
+}
+
+END {
+    flush(name, seq);
+}

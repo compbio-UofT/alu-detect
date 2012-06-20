@@ -1,0 +1,22 @@
+#!/bin/bash extend-hashbang
+#/usr/bin/awk -f my-lib.awk -f fq-convert.awk --re-interval -f
+
+BEGIN {
+    if (separator == "") field_separator = ":";
+    if (field_num == 0) field_num = 6;
+}
+
+{
+    s = get_read($0);
+    split(s, r, "\t");
+
+    start_idx = n_index(r[1], field_separator, field_num - 1);
+    if (start_idx == 0 || substr(r[1], start_idx, 3) != ":0:") {
+	print "error: read name [" r[1] "] did not have [" field_num "] fields separated by [" field_separator "]" > "/dev/fd/2"
+	exit(1)
+    }
+
+    r[1] = substr(r[1], 1, start_idx) "1:" r[2] ":" r[4] ":" substr(r[1], start_idx + 3)
+
+    put_read(r[1] "\t" r[2] "\t" r[3] "\t" r[4]);
+}

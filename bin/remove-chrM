@@ -1,0 +1,18 @@
+#!/usr/bin/python
+
+import sys
+from my import *
+import my_sam as sam
+
+
+for line in sys.stdin:
+    if line[0] == '@':
+        if not 'chrM' in line:
+            print line,
+    else:
+        m = line.strip().split('\t')
+        if m[2] != 'chrM':
+            print line,
+        else:
+            m = [m[0], '4', '*', '0', '0', '*', '*', '0', '0', '*', '*', 'zd:Z:chrM']
+            print '\t'.join(m)

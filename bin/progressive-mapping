@@ -1,0 +1,134 @@
+#!/bin/bash
+
+. $(which my-lib.sh)
+set -x
+set -o errexit
+
+remove_tail() {
+    sed "s/${TAIL_SED_REGEXP}//g"
+}
+
+id_to_unmapped_sam() {
+    remove_tail | awk -v other="${1:-}" 'BEGIN{OFS="\t"} {if(match($1,"/[12]$"))$1=substr($1,1,length($1)-2); printf("%s\t4\t*\t0\t0\t*\t*\t0\t0\t*\t*", $1); if(other!="")printf("\t%s", other); printf("\n");}'
+}
+
+if [ -z "$BOWTIE2_INDEX" ] ; then crash "$MY_NAME: BOWTIE2_INDEX undefined" ; fi
+
+TRIM_STEP=5
+MIN_LEN=20
+MIN_MQV=5
+NCPU="${NCPU:-4}"
+ZIP="pigz -9 -p $NCPU"
+MAPPER_CMD="bowtie2 -x $BOWTIE2_INDEX -M 10 -p $NCPU -U"
+TAIL_SED_REGEXP="${TAIL_SED_REGEXP:-\/[12]$}"
+make_note "using TAIL_SED_REGEXP=$TAIL_SED_REGEXP"
+
+find_my_name_and_dir "${BASH_SOURCE[0]}"
+make_temp_dir "$MY_NAME"
+make_note "using TDIR=$TDIR"
+
+if [ -f "$1" ] ; then
+    READS_FILE="$1"
+else
+    READS_FILE="$TDIR"/reads.fq.gz
+    make_note "copying reads to tmp..."
+    pv -f "$@" | zc | $ZIP >"$READS_FILE"
+fi
+make_note "using reads file: $READS_FILE"
+
+PREV_STEP=0
+CRT_STEP=1
+CRT_TRIM=0
+CRT_TRIM_SIDE=3p
+SWITCH_SIDES=0
+
+mkfifo "$TDIR"/pipe-3
+mkfifo "$TDIR"/pipe-4
+mkfifo "$TDIR"/pipe-5
+mkfifo "$TDIR"/pipe-6
+mkfifo "$TDIR"/pipe-7
+
+while [ 1 ] ; do
+    if [ $CRT_TRIM -eq 0 ] ; then
+	make_note "preparing reads..."
+	pv -f "$READS_FILE" | zc | add-seq-to-read-name >"$TDIR"/pipe-3 &
+    elif [ $SWITCH_SIDES -eq 1 ] ; then
+	make_note "switching sides; extracting unmapped and badly mapped reads..."
+	pv -f "$TDIR"/bad-3p_*.sam.gz "$TDIR"/short-3p_*.sam.gz \
+	    | zc | cut -f 1 | get-seq-from-read-name -v ofq=fq \
+	    | fq-trim-reads-relative -v trim_len_${CRT_TRIM_SIDE}=$TRIM_STEP >"$TDIR"/pipe-3 &
+	SWITCH_SIDES=0
+    else
+	make_note "processing previous stage..."
+	pv -f "$TDIR"/map_body_${PREV_STEP}.sam.gz \
+	    | add-extra-sam-flags -p paired=0 --min-mqv $MIN_MQV --min-tail-insert-size 0 \
+	    | filter-mappings -p paired=0 \
+	      -f 0x1000:"$TDIR"/pipe-4 \
+	      -f 0/0x1004:"$TDIR"/pipe-5 \
+	      -f 0x4:\&1 \
+	    | sam-to-fq -p paired=0 \
+	    | fq-trim-reads-relative -v trim_len_${CRT_TRIM_SIDE}=$TRIM_STEP >"$TDIR"/pipe-3 &
+	$ZIP <"$TDIR"/pipe-4 >>"$TDIR"/final-${CRT_TRIM_SIDE}_${PREV_STEP}.sam.gz &
+	$ZIP <"$TDIR"/pipe-5 >>"$TDIR"/bad-${CRT_TRIM_SIDE}_${PREV_STEP}.sam.gz &
+    fi
+
+    # remove short reads
+    fq-remove-short-reads <"$TDIR"/pipe-3 -v min_len=$MIN_LEN \
+	2>"$TDIR"/pipe-6 | tee-p "$TDIR"/pipe-7 | $ZIP >"$TDIR"/reads_${CRT_STEP}.fq.gz &
+    id_to_unmapped_sam <"$TDIR"/pipe-6 | $ZIP >"$TDIR"/short-${CRT_TRIM_SIDE}_${CRT_STEP}.sam.gz &
+    fq-stats <"$TDIR"/pipe-7 >"$TDIR"/reads_${CRT_STEP}.stats &
+
+    # sync at this point
+    wait
+
+    if [ $(head -n 1 "$TDIR"/reads_${CRT_STEP}.stats | cut -d " " -f 1) -eq 0 ] ; then
+	if [ $CRT_TRIM_SIDE = 3p ] ; then
+	    PREV_STEP=$CRT_STEP
+	    CRT_STEP=$(($CRT_STEP + 1))
+	    CRT_TRIM=$TRIM_STEP
+	    CRT_TRIM_SIDE=5p
+	    SWITCH_SIDES=1
+	    make_note "done with 3p side, starting 5p side"
+	    continue
+	else
+	    break
+	fi
+    fi
+
+    make_note "step:$CRT_STEP	trim:$CRT_TRIM	trim_side:$CRT_TRIM_SIDE	reads left:$(head -n 1 "$TDIR"/reads_${CRT_STEP}.stats | cut -d " " -f 1)"
+
+    # map current batch
+    make_note "mapping current batch and sorting..."
+    pv -f "$TDIR"/reads_${CRT_STEP}.fq.gz | zc \
+        | $MAPPER_CMD - \
+	| sam-fix-bowtie-read-names \
+        | tee-p >(sam-header >"$TDIR"/map_header_${CRT_STEP}.sam) \
+	| sam-body \
+	| sort -S 4G -s -t ':' -k 1,1n -k 2,2n \
+	| $ZIP >"$TDIR"/map_body_${CRT_STEP}.sam.gz
+
+    PREV_STEP=$CRT_STEP
+    CRT_STEP=$(($CRT_STEP + 1))
+    CRT_TRIM=$(($CRT_TRIM + $TRIM_STEP))
+done
+
+cat "$TDIR"/map_header_1.sam
+
+{
+    make_note "gathering good 3p-trimmed mappings..."
+    pv -f "$TDIR"/final-3p_*.sam.gz \
+	| zc \
+	| sam-add-trim-len-to-cigar -v trim_side=3p
+    make_note "gathering good 5p-trimmed mappings..."
+    pv -f "$TDIR"/final-5p_*.sam.gz \
+	| zc \
+	| sam-add-trim-len-to-cigar -v trim_side=5p
+    make_note "gathering bad 5p-trimmed mappings..."
+    pv -f "$TDIR"/bad-5p_*.sam.gz \
+	| zc | cut -f 1 | id_to_unmapped_sam
+    make_note "gathering short 5p-trimmed mappings..."
+    pv -f "$TDIR"/short-5p_*.sam.gz \
+	| zc
+    make_note "sorting..."
+} | sort -S 4G -s -t ':' -k 1,1n -k 2,2n
+rm -rf "$TDIR"

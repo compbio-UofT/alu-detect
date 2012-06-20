@@ -1,0 +1,42 @@
+#!/bin/bash
+
+. $(which my-lib.sh)
+
+if [ -z "${PAIRING:-}" ] ; then crash "PAIRING undefined" ; fi
+make_note "PAIRING=${PAIRING}"
+if [ ! -L /proc/$$/fd/3 ] ; then crash "fd 3 must be open" ; fi
+
+zc "$@" \
+    | remove-chrM \
+    | add-extra-sam-flags "$@" -p $PAIRING --cid-parser cid_parser \
+    |  {
+    if [[ $PAIRING =~ "paired=1" ]] ; then
+	make_note "using paired filtering"
+	filter-mappings -p $PAIRING --cid-parser cid_parser \
+	    -f 0x10000,0x10000:\&3 \
+	    -f 0x10000,0x3000/0x4:\&1 \
+	    -f 0x10000,0x5000/0x4:\&1 \
+	    -f 0x10000,0:\&3 \
+	    -f 0x3000/0x4,0x10000:\&1 \
+	    -f 0x5000/0x4,0x10000:\&1 \
+	    -f 0,0x10000:\&3 \
+	    \
+	    -f 0x4,0x4:\&3 \
+	    -f 0x4,0/0x1000:\&3 \
+	    -f 0x4,0:\&1 \
+	    -f 0/0x1000,0x4:\&3 \
+	    -f 0,0x4:\&1 \
+	    \
+	    -f 0/0x1000,0/0x1000:\&3 \
+	    -f 0x8000/0x6000,0x8000/0x6000:\&3 \
+	    -f 0,0:\&1
+    else
+	make_note "using unpaired filtering"
+	filter-mappings -p $PAIRING --cid-parser cid_parser \
+	    -f 0x10000:\&3 \
+	    -f 0x4:\&3 \
+	    -f 0/0x1000:\&3 \
+	    -f 0/0x6000:\&3 \
+	    -f 0:\&1
+    fi
+}

@@ -1,0 +1,19 @@
+#!/bin/bash extend-hashbang
+#/usr/bin/awk -f fq-convert.awk -f
+
+BEGIN {
+    if (trim_len != 0) trim_len_3p = trim_len;
+    if (trim_len_3p == 0 && trim_len_5p == 0) trim_len_3p = 5;
+}
+
+{
+    s = get_read($0);
+    split(s, r, "\t");
+
+    r[2] = substr(r[2], 1 + trim_len_5p);
+    r[4] = substr(r[4], 1 + trim_len_5p);
+    r[2] = substr(r[2], 1, length(r[2]) - trim_len_3p);
+    r[4] = substr(r[4], 1, length(r[4]) - trim_len_3p);
+
+    put_read(r[1] "\t" r[2] "\t" r[3] "\t" r[4]);
+}

@@ -1,0 +1,18 @@
+#!/bin/bash extend-hashbang
+#/usr/bin/awk -f fq-convert.awk -f
+
+BEGIN {
+    if (min_len == 0) min_len = 20;
+}
+
+{
+    s = get_read($0)
+    split(s, r, "\t")
+
+    if (length(r[2]) < min_len) {
+	print r[1] >"/dev/stderr"
+	next;
+    }
+
+    put_read(r[1] "\t" r[2] "\t" r[3] "\t" r[4])
+}

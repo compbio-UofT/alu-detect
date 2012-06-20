@@ -1,0 +1,28 @@
+#!/bin/bash extend-hashbang
+#/usr/bin/awk -f fq-convert.awk --re-interval -f
+
+BEGIN {
+    if (tail_1_regexp == "") { tail_1_regexp = "/1$" }
+    if (tail_2_regexp == "") { tail_2_regexp = "/2$" }
+    cnt = 0
+    cnt_1 = 0
+    cnt_2 = 0
+}
+
+{
+    s = get_read($0)
+    split(s, r, "\t")
+
+    if (match(r[1], tail_1_regexp) > 0) {
+	cnt_1++
+    } else if (match(r[1], tail_2_regexp) > 0) {
+	cnt_2++
+    }
+    cnt++
+}
+
+END {
+    print cnt " reads total"
+    print cnt_1 " read 1"
+    print cnt_2 " read 2"
+}

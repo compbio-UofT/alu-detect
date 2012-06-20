@@ -1,0 +1,21 @@
+#!/bin/bash extend-hashbang
+#/usr/bin/awk -f fq-convert.awk -f
+
+BEGIN {
+  if (min_len_either == 0 && min_len_each == 0 && min_len_sum == 0)
+      min_len_either = 20;
+}
+
+{
+    s = get_readpair($0)
+    split(s, r, "\t")
+
+    if ((min_len_either == 0 || (length(r[2]) >= min_len_either || length(r[6]) >= min_len_either)) \
+	&& (min_len_each == 0 || (length(r[2]) >= min_len_each && length(r[6]) >= min_len_each)) \
+	&& (min_len_sum == 0 || (length(r[2]) + length(r[6]) >= min_len_sum))) {
+	put_readpair(r[1] "\t" r[2] "\t" r[3] "\t" r[4] "\t" r[5] "\t" r[6] "\t" r[7] "\t" r[8])
+    } else {
+	print r[1] >"/dev/stderr"
+	print r[5] >"/dev/stderr"
+    }
+}

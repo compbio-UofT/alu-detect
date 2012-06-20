@@ -1,0 +1,41 @@
+#!/usr/bin/awk -f
+
+BEGIN {
+    FS="\t";
+    OFS="\t";
+}
+
+function print_array(a, n) {
+    res = a[1];
+    for (i = 2; i <= n; i++) {
+	res = res OFS a[i];
+    }
+    printf("%s\n", res);
+}
+
+/^@/ {
+    print;
+    next;
+}
+
+{
+    prev = $0;
+    nr_a = split($0, a);
+    split(a[1], na, ":");
+    getline;
+    nr_b = split($0, b);
+    split(b[1], nb, ":");
+    if (na[1] != nb[1]) {
+	print "error: mismatched clones:" na[1] ", " nb[1] >"/dev/stderr";
+	exit(1)
+    }
+    if (and(a[2], 0x8000) == 0 && and(a[2], 0x1000) != 0 && and(b[2], 0x1000) != 0) {
+	print "resetting mqvs of clone: " na[1] > "/dev/stderr";
+	a[5] = 0;
+	a[2] = xor(a[2], 0x1000);
+	b[5] = 0;
+	b[2] = xor(b[2], 0x1000);
+    }
+    print_array(a, nr_a)
+    print_array(b, nr_b)
+}

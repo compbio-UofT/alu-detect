@@ -1,0 +1,39 @@
+#!/bin/bash extend-hashbang
+#/usr/bin/awk -f my-lib.awk -f fq-convert.awk --re-interval -f
+
+BEGIN {
+    if (separator == "") field_separator = ":";
+    if (field_num == 0) field_num = 6;
+}
+
+{
+    split($1, a, ":")
+    if (a[2] == 0) {
+        l = a[3]
+    } else {
+        l = a[2 + a[2]]
+    }
+
+    start_seq_idx = n_index($1, field_separator, field_num - 1);
+
+    if (start_seq_idx == 0) {
+        print "error: read name [" $1 "] did not have [" field_num "] fields separated by [" field_separator "]" > "/dev/fd/2";
+	exit(1);
+    }
+    if (substr($1, start_seq_idx, 3) != ":1:") {
+        print "error: read name [" $1 "] does not contain seq" >"/dev/stderr";
+	exit(1);
+    }
+    if (length($1) < start_seq_idx + 2 + 2 * l + 2) {
+        print "error: read name [" $1 "] did not have enough characters to contain seq and qual strings (len=" l ")";
+	exit(1);
+    }
+
+    seq = substr($1, start_seq_idx + 3, l);
+    qual = substr($1, start_seq_idx + 3 + l + 1, l);
+
+    #print "seq=", seq >"/dev/fd/2"
+    #print "qual=", qual >"/dev/fd/2"
+
+    put_read($1 "\t" seq "\t" "" "\t" qual);
+}

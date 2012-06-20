@@ -1,0 +1,22 @@
+#!/usr/bin/awk -f
+
+BEGIN {
+    OFS = "\t"
+    if (tail_separator == "") tail_separator = "/"
+}
+
+/^@/ {
+    print
+    next
+}
+
+{
+    if (and($2, 0x1) != 0) {
+	split($1, a, ":")
+	tail_regexp = tail_separator a[2] "$"
+	if (!match($1, tail_regexp)) {
+	    $1 = $1 tail_separator a[2]
+	}
+    }
+    print
+}

@@ -1,0 +1,15 @@
+#!/bin/bash
+
+. $(which my-lib.sh)
+find_my_name_and_dir "${BASH_SOURCE[0]}"
+
+if [ -z "${PAIRING:-}" ] ; then crash "PAIRING undefined" ; fi
+make_note "PAIRING=${PAIRING}"
+
+if [[ "$PAIRING" =~ "paired=1" ]] ; then
+    exec 3< <(sam-body "$@" | reset-mqv-when-discordant 2>/dev/null)
+else
+    exec 3< <(sam-body "$@")
+fi
+
+<&3 sam-to-fq-trimmed -p $PAIRING

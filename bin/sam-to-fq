@@ -1,0 +1,80 @@
+#!/usr/bin/python2.6
+
+import sys
+import argparse
+import functools
+from my import *
+import my_sam as sam
+
+cid_parser = None
+incomplete_fd = None
+
+
+def print_read_from_mapping(d):
+    seq = d['seq']
+    qual = d['qual']
+    tail=''
+    if d['paired'] and d['name'] == d['clone_id']:
+        tail = '/' + ['1', '2'][d['nip']]
+    if sam.is_reversed(d):
+        seq = sam.reverse_complement(seq)
+        qual = sam.reverse(qual)
+    print '\n'.join(['@' + d['name'] + tail, seq, '+', qual])
+
+def print_missing_read(d):
+    if incomplete_fd:
+        print >> incomplete_fd, d['name']
+    else:
+        print '\n'.join(['@' + d['name'], '*', '+', '*'])
+
+
+parser = argparse.ArgumentParser(description=sys.argv[0])
+parser.add_argument('-v', '--verbose', action='append_const', const=1, default=[], dest='verbose')
+parser.add_argument('-p', '--pairing', action='store', default='paired=0', dest='pairing')
+parser.add_argument('-i', '--incomplete', action='store', dest='incomplete')
+parser.add_argument('--cid-parser', action='store', dest='cid_parser')
+parser.add_argument('input', action='store', nargs='?')
+args = parser.parse_args()
+set_log_level(len(args.verbose))
+sam.set_pairing(args.pairing)
+
+if args.input:
+    in_fd = gzopen(args.input)
+else:
+    in_fd = gzopen('-')
+
+if args.cid_parser:
+    _temp = __import__(args.cid_parser, globals(), locals(), ['cid_parser'])
+    cid_parser = _temp.cid_parser
+else:
+    cid_parser = sam.default_cid_parser
+mapping_parser = functools.partial(sam.mapping_parser, cid_parser=cid_parser)
+
+if args.incomplete:
+    incomplete_fd = open(args.incomplete, 'w')
+
+for ms in sam.get_mapping_set_gen(in_fd,
+                                  mapping_parser=mapping_parser,
+                                  check_pairing=True, check_num_mappings=True):
+
+    if sam.pairing['paired'] == 0:
+        if ((not ms[0]['mapped'] or 'H' not in ms[0]['cigar'])
+            and ms[0]['seq'] != '*' and len(ms[0]['seq']) == len(ms[0]['qual'])):
+            print_read_from_mapping(ms[0])
+        else:
+            print_missing_read(ms[0])
+
+    else:
+        if ((not ms[0]['mapped'] or 'H' not in ms[0]['cigar'])
+            and ms[0]['seq'] != '*' and len(ms[0]['seq']) == len(ms[0]['qual'])
+            and (not ms[1]['mapped'] or 'H' not in ms[1]['cigar'])
+            and ms[1]['seq'] != '*' and len(ms[1]['seq']) == len(ms[1]['qual'])):
+            print_read_from_mapping(ms[0])
+            print_read_from_mapping(ms[1])
+        else:
+            print_missing_read(ms[0])
+            print_missing_read(ms[1])
+
+gzclose(in_fd)
+if incomplete_fd:
+    incomplete_fd.close()

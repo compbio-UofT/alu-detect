@@ -1,0 +1,84 @@
+#!/bin/bash extend-hashbang
+#/usr/bin/awk -f fq-convert.awk --re-interval -f
+
+BEGIN {
+  output_phred = 33;
+  mqv_0_chr = sprintf("%c", output_phred);
+  mqv_2_chr = sprintf("%c", output_phred + 2);
+  ord_init()
+}
+
+function ord_init() {
+    for (i = 33; i <= 127; i++) {
+	c = sprintf("%c", i);
+	ord[c] = i;
+    }
+}
+
+function detect_phred(s) {
+    # must autodetect input_phred
+    # this is done on the first qual string
+    # if autodetection fails, crash
+    h[1] = 33;
+    h[2] = 64;
+    n_h = 2;
+    min_mqv = -5;
+    max_mqv = 45;
+    for (i = 1; i <= n_h; i++) {
+	works = 1;
+	for (j = 1; j <= length(s); j++) {
+	    c = substr(s, i, 1)
+	    if (ord[c] - h[i] < min_mqv || ord[c] - h[i] > max_mqv) {
+		print "character [" c "] with ord [" ord[c] "] contradicts phred [" h[i] "]" >"/dev/stderr";
+		works = 0;
+		break;
+	    }
+	}
+	if (works == 1) {
+	    print "autodetected phred [" h[i] "]" >"/dev/stderr";
+	    return h[i]
+	}
+    }
+    print "could not detect phred" >"/dev/stderr";
+    exit(1);
+}
+
+function convert_qual(s) {
+    if (input_phred == 0) {
+	input_phred = detect_phred(s);
+    }
+    if (input_phred == output_phred) {
+	return s;
+    }
+    res = ""
+    for (i = 1; i <= length(s); i++) {
+	res = res sprintf("%c", ord[substr(s, i, 1)] - input_phred + output_phred);
+    }
+    return res
+}
+
+{
+    s = get_read($0);
+    split(s, r, "\t");
+
+    if (output_phred != input_phred) r[4] = convert_qual(r[4]);
+
+    trim_start = match(r[4], "[" mqv_0_chr mqv_2_chr "]*$");
+    if (trim_start > 0) {
+	r[2] = substr(r[2], 1, trim_start - 1);
+	r[4] = substr(r[4], 1, trim_start - 1);
+    }
+
+    polyx_start = match(r[2], "(A{10,}|C{10,}|G{10,}|T{10,})$");
+    if (polyx_start > 0) {
+	r[2] = substr(r[2], 1, polyx_start + 9);
+	r[4] = substr(r[4], 1, polyx_start + 9);
+    }
+
+    if (length(r[2]) == 0) {
+	r[2] = "N";
+	r[4] = mqv_0_chr;
+    }
+
+    put_read(r[1] "\t" r[2] "\t" r[3] "\t" r[4])
+}

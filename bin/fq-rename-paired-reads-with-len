@@ -1,0 +1,13 @@
+#!/bin/bash extend-hashbang
+#/usr/bin/awk -f fq-convert.awk -f
+
+{
+    s = get_readpair($0)
+    split(s, r, "\t")
+
+    r[1] = sprintf("%s%09d:%d:%d:%d:0:0:%s", g, n, 1, length(r[2]), length(r[6]), r[1]);
+    r[5] = sprintf("%s%09d:%d:%d:%d:0:0:%s", g, n, 2, length(r[2]), length(r[6]), r[5]);
+
+    put_readpair(r[1] "\t" r[2] "\t" r[3] "\t" r[4] "\t" r[5] "\t" r[6] "\t" r[7] "\t" r[8])
+    n++;
+}

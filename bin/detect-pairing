@@ -1,0 +1,223 @@
+#!/usr/bin/env python2.6+
+
+import sys
+import operator
+import math
+import argparse
+import functools
+from my import *
+import my_sam as sam
+
+good_mapping_cigar_ops = 'M=X'
+good_mapping_max_nm_val = 2
+good_mapping_min_as_frac = .9
+good_mapping_min_mqv = 10
+default_stop_count = 10000
+drop_fraction = .001
+
+have_nm_field = -1
+have_as_field = -1
+max_as_val = 0
+
+detected_st_diff = -1
+count_st_diff = [0, 0]
+r1_len = 0
+r2_len = 0
+l = []
+
+
+def good_mapping(d):
+    global have_nm_field, have_as_field, max_as_val
+
+    ops = sam.parse_cigar_string(d['cigar'])
+    for op in ops:
+        if op[0] not in good_mapping_cigar_ops:
+            note('discarding mapping of [%s]: bad cigar ops [%s]' % (d['name'], d['cigar']), 2)
+            return False
+
+    if have_nm_field < 0:
+        if 'NM' in d:
+            nm_val = d['NM']
+            note('NM field detected', 1)
+            have_nm_field = 1
+        else:
+            note('NM field absent', 1)
+            have_nm_field = 0
+    elif have_nm_field == 1:
+        if 'NM' in d:
+            nm_val = d['NM']
+        else:
+            note('NM field missing [%s]' % '\t'.join(m), 1)
+            have_nm_field = 0
+    if have_nm_field == 1 and nm_val > good_mapping_max_nm_val:
+        note('discarding mapping of [%s]: bad NM value [%d]' % (d['name'], nm_val), 2)
+        return False
+
+    if have_as_field < 0:
+        if 'AS' in d:
+            as_val = d['AS']
+            note('AS field detected', 1)
+            have_as_field = 1
+        else:
+            note('AS field absent', 1)
+            have_as_field = 0
+    elif have_as_field == 1:
+        if 'AS' in d:
+            as_val = d['AS']
+        else:
+            note('AS field missing [%s]' % '\t'.join(m), 1)
+            have_as_field = 0
+    if have_as_field == 1 and as_val < 0:
+        note('AS field contains negative values, disabling', 1)
+        have_as_field = 0
+    if have_as_field == 1 and as_val > max_as_val:
+        max_as_val = as_val
+        note('new max AS value [%d]' % max_as_val, 1)
+    if have_as_field == 1 and as_val < max_as_val * good_mapping_min_as_frac:
+        note('discarding mapping of [%s]: bad AS value [%d]' % (d['name'], as_val), 2)
+        return False
+
+    if d['mqv'] < good_mapping_min_mqv:
+        note('discarding mapping of [%s]: bad MQV [%d]' % (d['name'], d['mqv']), 2)
+        return False
+
+    return True
+
+parser = argparse.ArgumentParser(description=sys.argv[0])
+parser.add_argument('-v', '--verbose', action='append_const', const=1, default=[], dest='verbose')
+parser.add_argument('-c', '--stop-count', action='store', type=int,
+                    default=default_stop_count, dest='stop_count')
+parser.add_argument('-f', '--ignore-flags', action='store_true', default=False, dest='ignore_flags')
+parser.add_argument('--cid-parser', action='store', dest='cid_parser')
+parser.add_argument('input', action='store', nargs='?')
+args = parser.parse_args()
+set_log_level(len(args.verbose))
+note('using stop count: [%d]' % args.stop_count, 1)
+ignore_flags = args.ignore_flags
+
+if args.cid_parser:
+    _temp = __import__(args.cid_parser, globals(), locals(), ['cid_parser'])
+    cid_parser = _temp.cid_parser
+else:
+    cid_parser = sam.default_cid_parser
+mapping_parser = functools.partial(sam.mapping_parser, cid_parser=cid_parser)
+
+if args.input:
+    in_fd = gzopen(args.input)
+else:
+    in_fd = gzopen('-')
+
+detected_paired = -1
+count_unpaired = 0
+for ms in sam.get_mapping_set_gen(in_fd, mapping_parser=mapping_parser):
+    if len(ms) > 2:
+        crash('found mapping set with more than 2 mappings: ' + str(ms))
+
+    if detected_paired == -1:
+        if not ms[0]['paired']:
+            detected_paired = 0
+            continue
+        else:
+            detected_paired = 1
+
+    if detected_paired == 0:
+        if len(ms) != 1:
+            crash('found multiple mappings for single read: ' + str(ms))
+        if ms[0]['paired']:
+            crash('mappings contain both paired and unpaired reads')
+        count_unpaired += 1
+        if 'len' in ms[0]:
+            r1_len = max(r1_len, ms[0]['len'])
+        if count_unpaired >= args.stop_count:
+            print ('paired=0,r1_len=%d' % r1_len)
+            sys.exit()
+        continue
+
+    # reads are paired
+    for d in ms:
+        if not d['paired']:
+            crash('mappings contain both paired and unpaired reads')
+
+    # we know len(ms) is 1 or 2 at this point; if 1, ignore
+    if len(ms) == 1:
+        note('ignoring single mapping of a read pair: ' + str(ms), 2)
+        continue
+
+    # if either is not mapped, ignore
+    if not ms[0]['mapped'] or not ms[1]['mapped']:
+        note('ignoring unmapped clone: ' + str(ms), 2)
+        continue
+
+    # only paired mappings with both reads paired make it here
+    if (not ignore_flags
+        and (not sam.all_properly_aligned(ms[0]) or not sam.all_properly_aligned(ms[1]))):
+        note('discarding mappings: not all properly aligned: ' + str(ms), 2)
+        continue
+
+    if not good_mapping(ms[0]) or not good_mapping(ms[1]):
+        continue
+
+    if ms[0]['chr'] != ms[1]['chr']:
+        note('discarding mappings: different chromosomes: ' + str(ms), 2)
+        continue
+
+    if not ignore_flags and not sam.check_pair_flags(ms):
+        crash('bad flags: ' + str(ms))
+
+    # paired mapping on the same chromosome
+    st_diff = int(sam.is_reversed(ms[0]) != sam.is_reversed(ms[1]))
+    if detected_st_diff == -1:
+        count_st_diff[st_diff] += 1
+        if count_st_diff[0] + count_st_diff[1] < args.stop_count:
+            note('using map set to detect st_diff: ' + str(ms), 2)
+            continue
+        else:
+            if count_st_diff[0] > 10 * count_st_diff[1]:
+                detected_st_diff = 0
+            elif count_st_diff[1] > 10 * count_st_diff[0]:
+                detected_st_diff = 1
+            else:
+                note('could not detect st_diff, neither dominates: [%d] vs [%d]'
+                     % (count_st_diff[0], count_st_diff[1]))
+                print '?'
+                sys.exit()
+            note('detected st_diff: [%d]' % detected_st_diff, 1)
+
+    if st_diff != detected_st_diff:
+        note('discarding mappings: bad st_diff ' + str(ms), 2)
+        continue
+
+    note('using map set for insert distribution: ' + str(ms), 2)
+    if ms[0]['nip'] == 1:
+        ms = ms[::-1]
+    r1_len = max(r1_len, ms[0]['len'])
+    r2_len = max(r2_len, ms[1]['len'])
+    pos = [sam.get_pos(ms[0])[0], sam.get_pos(ms[1])[0]]
+    fivep = [pos[0][ms[0]['st']], pos[1][ms[1]['st']]]
+    delta = (fivep[1] - fivep[0]) * [1, -1][ms[0]['st']]
+    l.append(delta)
+    if len(l) >= args.stop_count:
+        break
+
+if detected_st_diff == -1 or len(l) < args.stop_count:
+    note('did not find enough good mappings')
+    print '?'
+    sys.exit()
+
+note('len(l)=%d' % len(l), 1)
+l.sort()
+drop_count = int(args.stop_count * drop_fraction)
+l = l[drop_count:-drop_count]
+note('detected delta min [%d]' % l[0], 1)
+note('detected delta max [%d]' % l[-1], 1)
+detected_delta_mean = sum(l)/len(l)
+note('detected delta mean [%d]' % detected_delta_mean, 1)
+detected_delta_stddev = math.sqrt(
+    sum(map(lambda x: x*x, l)) / (len(l) - 1)
+    - (sum(l) * sum(l)) / (len(l) * (len(l) - 1)))
+note('detected delta stddev [%d]' % detected_delta_stddev, 1)
+
+print ('paired=1,st_diff=%d,min=%d,max=%d,mean=%d,stddev=%d,r1_len=%d,r2_len=%d' %
+       (detected_st_diff, l[0], l[-1], detected_delta_mean, detected_delta_stddev, r1_len, r2_len))
+
+gzclose(in_fd)

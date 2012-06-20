@@ -1,0 +1,9 @@
+#!/bin/bash
+set -eu
+if [ $# -lt 1 ] ; then
+  echo "use: $0 <length> [<file1.bed> ... ]" 1>&2
+  exit 1
+fi
+EXTEND_LEN="$1"
+shift
+zc "$@" | awk -v extend_len=$EXTEND_LEN 'BEGIN{OFS="\t"} {$2-=extend_len;if($2<0)$2=0;$3+=extend_len;print}'
