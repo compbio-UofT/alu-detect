@@ -91,7 +91,7 @@ if [[ ! -xe "$DIR/bin/get-regions" || ! -xe "$DIR/bin/inalign" || ! -xe "$DIR/bi
 		MAKEFILE=$(grep -Pv "^BOOST=" Makefile)
 		cat <(echo "BOOST=$BOOST") <(echo "$MAKEFILE") > Makefile
 	fi
-	make
+	BOOST=$BOOST make
 fi
 [[ -n "$BOOST" ]] && echo "export BOOST=$BOOST" >> $SETTINGS
 
