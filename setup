@@ -4,6 +4,8 @@ DIR="$( cd -P "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
 DN="/dev/null"
 REF_NAME="hg18"
 SETTINGS="$DIR/settings/settings.$REF_NAME"
+[[ ! -d "$DIR/settings" ]] && mkdir settings
+[[ ! -d "$DIR/data" ]] && mkdir data
 [[ -n "$1" ]] && REF_NAME=$1
 
 #Load env variables from old settings file
