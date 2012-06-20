@@ -54,7 +54,7 @@ int db_breakpoint_gap_score	= -2;
 #define REPEAT_TAIL_LENGTH 40
 #define MAX_LEN_FLANKING_DUPLICATION 100
 
-double const bp_consensus_threshold = .6; // min fraction of clones supporting a bp (should be >.5)
+//double const bp_consensus_threshold = .6; // min fraction of clones supporting a bp (should be >.5)
 int const min_reads_to_bypass_evidence_against_bp = 3;
 
 ScoreMatrix ref_scoreMatrix(match_score_ref, mismatch_score);
@@ -1571,16 +1571,19 @@ run(const Contig& refContig,
     }
   }
 
-  // check if breakpoint evidence consistent
-  int tsd_len = 0;
+  // process breakpoint evidence:
+  // take the max insert start and min insert end
+  //   with >= 2 support (unless evidence=1, in which case take lone evidence)
   int ins_start_evidence = 0;
   for (int i = 0; i < overlap_end - overlap_start; i++) {
     ins_start_evidence += evidence_for_insert_start[1 + rep_id][i];
   }
   int ins_start = -1;
   if (ins_start_evidence > 0) {
-    for (int i = 0; i < overlap_end - overlap_start; i++) {
-      if (evidence_for_insert_start[1 + rep_id][i] > int(bp_consensus_threshold * double(ins_start_evidence))) {
+    for (int i = overlap_end - overlap_start - 1; i >= 0; --i) {
+      //if (evidence_for_insert_start[1 + rep_id][i] > int(bp_consensus_threshold * double(ins_start_evidence))) {
+      if ((ins_start_evidence == 1 && evidence_for_insert_start[1 + rep_id][i] >= 1)
+	  || evidence_for_insert_start[1 + rep_id][i] >= 2) {
 	ins_start = i;
 	break;
       }
@@ -1597,7 +1600,9 @@ run(const Contig& refContig,
   int ins_end = -1;
   if (ins_end_evidence > 0) {
     for (int i = 0; i < overlap_end - overlap_start; i++) {
-      if (evidence_for_insert_end[1 + rep_id][i] > int(bp_consensus_threshold * double(ins_end_evidence))) {
+      //if (evidence_for_insert_end[1 + rep_id][i] > int(bp_consensus_threshold * double(ins_end_evidence))) {
+      if ((ins_end_evidence == 1 && evidence_for_insert_end[1 + rep_id][i] >= 1)
+	  || evidence_for_insert_end[1 + rep_id][i] >= 2) {
 	ins_end = i;
 	break;
       }
@@ -1618,9 +1623,8 @@ run(const Contig& refContig,
 	    << "] reads but disproved by [" << evidence_against_bp[ins_start]
 	    << "] reads" << endl;
     ins_start = -2;
-  }
-  if (ins_start < 0)
     total_reads_spanning_insert_start[1 + rep_id] = 0;
+  }
 
   if (ins_end == -2) { // ambiguous ins_end
     err_str << "warning: ambiguous evidence for insert end" << endl;
@@ -1633,26 +1637,17 @@ run(const Contig& refContig,
 	    << "] reads but disproved by [" << evidence_against_bp[ins_end]
 	    << "] reads" << endl;
     ins_end = -2;
-  }
-  if (ins_end < 0)
     total_reads_spanning_insert_end[1 + rep_id] = 0;
+  }
 
+  int tsd_len = 0;
   if (ins_start >= 0 && ins_end >= 0) {
-    if (ins_start < ins_end) {
-      tsd_len = ins_start - ins_end; // <0
-    } else if (ins_start > ins_end) {
-      tsd_len = ins_start - ins_end; // >0
-      //ins_start = ins_end;
+    tsd_len = ins_start - ins_end;
+    if (ins_start < ins_end) { // TS loss, not duplication; tsd_len < 0
       swap(ins_start, ins_end);
-    } // else ins_start == ins_end, and tsd_len = 0
+    }
 
-    /*
-    err_str << "warning: insert start and insert end in wrong order: "
-	    << base_offset + overlap_start - 1 + ins_start << " vs "
-	    << base_offset + overlap_start - 1 + ins_end + 1 << endl;
-    */
-
-    if ((tsd_len >= 0? tsd_len : -tsd_len) > MAX_LEN_FLANKING_DUPLICATION) {
+    if (abs(tsd_len) > MAX_LEN_FLANKING_DUPLICATION) {
       err_str << "warning: tsd_len [" << tsd_len
 	      << "], possible evidence of 2 distinct insertions" << endl;
     }
@@ -1660,23 +1655,28 @@ run(const Contig& refContig,
 
   // trim insert range when only one endpoint is known
   if (ins_start >= 0 && ins_end < 0) {
-    ins_end = ins_start + 30;
+    ins_end = ins_start - 50;
   }
   if (ins_start < 0 && ins_end >= 0) {
-    ins_start = ins_end - 30;
+    ins_start = ins_end + 50;
   }
+  assert(ins_start < 0 or ins_end < 0 or ins_end <= ins_start);
 
   // make alternative score nonnegative
   if (sum_scores_null_hypothesis[1 + rep_id] <= 0)
     sum_scores_null_hypothesis[1 + rep_id] = 0;
 
+  // notes to self:
+  //   base_offset: 1-based, absolute
+  //   overlap_start/end: 1-based, off base_offset
+  //   ins_start/end: 0-based, off overlap_start
   out_str << refContig.name << '\t'
-	  << (ins_start >= 0?
-	      base_offset + overlap_start - 1 + ins_start
-	      : base_offset + overlap_start - 1) - 1 << '\t' // 0-based, closed!!
 	  << (ins_end >= 0?
-	      base_offset + overlap_start - 1 + ins_end + 1
-	      : base_offset + overlap_end - 1) << '\t' // 0-based, open!!
+	      (base_offset - 1) + (overlap_start - 1) + ins_end
+	      : (base_offset - 1) + overlap_start - 1) << '\t' // 0-based, closed
+	  << (ins_start >= 0?
+	      (base_offset - 1) + (overlap_start - 1) + ins_start + 1
+	      : (base_offset - 1) + (overlap_end - 1)) + 1 << '\t' // 0-based, open
 	  << repeat[rep_id].first->name << '\t'
 	  << repeat_score[1 + rep_id] << '\t'
 	  << (repeat[rep_id].second? "-" : "+") << '\t'

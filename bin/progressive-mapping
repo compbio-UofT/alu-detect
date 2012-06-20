@@ -18,7 +18,19 @@ TRIM_STEP=5
 MIN_LEN=20
 MIN_MQV=5
 NCPU="${NCPU:-4}"
-ZIP="pigz -9 -p $NCPU"
+
+if pv --version >/dev/null 2>/dev/null ; then
+    PV="pv -f"
+else
+    PV=cat
+fi
+
+if pigz --version >/dev/null 2>/dev/null ; then
+    ZIP="pigz -9 -p $NCPU"
+else
+    ZIP=gzip
+fi
+
 MAPPER_CMD="bowtie2 -x $BOWTIE2_INDEX -M 10 -p $NCPU -U"
 TAIL_SED_REGEXP="${TAIL_SED_REGEXP:-\/[12]$}"
 make_note "using TAIL_SED_REGEXP=$TAIL_SED_REGEXP"

@@ -90,9 +90,9 @@ getFragPosFromMapping(const Mapping& mapping)
 {
   Interval<long long int> result;
 
-  result[0] = max(0ll, mapping.dbPos[0] - mapping.qrPos[0] - 50);
+  result[0] = max(0ll, mapping.dbPos[0] - mapping.qrPos[0] - 100);
   result[1] = min(mapping.db->len - 1,
-		  mapping.dbPos[1] + (mapping.qr->len - 1 - mapping.qrPos[1]) + 50);
+		  mapping.dbPos[1] + (mapping.qr->len - 1 - mapping.qrPos[1]) + 100);
 
   //cerr << "getFragPosFromMapping(" << mapping << ") = " << result << endl;
 
@@ -108,20 +108,21 @@ getBPListFromMapping(const Read& r, int refMappingIdx)
 
   if (mapping.qrPos[0] > 0) {
     tmp.pos[0] = max(0ll, mapping.dbPos[0] - mapping.qrPos[0] - 50);
-    tmp.pos[1] = min(mapping.db->len - 1, mapping.dbPos[0] + 10);
+    tmp.pos[1] = min(mapping.db->len - 1, mapping.dbPos[0] + 50);
     tmp.solid = (mapping.mqv >= 4 and refMappingIdx > 0);
-    tmp.refAnchor[0] = false;
-    tmp.refAnchor[1] = true;
+    // reverse solidity preference because of tsds
+    tmp.refAnchor[0] = true;
+    tmp.refAnchor[1] = false;
     result.push_back(tmp);
   }
 
   if (mapping.qrPos[1] < mapping.qr->len - 1) {
-    tmp.pos[0] = max(0ll, mapping.dbPos[1] - 10);
+    tmp.pos[0] = max(0ll, mapping.dbPos[1] - 50);
     tmp.pos[1] = min(mapping.db->len - 1,
 		     mapping.dbPos[1] + (mapping.qr->len - 1 - mapping.qrPos[1]) + 50);
     tmp.solid = (mapping.mqv >= 4 and refMappingIdx < int(r.mapping.size()) - 1);
-    tmp.refAnchor[0] = true;
-    tmp.refAnchor[1] = false;
+    tmp.refAnchor[0] = false;
+    tmp.refAnchor[1] = true;
     result.push_back(tmp);
   }
 

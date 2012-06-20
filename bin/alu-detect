@@ -94,8 +94,19 @@ run_stage() {
 
 NCPU=${NCPU:-2}
 make_note "using NCPU=$NCPU"
-ZIP="pigz -9 -p $NCPU"
-PV="pv -f"
+
+if pv --version >/dev/null 2>/dev/null ; then
+    PV="pv -f"
+else
+    PV=cat
+fi
+
+if pigz --version >/dev/null 2>/dev/null ; then
+    ZIP="pigz -9 -p $NCPU"
+else
+    ZIP=gzip
+fi
+
 START_STAGE=${START_STAGE:-1}
 END_STAGE=${END_STAGE:-100}
 make_note "using START_STAGE=$START_STAGE and END_STAGE=$END_STAGE"

@@ -114,6 +114,19 @@ process_mapping(const string& line)
 }
 
 
+void
+usage(const string& progName)
+{
+  cerr << "Use: " << progName << " [options]" << endl;
+  cerr << "Options:" << endl
+       << "  -N <num_threads>: Use the specifed number of threads" << endl
+       << "  -r <range>: Only process mappings from given range (not currently working)" << endl
+       << "  -s <reg_size>: Use the given region size (currently: " << reg_size << ")" << endl
+       << "  -m <min_covg>: Minimum coverage per region (can be given multiple times)" << endl
+       << "  -b: Output bed file of coverage for the first minimum coverage threshold" << endl;
+}
+
+
 int
 main(int argc, char* argv[])
 {
@@ -140,6 +153,7 @@ main(int argc, char* argv[])
       break;
     default:
       cerr << "invalid option [" << c << "]" << endl;
+      usage(progName);
       return 1;
     }
   }

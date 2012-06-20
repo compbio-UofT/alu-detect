@@ -1,5 +1,5 @@
 ifndef BUILD_TYPE
-  BUILD_TYPE=debug
+  BUILD_TYPE=testing
 endif
 
 ifdef USE_ICC
