@@ -1,4 +1,4 @@
 all:
-	make -C src
+	BOOST=$(BOOST) make -C src
 clean:
 	make -C src clean
