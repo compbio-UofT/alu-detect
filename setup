@@ -3,17 +3,18 @@
 DIR="$( cd -P "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
 DN="/dev/null"
 REF_NAME="hg18"
+SETTINGS="$DIR/settings/settings.$REF_NAME"
 [[ -n "$1" ]] && REF_NAME=$1
 
 #Load env variables from old settings file
 OLDAWK=$AWKPATH
 OLDPYTHON=$PYTHONPATH
 PATHLINE="\$PATH"
-if [[ -re $DIR/data/settings.$REF_NAME ]]; then
-	PATHLINE=$(grep -oP " PATH=.+" $DIR/data/settings.$REF_NAME | sed 's/^ PATH=//g')
-	. $DIR/data/settings.$REF_NAME
+if [[ -re $SETTINGS ]]; then
+	PATHLINE=$(grep -oP " PATH=.+" $SETTINGS | sed 's/^ PATH=//g')
+	. $SETTINGS
 fi
-#rm $DIR/data/settings.$REF_NAME 2>$DN
+#rm $SETTINGS 2>$DN
 
 #if [[ -z "$(which pv 2>&1 > $DN)" ]]; then
 #	PV="cat"
@@ -69,10 +70,10 @@ done
 # Write PATH info the settings
 NEWPATH=$BEDTOOLS$GMAPPER$BOWTIE2$PYTHON2_PATH
 [[ ! $PATH =~ alu-detect ]] && NEWPATH=$DIR/bin:$NEWPATH
-echo "export PATH=$NEWPATH$PATHLINE" > $DIR/data/settings.$REF_NAME
+echo "export PATH=$NEWPATH$PATHLINE" > $SETTINGS
 export PATH=$NEWPATH$PATH
-[[ ! $OLDAWK =~ alu-detect ]] && echo "export AWKPATH=/filer/alu-detect/bin:\$AWKPATH" >> $DIR/data/settings.$REF_NAME
-[[ ! $OLDPYTHON =~ alu-detect ]] && echo "export PYTHONPATH=/filer/alu-detect/bin:\$PYTHONPATH" >> $DIR/data/settings.$REF_NAME
+[[ ! $OLDAWK =~ alu-detect ]] && echo "export AWKPATH=/filer/alu-detect/bin:\$AWKPATH" >> $SETTINGS
+[[ ! $OLDPYTHON =~ alu-detect ]] && echo "export PYTHONPATH=/filer/alu-detect/bin:\$PYTHONPATH" >> $SETTINGS
 
 # check of src compiled, if not, compile it
 if [[ ! -xe "$DIR/bin/get-regions" || ! -xe "$DIR/bin/inalign" || ! -xe "$DIR/bin/get-coverage" || ! -xe "$DIR/bin/zc" ]]; then
@@ -90,7 +91,7 @@ if [[ ! -xe "$DIR/bin/get-regions" || ! -xe "$DIR/bin/inalign" || ! -xe "$DIR/bi
 	fi
 	make
 fi
-[[ -n "$BOOST" ]] && echo "export BOOST=$BOOST" >> $DIR/data/settings.$REF_NAME
+[[ -n "$BOOST" ]] && echo "export BOOST=$BOOST" >> $SETTINGS
 
 #Check for data files
 while [[ -z "$REF_FA" || ! -re "$REF_FA" ]]; do
@@ -98,14 +99,14 @@ while [[ -z "$REF_FA" || ! -re "$REF_FA" ]]; do
 	echo "Enter reference genome FASTA file"
 	read REF_FA
 done
-echo "export REF_FA=$REF_FA" >> $DIR/data/settings.$REF_NAME
+echo "export REF_FA=$REF_FA" >> $SETTINGS
 
 while [[ -z "$BOWTIE2_INDEX" || ( -n "$BOWTIE2_INDEX" && -z $(ls $BOWTIE2_INDEX* 2>$DN) ) ]]; do
 	echo "bowtie2 indices not found" 1>&2
 	echo "Enter bowtie2 index prefix"
 	read BOWTIE2_INDEX
 done
-echo "export BOWTIE2_INDEX=$BOWTIE2_INDEX" >> $DIR/data/settings.$REF_NAME
+echo "export BOWTIE2_INDEX=$BOWTIE2_INDEX" >> $SETTINGS
 
 while [[ -z "$ALU_ALL_FA" || ! -re "$ALU_ALL_FA" ]]; do
 	echo "Reference alu positions not found..." 1>&2
@@ -125,8 +126,8 @@ while [[ -z "$ALU_ALL_FA" || ! -re "$ALU_ALL_FA" ]]; do
 	sed 's/^\(.*\)ALU/\1/' | 
 	awk '/^>/ {if (substr($2,1,3)=="Alu"&&$2!=substr($1,2)) $1=$1"/"substr($2,4); print $1} /^[^>]/' >$ALU_ALL_FA
 done
-[[ -n "$REPEATMASKER_DIR" ]] && echo "export REPEATMASKER_DIR=$REPEATMASKER_DIR" >> $DIR/data/settings.$REF_NAME
-echo "export ALU_ALL_FA=$ALU_ALL_FA" >> $DIR/data/settings.$REF_NAME
+[[ -n "$REPEATMASKER_DIR" ]] && echo "export REPEATMASKER_DIR=$REPEATMASKER_DIR" >> $SETTINGS
+echo "export ALU_ALL_FA=$ALU_ALL_FA" >> $SETTINGS
 
 while [[ -z "$ALU_NO_POLYA_FA" || ! -re "$ALU_NO_POLYA_FA" ]]; do
 	ALU_NO_POLYA_FA=$DIR/data/alu.hidden-polya.$REF_NAME.fa
@@ -134,7 +135,7 @@ while [[ -z "$ALU_NO_POLYA_FA" || ! -re "$ALU_NO_POLYA_FA" ]]; do
 	$DIR/bin/hide-polya <$ALU_ALL_FA >$ALU_NO_POLYA_FA
 	cd $OLDPWD
 done
-echo "export ALU_NO_POLYA_FA=$ALU_NO_POLYA_FA" >> $DIR/data/settings.$REF_NAME
+echo "export ALU_NO_POLYA_FA=$ALU_NO_POLYA_FA" >> $SETTINGS
 
 while [[ -z "$ALUS_BED" || ! -re "$ALUS_BED" ]]; do
 	echo "alus.$REF_NAME.bed.gz not found" 1>&2
@@ -152,6 +153,6 @@ while [[ -z "$ALUS_BED" || ! -re "$ALUS_BED" ]]; do
 	awk 'BEGIN{OFS="\t"} {pct=int($2+$3+$4);if(pct>100)pct=100; if($9=="C"){strand="-"}else{strand="+"}if(substr($12,1,1)=="("){start=$13;end=$14}else{start=$12;end=$13} print $5, $6-1, $7, $10, 100-pct, strand, start, end}' | 
 	gzip >$ALUS_BED
 done
-[[ -n "$CHROM_FA_OUT" ]] && echo "export CHROM_FA_OUT=$CHROM_FA_OUT" >> $DIR/data/settings.$REF_NAME
-echo "export ALUS_BED=$ALUS_BED" >> $DIR/data/settings.$REF_NAME
+[[ -n "$CHROM_FA_OUT" ]] && echo "export CHROM_FA_OUT=$CHROM_FA_OUT" >> $SETTINGS
+echo "export ALUS_BED=$ALUS_BED" >> $SETTINGS
 
