@@ -140,4 +140,4 @@ remove-boost-link:
 	if [[ -e boost ]]; then rm boost; fi
 
 clean:
-	rm -f *.o gzstream/gzstream.o get-regions inalign get-coverage zc boost
+	rm -f *.o gzstream/gzstream.o get-regions inalign get-coverage zc boost ../bin/get-regions ../bin/inalign ../bin/get-coverage ../bin/zc
