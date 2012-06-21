@@ -9,11 +9,11 @@ SETTINGS="$DIR/settings/settings.$REF_NAME"
 [[ -n "$1" ]] && REF_NAME=$1
 
 #Load env variables from old settings file
-OLDAWK=$AWKPATH
-OLDPYTHON=$PYTHONPATH
 PATHLINE="\$PATH"
 if [[ -re "$SETTINGS" ]]; then
 	PATHLINE=$(grep -oP " PATH=.+" $SETTINGS | sed 's/^ PATH=//g')
+	AWKLINE=$(grep -oP "AWKPATH=.+" $SETTINGS | sed 's/^AWKPATH=//g')
+	PYTHONLINE=$(grep -oP "PYTHONPATH=.+" $SETTINGS | sed 's/^PYTHONPATH=//g')
 	. $SETTINGS
 fi
 #rm $SETTINGS 2>$DN
@@ -74,8 +74,10 @@ NEWPATH=$BEDTOOLS$GMAPPER$BOWTIE2$PYTHON2_PATH
 [[ ! "$PATH" =~ alu-detect ]] && NEWPATH=$DIR/bin:$NEWPATH
 echo "export PATH=$NEWPATH$PATHLINE" > $SETTINGS
 export PATH=$NEWPATH$PATH
-[[ ! "$AWKPATH" =~ alu-detect ]] && echo "export AWKPATH=/filer/alu-detect/bin:\$AWKPATH" >> $SETTINGS
-[[ ! "$PYTHONPATH" =~ alu-detect ]] && echo "export PYTHONPATH=/filer/alu-detect/bin:\$PYTHONPATH" >> $SETTINGS
+[[ ! "$AWKPATH" =~ alu-detect ]] && AWKLINE="$DIR/bin:$AWKLINE"
+[[ ! "$PYTHONPATH" =~ alu-detect ]] && PYTHONLINE="$DIR/bin:$PYTHONLINE"
+echo "export AWKPATH=$AWKLINE" >> $SETTINGS
+echo "export PYTHONPATH=$PYTHONLINE" >> $SETTINGS
 
 # check of src compiled, if not, compile it
 if [[ ! -xe "$DIR/bin/get-regions" || ! -xe "$DIR/bin/inalign" || ! -xe "$DIR/bin/get-coverage" || ! -xe "$DIR/bin/zc" ]]; then
