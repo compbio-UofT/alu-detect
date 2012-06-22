@@ -38,7 +38,7 @@ endif
 
 LN=ln
 
-all: include-boost get-regions inalign get-coverage zc move-bins remove-boost-link
+all: include-boost get-regions inalign get-coverage zc move-bins
 
 include-boost:
 	if [[ ! -e boost && -d "$(BOOST)" ]]; then ln -s "$(BOOST)" boost; fi
@@ -135,9 +135,6 @@ zc: zc.c
 
 move-bins:
 	mv get-regions inalign get-coverage zc ../bin
-
-remove-boost-link:
-	if [[ -e boost ]]; then rm boost; fi
 
 clean:
 	rm -f *.o gzstream/gzstream.o get-regions inalign get-coverage zc boost ../bin/get-regions ../bin/inalign ../bin/get-coverage ../bin/zc
