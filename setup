@@ -10,20 +10,16 @@ SETTINGS="$DIR/settings/settings.$REF_NAME"
 
 #Load env variables from old settings file
 PATHLINE="\$PATH"
-if [[ -re "$SETTINGS" ]]; then
-	PATHLINE=$(grep -oP " PATH=.+" $SETTINGS | sed 's/^ PATH=//g')
+if [[ -wre "$SETTINGS" ]]; then
+	BEDTOOLS=$(grep "#BEDTOOLS" $SETTINGS | cut -d " " -f 5)
+	GMAPPER=$(grep "#GMAPPER" $SETTINGS | cut -d " " -f 5)
+	BOWTIE2=$(grep "#BOWTIE2" $SETTINGS | cut -d " " -f 5)
+	PYTHON2_PATH=$(grep "#PYTHON2_PATH" $SETTINGS | cut -d " " -f 5)
 	AWKLINE=$(grep -oP "AWKPATH=.+" $SETTINGS | sed 's/^AWKPATH=//g')
 	PYTHONLINE=$(grep -oP "PYTHONPATH=.+" $SETTINGS | sed 's/^PYTHONPATH=//g')
 	. $SETTINGS
+	rm $SETTINGS
 fi
-#rm $SETTINGS 2>$DN
-
-#if [[ -z "$(which pv 2>&1 > $DN)" ]]; then
-#	PV="cat"
-#	echo "pv not found, using cat instead"
-#else
-#	PV="pv -f"
-#fi
 
 #Check for prerequisites
 # Check for bedtools
@@ -33,11 +29,9 @@ while [[ -n "$(which intersectBed 2>&1 > $DN)" && -z "$BEDTOOLS" ]]; do
 	read -e BEDTOOLS
 	if [[ ! -xe "$BEDTOOLS/intersectBed" ]]; then
 		BEDTOOLS=""
-	else
-		BEDTOOLS=$BEDTOOLS":"
 	fi
 done
-[[ -n "$BEDTOOLS" ]] && echo "[[ ! "\$PATH" =~ "$BEDTOOLS" ]] && export PATH=$BEDTOOLS:\$PATH #BEDTOOLS"
+[[ -n "$BEDTOOLS" ]] && echo "[[ ! "\$PATH" =~ "$BEDTOOLS" ]] && export PATH=$BEDTOOLS:\$PATH #BEDTOOLS" >> $SETTINGS
 # Check for gmapper
 while [[ -n "$(which gmapper-ls 2>&1 > $DN)" && -z "$GMAPPER" ]]; do
 	echo "gmapper not found" 1>&2
@@ -45,11 +39,9 @@ while [[ -n "$(which gmapper-ls 2>&1 > $DN)" && -z "$GMAPPER" ]]; do
 	read -e GMAPPER
 	if [[ ! -xe "$GMAPPER/gmapper-ls" ]]; then
 		GMAPPER=""
-	else
-		GMAPPER=$GMAPPER":"
 	fi
 done
-[[ -n "$GMAPPER" ]] && echo "[[ ! "\$PATH" =~ "$GMAPPER" ]] && export PATH=$GMAPPER:\$PATH"
+[[ -n "$GMAPPER" ]] && echo "[[ ! "\$PATH" =~ "$GMAPPER" ]] && export PATH=$GMAPPER:\$PATH #GMAPPER" >> $SETTINGS
 # Check for bowtie2
 while [[ -n "$(which bowtie2 2>&1 > $DN)" && -z "$BOWTIE2" ]]; do
 	echo "bowtie2 not found" 1>&2
@@ -57,11 +49,9 @@ while [[ -n "$(which bowtie2 2>&1 > $DN)" && -z "$BOWTIE2" ]]; do
 	read -e BOWTIE2
 	if [[ ! -xe "$BOWTIE2/bowtie2" ]]; then
 		BOWTIE2=""
-	else
-		BOWTIE2=$BOWTIE2":"
 	fi
 done
-[[ -n "$BOWTIE2" ]] && echo "[[ ! "\$PATH" =~ "$BOWTIE2" ]] && export PATH=$BOWTIE2:\$PATH #BOWTIE2"
+[[ -n "$BOWTIE2" ]] && echo "[[ ! "\$PATH" =~ "$BOWTIE2" ]] && export PATH=$BOWTIE2:\$PATH #BOWTIE2" >> $SETTINGS
 # Check for python>=2.6
 PYTHON2_LATEST=$(echo "$PATH" | sed 's/:/\n/g' | while read LINE; do find $LINE/python* 2>$DN | grep -P "python(2\.?\d?)?$" | cat <(while read EXEC; do $EXEC -V 2>&1 | sed 's/Python //g' | cut -d "." -f 2; done;) | sort | tail -n 1; done)
 while [[ "$PYTHON2_LATEST" -le 5 ]]; do
@@ -70,7 +60,8 @@ while [[ "$PYTHON2_LATEST" -le 5 ]]; do
 	read -e PYTHON2_PATH
 	PYTHON2_LATEST=$(echo "$PYTHON2_PATH" | sed 's/:/\n/g' | while read LINE; do find $LINE/python* 2>$DN | grep -P "python(2\.?\d?)?$" | cat <(while read EXEC; do $EXEC -V 2>&1 | sed 's/Python //g' | cut -d "." -f 2; done;) | sort | tail -n 1; done)
 done
-[[ -n "$PYTHON2_PATH" ]] && echo "[[ ! "\$PATH" =~ "$PYTHON2_PATH" ]] && export PATH=$PYTHON2_PATH:\$PATH #PYTHON2_PATH"
+[[ -n "$PYTHON2_PATH" ]] && echo "[[ ! "\$PATH" =~ "$PYTHON2_PATH" ]] && export PATH=$PYTHON2_PATH:\$PATH #PYTHON2_PATH" >> $SETTINGS
+
 #[[ -n "$PYTHON2_PATH" ]] && PYTHON2_PATH="$PYTHON2_PATH:"
 
 # Write PATH info the settings
@@ -82,6 +73,8 @@ done
 #[[ ! "$PYTHONPATH" =~ alu-detect ]] && PYTHONLINE="$DIR/bin:$PYTHONLINE"
 #echo "export AWKPATH=$AWKLINE" >> $SETTINGS
 #echo "export PYTHONPATH=$PYTHONLINE" >> $SETTINGS
+echo "[[ ! \$AWKPATH =~ alu-detect ]] && export AWKPATH=$DIR/bin:\$AWKPATH" >> $SETTINGS
+echo "[[ ! \$PYTHONPATH =~ alu-detect ]] && export PYTHONPATH=$DIR/bin:\$PYTHONPATH" >> $SETTINGS
 
 # check of src compiled, if not, compile it
 if [[ ! -xe "$DIR/bin/get-regions" || ! -xe "$DIR/bin/inalign" || ! -xe "$DIR/bin/get-coverage" || ! -xe "$DIR/bin/zc" ]]; then
