@@ -30,7 +30,7 @@ fi
 while [[ -n "$(which intersectBed 2>&1 > $DN)" && -z "$BEDTOOLS" ]]; do
 	echo "bedtools not found" 1>&2
 	echo "Enter bedtools directory"
-	read BEDTOOLS
+	read -e BEDTOOLS
 	if [[ ! -xe "$BEDTOOLS/intersectBed" ]]; then
 		BEDTOOLS=""
 	else
@@ -41,7 +41,7 @@ done
 while [[ -n "$(which gmapper-ls 2>&1 > $DN)" && -z "$GMAPPER" ]]; do
 	echo "gmapper not found" 1>&2
 	echo "Enter gmapper directory"
-	read GMAPPER
+	read -e GMAPPER
 	if [[ ! -xe "$GMAPPER/gmapper-ls" ]]; then
 		GMAPPER=""
 	else
@@ -52,7 +52,7 @@ done
 while [[ -n "$(which bowtie2 2>&1 > $DN)" && -z "$BOWTIE2" ]]; do
 	echo "bowtie2 not found" 1>&2
 	echo "Enter bowtie2 directory"
-	read BOWTIE2
+	read -e BOWTIE2
 	if [[ ! -xe "$BOWTIE2/bowtie2" ]]; then
 		BOWTIE2=""
 	else
@@ -64,7 +64,7 @@ PYTHON2_LATEST=$(echo "$PATH" | sed 's/:/\n/g' | while read LINE; do find $LINE/
 while [[ "$PYTHON2_LATEST" -le 5 ]]; do
 	echo "Your python in PATH is too old or does not exist" 1>&2
 	echo "Enter the directory for python2.x, where x>=6"
-	read PYTHON2_PATH
+	read -e PYTHON2_PATH
 	PYTHON2_LATEST=$(echo "$PYTHON2_PATH" | sed 's/:/\n/g' | while read LINE; do find $LINE/python* 2>$DN | grep -P "python(2\.?\d?)?$" | cat <(while read EXEC; do $EXEC -V 2>&1 | sed 's/Python //g' | cut -d "." -f 2; done;) | sort | tail -n 1; done)
 done
 [[ -n "$PYTHON2_PATH" ]] && PYTHON2_PATH="$PYTHON2_PATH:"
@@ -85,7 +85,7 @@ if [[ ! -xe "$DIR/bin/get-regions" || ! -xe "$DIR/bin/inalign" || ! -xe "$DIR/bi
 	while [[ ! -d /usr/include/boost && ! -d "$DIR/src/boost" && -z "$BOOST" ]]; do
 		echo "libboost directory not found" 1>&2
 		echo "Enter liboost directory"
-		read BOOST
+		read -e BOOST
 		[[ ! -d "$BOOST" ]] && BOOST=""
 	done
 	echo "Compiling source"
@@ -104,14 +104,14 @@ fi
 while [[ -z "$REF_FA" || ! -re "$REF_FA" ]]; do
 	echo "Reference genome not found" 1>&2
 	echo "Enter reference genome FASTA file"
-	read REF_FA
+	read -e REF_FA
 done
 echo "export REF_FA=$REF_FA" >> $SETTINGS
 
 while [[ -z "$BOWTIE2_INDEX" || ( -n "$BOWTIE2_INDEX" && -z $(ls "$BOWTIE2_INDEX"* 2>$DN) ) ]]; do
 	echo "bowtie2 indices not found" 1>&2
 	echo "Enter bowtie2 index prefix"
-	read BOWTIE2_INDEX
+	read -e BOWTIE2_INDEX
 done
 echo "export BOWTIE2_INDEX=$BOWTIE2_INDEX" >> $SETTINGS
 
@@ -120,7 +120,7 @@ while [[ -z "$ALU_ALL_FA" || ! -re "$ALU_ALL_FA" ]]; do
 	if [[ -z "$REPEATMASKER_DIR" ]]; then
 		while [[ -z "$REPEATMASKER_DIR" ]]; do
 			echo "Enter RepeatMasker directory"
-			read REPEATMASKER_DIR
+			read -e REPEATMASKER_DIR
 			[[ ! -xe "$REPEATMASKER_DIR"/util/queryRepeatDatabase.pl ]] && REPEATMASKER_DIR=""
 		done
 	fi
@@ -148,7 +148,7 @@ while [[ -z "$ALUS_BED" || ! -re "$ALUS_BED" ]]; do
 	echo "alus.$REF_NAME.bed.gz not found" 1>&2
 	if [[ -z "$CHROM_FA_OUT" ]]; then
 		echo "Enter paths to RepeatMasker output files"
-		read CHROM_FA_OUT
+		read -e CHROM_FA_OUT
 	fi
 	echo "Generating reference list of alus in bed format"
 	ALUS_BED=$DIR/data/alus.$REF_NAME.bed.gz
