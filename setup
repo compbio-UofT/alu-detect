@@ -9,7 +9,7 @@ SETTINGS="$DIR/settings/settings.$REF_NAME"
 [[ -n "$1" ]] && REF_NAME=$1
 
 #Load env variables from old settings file
-PATHLINE="\$PATH"
+#PATHLINE="\$PATH"
 if [[ -wre "$SETTINGS" ]]; then
 	BEDTOOLS=$(grep "#BEDTOOLS" $SETTINGS | cut -d " " -f 5)
 	GMAPPER=$(grep "#GMAPPER" $SETTINGS | cut -d " " -f 5)
@@ -31,7 +31,10 @@ while [[ -n "$(which intersectBed 2>&1 > $DN)" && -z "$BEDTOOLS" ]]; do
 		BEDTOOLS=""
 	fi
 done
-[[ -n "$BEDTOOLS" ]] && echo "[[ ! "\$PATH" =~ "$BEDTOOLS" ]] && export PATH=$BEDTOOLS:\$PATH #BEDTOOLS" >> $SETTINGS
+if [[ -n "$BEDTOOLS" ]]; then
+	BEDTOOLS=$(eval echo "$BEDTOOLS")
+	echo "[[ ! "\$PATH" =~ "$BEDTOOLS" ]] && export PATH=$BEDTOOLS:\$PATH #BEDTOOLS" >> $SETTINGS
+fi
 # Check for gmapper
 while [[ -n "$(which gmapper-ls 2>&1 > $DN)" && -z "$GMAPPER" ]]; do
 	echo "gmapper not found" 1>&2
@@ -41,7 +44,10 @@ while [[ -n "$(which gmapper-ls 2>&1 > $DN)" && -z "$GMAPPER" ]]; do
 		GMAPPER=""
 	fi
 done
-[[ -n "$GMAPPER" ]] && echo "[[ ! "\$PATH" =~ "$GMAPPER" ]] && export PATH=$GMAPPER:\$PATH #GMAPPER" >> $SETTINGS
+if [[ -n "$GMAPPER" ]]; then
+	GMAPPER=$(eval echo "$GMAPPER")
+	echo "[[ ! "\$PATH" =~ "$GMAPPER" ]] && export PATH=$GMAPPER:\$PATH #GMAPPER" >> $SETTINGS
+fi
 # Check for bowtie2
 while [[ -n "$(which bowtie2 2>&1 > $DN)" && -z "$BOWTIE2" ]]; do
 	echo "bowtie2 not found" 1>&2
@@ -51,7 +57,10 @@ while [[ -n "$(which bowtie2 2>&1 > $DN)" && -z "$BOWTIE2" ]]; do
 		BOWTIE2=""
 	fi
 done
-[[ -n "$BOWTIE2" ]] && echo "[[ ! "\$PATH" =~ "$BOWTIE2" ]] && export PATH=$BOWTIE2:\$PATH #BOWTIE2" >> $SETTINGS
+if [[ -n "$BOWTIE2" ]]; then
+	BOWTIE2=$(eval echo "$BOWTIE2")
+	echo "[[ ! "\$PATH" =~ "$BOWTIE2" ]] && export PATH=$BOWTIE2:\$PATH #BOWTIE2" >> $SETTINGS
+fi
 # Check for python>=2.6
 PYTHON2_LATEST=$(echo "$PATH" | sed 's/:/\n/g' | while read LINE; do find $LINE/python* 2>$DN | grep -P "python(2\.?\d?)?$" | cat <(while read EXEC; do $EXEC -V 2>&1 | sed 's/Python //g' | cut -d "." -f 2; done;) | sort | tail -n 1; done)
 while [[ "$PYTHON2_LATEST" -le 5 ]]; do
@@ -60,7 +69,10 @@ while [[ "$PYTHON2_LATEST" -le 5 ]]; do
 	read -e PYTHON2_PATH
 	PYTHON2_LATEST=$(echo "$PYTHON2_PATH" | sed 's/:/\n/g' | while read LINE; do find $LINE/python* 2>$DN | grep -P "python(2\.?\d?)?$" | cat <(while read EXEC; do $EXEC -V 2>&1 | sed 's/Python //g' | cut -d "." -f 2; done;) | sort | tail -n 1; done)
 done
-[[ -n "$PYTHON2_PATH" ]] && echo "[[ ! "\$PATH" =~ "$PYTHON2_PATH" ]] && export PATH=$PYTHON2_PATH:\$PATH #PYTHON2_PATH" >> $SETTINGS
+if [[ -n "$PYTHON2_PATH" ]]; then
+	PYTHON2_PATH=$(eval echo "$PYTHON2_PATH")
+	echo "[[ ! "\$PATH" =~ "$PYTHON2_PATH" ]] && export PATH=$PYTHON2_PATH:\$PATH #PYTHON2_PATH" >> $SETTINGS
+fi
 
 #[[ -n "$PYTHON2_PATH" ]] && PYTHON2_PATH="$PYTHON2_PATH:"
 
@@ -87,7 +99,7 @@ if [[ ! -xe "$DIR/bin/get-regions" || ! -xe "$DIR/bin/inalign" || ! -xe "$DIR/bi
 	done
 	echo "Compiling source"
 	if [[ -n "$BOOST" ]]; then
-		BOOST=$BOOST make
+		BOOST=$(eval echo "$BOOST") make
 #		MAKEFILE=$(grep -Pv "^BOOST=" Makefile)
 #		cat <(echo "BOOST=$BOOST") <(echo "$MAKEFILE") > Makefile
 	else
@@ -95,7 +107,10 @@ if [[ ! -xe "$DIR/bin/get-regions" || ! -xe "$DIR/bin/inalign" || ! -xe "$DIR/bi
 	fi
 #	BOOST=$BOOST make
 fi
-[[ -n "$BOOST" ]] && echo "export BOOST=$BOOST" >> $SETTINGS
+if [[ -n "$BOOST" ]]; then
+	BOOST=$(eval echo "$BOOST")
+	echo "export BOOST=$BOOST" >> $SETTINGS
+fi
 
 #Check for data files
 while [[ -z "$REF_FA" || ! -re "$REF_FA" ]]; do
@@ -103,14 +118,14 @@ while [[ -z "$REF_FA" || ! -re "$REF_FA" ]]; do
 	echo "Enter reference genome FASTA file"
 	read -e REF_FA
 done
-echo "export REF_FA=$REF_FA" >> $SETTINGS
+echo "export REF_FA=$(eval echo "$REF_FA")" >> $SETTINGS
 
 while [[ -z "$BOWTIE2_INDEX" || ( -n "$BOWTIE2_INDEX" && -z $(ls "$BOWTIE2_INDEX"* 2>$DN) ) ]]; do
 	echo "bowtie2 indices not found" 1>&2
 	echo "Enter bowtie2 index prefix"
 	read -e BOWTIE2_INDEX
 done
-echo "export BOWTIE2_INDEX=$BOWTIE2_INDEX" >> $SETTINGS
+echo "export BOWTIE2_INDEX=$(eval echo "BOWTIE2_INDEX")" >> $SETTINGS
 
 while [[ -z "$ALU_ALL_FA" || ! -re "$ALU_ALL_FA" ]]; do
 	echo "Reference alu positions not found..." 1>&2
@@ -121,6 +136,7 @@ while [[ -z "$ALU_ALL_FA" || ! -re "$ALU_ALL_FA" ]]; do
 			[[ ! -xe "$REPEATMASKER_DIR"/util/queryRepeatDatabase.pl ]] && REPEATMASKER_DIR=""
 		done
 	fi
+	REPEATMASKER_DIR=$(eval echo "$REPEATMASKER_DIR")
 	ALU_ALL_FA=$DIR/data/alu.pos.$REF_NAME.fa
 	echo "Generating reference list of alu positions"
 	$REPEATMASKER_DIR/util/queryRepeatDatabase.pl -species homo -class SINE | 
@@ -147,6 +163,7 @@ while [[ -z "$ALUS_BED" || ! -re "$ALUS_BED" ]]; do
 		echo "Enter paths to RepeatMasker output files"
 		read -e CHROM_FA_OUT
 	fi
+	CHROM_FA_OUT=$(eval echo "$CHROM_FA_OUT")
 	echo "Generating reference list of alus in bed format"
 	ALUS_BED=$DIR/data/alus.$REF_NAME.bed.gz
 	grep SINE/Alu $CHROM_FA_OUT | 
@@ -160,6 +177,6 @@ while [[ -z "$ALUS_BED" || ! -re "$ALUS_BED" ]]; do
 	awk 'BEGIN{OFS="\t"} {pct=int($2+$3+$4);if(pct>100)pct=100; if($9=="C"){strand="-"}else{strand="+"}if(substr($12,1,1)=="("){start=$13;end=$14}else{start=$12;end=$13} print $5, $6-1, $7, $10, 100-pct, strand, start, end}' | 
 	gzip >$ALUS_BED
 done
-[[ -n "$CHROM_FA_OUT" ]] && echo "export CHROM_FA_OUT=$CHROM_FA_OUT" >> $SETTINGS
+#[[ -n "$CHROM_FA_OUT" ]] && echo "export CHROM_FA_OUT=$CHROM_FA_OUT" >> $SETTINGS
 echo "export ALUS_BED=$ALUS_BED" >> $SETTINGS
 
