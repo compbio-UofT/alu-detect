@@ -149,7 +149,7 @@ while [[ -z "$ALUS_BED" || ! -re "$ALUS_BED" ]]; do
 	fi
 	echo "Generating reference list of alus in bed format"
 	ALUS_BED=$DIR/data/alus.$REF_NAME.bed.gz
-	grep SINE/Alu $CHROM_FA_OUT | 
+	grep -h SINE/Alu $CHROM_FA_OUT | 
 	sed 's/ \+/\t/g' |
 	sed 's/^\t//' |
 	sed 's/\t$//' |
