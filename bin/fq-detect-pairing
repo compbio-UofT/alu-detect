@@ -1,0 +1,41 @@
+#!/bin/bash
+
+. $(which my-lib.sh)
+set -eux
+
+find_my_name_and_dir "${BASH_SOURCE[0]}"
+
+if [ $# -lt 1 -o $# -gt 2 ] ; then
+    crash "use: $MY_NAME [ <reads.fq> | <reads.1.fq> <reads.2.fq> ]"
+fi
+
+make_note "using NCPU=${NCPU:=4}"
+make_note "using BOWTIE2_INDEX=$BOWTIE2_INDEX"
+make_note "using READ_COUNT=${READ_COUNT:=100000}"
+make_temp_dir "$MY_NAME"
+make_note "using TDIR=$TDIR"
+
+if [ $# -eq 1 ] ; then
+    make_note "found single reads file; multiplexing"
+    exec 3< <(zc "$1")
+else
+    exec 3< <(merge-files 4:<(zc "$1") 4:<(zc "$2") 2>/dev/null)
+fi
+
+head -n $((8 * $READ_COUNT)) <&3 \
+    | fq-rename-paired-reads-with-len \
+    | fq-convert -v ofq=tfq \
+    | awk 'BEGIN{FS="\t";OFS="\t"} {$3=""; print}' \
+    | fq-convert -v ofq=fq >"$TDIR"/reads.fq
+
+exec 3<&-
+
+PHRED=$(fq-detect-phred "$TDIR"/reads.fq)
+
+bowtie2 -x "$BOWTIE2_INDEX" -U "$TDIR"/reads.fq -S "$TDIR"/map.sam \
+  --phred${PHRED} -p $NCPU
+zc <(sam-header "$TDIR"/map.sam) <(sam-body "$TDIR"/map.sam | sort -s -t ":" -k 1,1n -k 2,2n) \
+    >"$TDIR"/map.rsort.sam
+detect-pairing -f -v --cid-parser cid_parser "$TDIR"/map.rsort.sam
+
+rm -rf "$TDIR"
