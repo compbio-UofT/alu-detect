@@ -143,13 +143,28 @@ PATH=$PATH:$MY_DIR
 
 export RGID=${RGID:-00}
 ORIG_READS=${ORIG_READS:-}
-ORIG_MAPPINGS=${ORIG_MAPPINGS:-}
+ORIG_MAPPINGS_SAM=${ORIG_MAPPINGS_SAM:-}
 ORIG_MAPPINGS_BAM=${ORIG_MAPPINGS_BAM:-}
+ORIG_MAPPINGS_SORT_BAM=${ORIG_MAPPINGS_SORT_BAM:-}
 make_note "using read group: [$RGID]"
 make_note "using reads file: [$ORIG_READS]"
-make_note "using mappings file: [$ORIG_MAPPINGS]"
-make_note "using sorted mappings file: [$ORIG_MAPPINGS_BAM]"
+make_note "using mappings sam file: [$ORIG_MAPPINGS_SAM]"
+make_note "using mappings bam file: [$ORIG_MAPPINGS_BAM]"
+make_note "using sorted mappings file: [$ORIG_MAPPINGS_SORT_BAM]"
 
+if [ "$ORIG_MAPPINGS_SAM" ] ; then
+    get_orig_mappings() {
+	$PV "$ORIG_MAPPINGS_SAM"
+    }
+elif [ "$ORIG_MAPPINGS_BAM" ] ; then
+    get_orig_mappings() {
+	$PV "$ORIG_MAPPINGS_BAM" | samtools view -h -
+    }
+else
+    get_orig_mappings() {
+	crash "original mappings not available!"
+    }
+fi
 
 #
 # Stage 1: detect pairing information in mappings
@@ -157,11 +172,11 @@ make_note "using sorted mappings file: [$ORIG_MAPPINGS_BAM]"
 STAGE_NUM=1
 STAGE_NAME="detect pairing information"
 PAIRING_FILE=$RGID.pairing
-INPUT_FILES="$ORIG_MAPPINGS"
+INPUT_FILES="$ORIG_MAPPINGS_SAM $ORIG_MAPPINGS_BAM"
 OUTPUT_FILES="$PAIRING_FILE"
 STATS_FILE=
 stage_command() {
-    detect-pairing "$ORIG_MAPPINGS" >"$PAIRING_FILE"
+    get_orig_mappings | detect-pairing >"$PAIRING_FILE"
 }
 run_stage
 
@@ -181,11 +196,12 @@ make_note "using PAIRING=\"$PAIRING\""
 STAGE_NUM=2
 STAGE_NAME="extract discordant reads"
 READS_DISCORDANT=$RGID.reads.discordant
-INPUT_FILES="$ORIG_READS $ORIG_MAPPINGS"
+INPUT_FILES="$ORIG_MAPPINGS_SAM $ORIG_MAPPINGS_BAM"
+#INPUT_FILES="$ORIG_READS $ORIG_MAPPINGS"
 OUTPUT_FILES="$READS_DISCORDANT.fq.gz"
 STATS_FILE="$READS_DISCORDANT.stats"
 stage_command () {
-    $PV $ORIG_MAPPINGS \
+    get_orig_mappings \
 	| add-extra-sam-flags -p $PAIRING \
 	| {
 	      if [[ "$PAIRING" =~ "paired=1" ]] ; then
@@ -369,11 +385,11 @@ run_stage
 STAGE_NUM=9
 STAGE_NAME="compute reference count"
 REGIONS_REFCNT=$RGID.regions.refcnt
-INPUT_FILES="$ORIG_MAPPINGS_BAM $REGIONS.bed"
+INPUT_FILES="$ORIG_MAPPINGS_SORT_BAM $REGIONS.bed"
 OUTPUT_FILES="$REGIONS_REFCNT.bed"
 STATS_FILE=
 stage_command() {
-    if [ -z "$ORIG_MAPPINGS_BAM" ] ; then
+    if [ -z "$ORIG_MAPPINGS_SORT_BAM" ] ; then
 	sed 's/$/	./' <$REGIONS.bed >$REGIONS_REFCNT.bed
     else
 	cat $REGIONS.bed | while read -r -a line ; do
@@ -382,7 +398,7 @@ stage_command() {
 	    if [ $TSD_LEN -lt 15 ] ; then
 		TSD_LEN=15
 	    fi
-	    REF_ALLELE="$(samtools view "$ORIG_MAPPINGS_BAM" $RANGE \
+	    REF_ALLELE="$(samtools view "$ORIG_MAPPINGS_SORT_BAM" $RANGE \
 		| check-reference-allele $RANGE -t $TSD_LEN 2>/dev/null)"
 	    print_with_delim -d "\t" "${line[@]}" "$REF_ALLELE"
 	done >$REGIONS_REFCNT.bed
