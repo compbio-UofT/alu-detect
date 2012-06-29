@@ -71,6 +71,7 @@ if [[ -n "$PYTHON2_PATH" ]]; then
 	echo "[[ ! "\$PATH" =~ "$PYTHON2_PATH" ]] && export PATH=$PYTHON2_PATH:\$PATH #PYTHON2_PATH" >> $SETTINGS
 fi
 
+echo "[[ ! \$PATH =~ alu-detect ]] && export PATH=$DIR/bin:\$PATH" >> $SETTINGS
 echo "[[ ! \$AWKPATH =~ alu-detect ]] && export AWKPATH=$DIR/bin:\$AWKPATH" >> $SETTINGS
 echo "[[ ! \$PYTHONPATH =~ alu-detect ]] && export PYTHONPATH=$DIR/bin:\$PYTHONPATH" >> $SETTINGS
 
