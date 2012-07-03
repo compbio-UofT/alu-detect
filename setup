@@ -10,7 +10,7 @@ SETTINGS="$DIR/settings/settings.$REF_NAME"
 
 #Load env variables from old settings file
 #PATHLINE="\$PATH"
-if [[ -wre "$SETTINGS" ]]; then
+if [[ -w "$SETTINGS" && -r "$SETTINGS" ]]; then
 	BEDTOOLS=$(grep "#BEDTOOLS" $SETTINGS | cut -d " " -f 5)
 	GMAPPER=$(grep "#GMAPPER" $SETTINGS | cut -d " " -f 5)
 	BOWTIE2=$(grep "#BOWTIE2" $SETTINGS | cut -d " " -f 5)
@@ -26,20 +26,21 @@ fi
 while [[ -n "$(which intersectBed 2>&1 > $DN)" && -z "$BEDTOOLS" ]]; do
 	echo "bedtools not found" 1>&2
 	echo "Enter bedtools directory"
-	BEDTOOLS=$(read -e BEDTOOLS; eval echo "$BEDTOOLS")
-	if [[ ! -xe "$BEDTOOLS/intersectBed" ]]; then
+	BEDTOOLS=$(readlink -f "$(read -e BEDTOOLS; eval echo "$BEDTOOLS")")
+	if [[ ! -x "$BEDTOOLS/intersectBed" ]]; then
 		BEDTOOLS=""
 	fi
 done
 if [[ -n "$BEDTOOLS" ]]; then
+	BEDTOOLS=$(readlink -f "$(eval echo "$BEDTOOLS")")
 	echo "[[ ! "\$PATH" =~ "$BEDTOOLS" ]] && export PATH=$BEDTOOLS:\$PATH #BEDTOOLS" >> $SETTINGS
 fi
 # Check for gmapper
 while [[ -n "$(which gmapper-ls 2>&1 > $DN)" && -z "$GMAPPER" ]]; do
 	echo "gmapper not found" 1>&2
 	echo "Enter gmapper directory"
-	GMAPPER=$(read -e GMAPPER; eval echo "$GMAPPER")
-	if [[ ! -xe "$GMAPPER/gmapper-ls" ]]; then
+	GMAPPER=$(readlink -f "$(read -e GMAPPER; eval echo "$GMAPPER")")
+	if [[ ! -x "$GMAPPER/gmapper-ls" ]]; then
 		GMAPPER=""
 	fi
 done
@@ -51,12 +52,13 @@ fi
 while [[ -n "$(which bowtie2 2>&1 > $DN)" && -z "$BOWTIE2" ]]; do
 	echo "bowtie2 not found" 1>&2
 	echo "Enter bowtie2 directory"
-	BOWTIE2=$(read -e BOWTIE2; eval echo "$BOWTIE2")
-	if [[ ! -xe "$BOWTIE2/bowtie2" ]]; then
+	BOWTIE2=$(readlink -f "$(read -e BOWTIE2; eval echo "$BOWTIE2")")
+	if [[ ! -x "$BOWTIE2/bowtie2" ]]; then
 		BOWTIE2=""
 	fi
 done
 if [[ -n "$BOWTIE2" ]]; then
+	BOWTIE2=$(readlink -f "$(eval echo "$BOWTIE2")")
 	echo "[[ ! "\$PATH" =~ "$BOWTIE2" ]] && export PATH=$BOWTIE2:\$PATH #BOWTIE2" >> $SETTINGS
 fi
 # Check for python>=2.6
@@ -64,23 +66,25 @@ PYTHON2_LATEST=$(echo "$PATH" | sed 's/:/\n/g' | while read LINE; do find $LINE/
 while [[ "$PYTHON2_LATEST" -le 5 ]]; do
 	echo "Your python in PATH is too old or does not exist" 1>&2
 	echo "Enter the directory for python2.x, where x>=6"
-	PYTHON2_PATH=$(read -e PYTHON2_PATH; eval echo "$PYTHON2_PATH")
+	PYTHON2_PATH=$(readlink -f "$(read -e PYTHON2_PATH; eval echo "$PYTHON2_PATH")")
 	PYTHON2_LATEST=$(echo "$PYTHON2_PATH" | sed 's/:/\n/g' | while read LINE; do find $LINE/python* 2>$DN | grep -P "python(2\.?\d?)?$" | cat <(while read EXEC; do $EXEC -V 2>&1 | sed 's/Python //g' | cut -d "." -f 2; done;) | sort | tail -n 1; done)
 done
 if [[ -n "$PYTHON2_PATH" ]]; then
+	PYTHON2_PATH=$(readlink -f "$(eval echo "$PYTHON2_PATH")")
 	echo "[[ ! "\$PATH" =~ "$PYTHON2_PATH" ]] && export PATH=$PYTHON2_PATH:\$PATH #PYTHON2_PATH" >> $SETTINGS
 fi
 
+echo "[[ ! \$PATH =~ alu-detect ]] && export PATH=$DIR/bin:\$PATH" >> $SETTINGS
 echo "[[ ! \$AWKPATH =~ alu-detect ]] && export AWKPATH=$DIR/bin:\$AWKPATH" >> $SETTINGS
 echo "[[ ! \$PYTHONPATH =~ alu-detect ]] && export PYTHONPATH=$DIR/bin:\$PYTHONPATH" >> $SETTINGS
 
 # check of src compiled, if not, compile it
-if [[ ! -xe "$DIR/bin/get-regions" || ! -xe "$DIR/bin/inalign" || ! -xe "$DIR/bin/get-coverage" || ! -xe "$DIR/bin/zc" ]]; then
+if [[ ! -x "$DIR/bin/get-regions" || ! -x "$DIR/bin/inalign" || ! -x "$DIR/bin/get-coverage" || ! -x "$DIR/bin/zc" ]]; then
 	# Check for libboost
 	while [[ ! -d /usr/include/boost && ! -d "$DIR/src/boost" && -z "$BOOST" ]]; do
 		echo "libboost directory not found" 1>&2
 		echo "Enter liboost directory"
-		BOOST=$(read -e BOOST; eval echo "$BOOST")
+		BOOST=$(readlink -f "$(read -e BOOST; eval echo "$BOOST")")
 		[[ ! -d "$BOOST" || ! -er "$BOOST/regex.h" ]] && BOOST=""
 	done
 	echo "Compiling source"
@@ -94,11 +98,12 @@ if [[ ! -xe "$DIR/bin/get-regions" || ! -xe "$DIR/bin/inalign" || ! -xe "$DIR/bi
 #	BOOST=$BOOST make
 fi
 if [[ -n "$BOOST" ]]; then
+	BOOST=$(readlink -f "$(eval echo "$BOOST")")
 	echo "export BOOST=$BOOST" >> $SETTINGS
 fi
 
 #Check for data files
-while [[ -z "$REF_FA" || ! -re "$REF_FA" ]]; do
+while [[ -z "$REF_FA" || ! -r "$REF_FA" ]]; do
 	echo "Reference genome not found" 1>&2
 	echo "Enter reference genome FASTA file"
 	REF_FA=$(read -e REF_FA; eval echo "$REF_FA")
@@ -108,17 +113,18 @@ echo "export REF_FA=$REF_FA" >> $SETTINGS
 while [[ -z "$BOWTIE2_INDEX" || ( -n "$BOWTIE2_INDEX" && -z $(ls "$BOWTIE2_INDEX"* 2>$DN) ) ]]; do
 	echo "bowtie2 indices not found" 1>&2
 	echo "Enter bowtie2 index prefix"
-	BOWTIE2_INDEX=$(read -e BOWTIE2_INDEX; eval echo "$BOWTIE2_INDEX")
+	BOWTIE2_INDEX=$(readlink -f "$(read -e BOWTIE2_INDEX; eval echo "$BOWTIE2_INDEX")")
 done
+BOWTIE2_INDEX=$(readlink -f "$(eval echo "$BOWTIE2_INDEX")")
 echo "export BOWTIE2_INDEX=$BOWTIE2_INDEX" >> $SETTINGS
 
-while [[ -z "$ALU_ALL_FA" || ! -re "$ALU_ALL_FA" ]]; do
+while [[ -z "$ALU_ALL_FA" || ! -r "$ALU_ALL_FA" ]]; do
 	echo "Reference alu positions not found..." 1>&2
 	if [[ -z "$REPEATMASKER_DIR" ]]; then
 		while [[ -z "$REPEATMASKER_DIR" ]]; do
 			echo "Enter RepeatMasker directory"
-			REPEATMASKER_DIR=$(read -e REPEATMASKER_DIR; eval echo "$REPEATMASKER_DIR")
-			[[ ! -xe "$REPEATMASKER_DIR"/util/queryRepeatDatabase.pl ]] && REPEATMASKER_DIR=""
+			REPEATMASKER_DIR=$(readlink -f "$(read -e REPEATMASKER_DIR; eval echo "$REPEATMASKER_DIR")")
+			[[ ! -x "$REPEATMASKER_DIR"/util/queryRepeatDatabase.pl ]] && REPEATMASKER_DIR=""
 		done
 	fi
 	ALU_ALL_FA=$DIR/data/alu.pos.$REF_NAME.fa
@@ -130,10 +136,13 @@ while [[ -z "$ALU_ALL_FA" || ! -re "$ALU_ALL_FA" ]]; do
 	sed 's/^\(.*\)ALU/\1/' | 
 	awk '/^>/ {if (substr($2,1,3)=="Alu"&&$2!=substr($1,2)) $1=$1"/"substr($2,4); print $1} /^[^>]/' >$ALU_ALL_FA
 done
-[[ -n "$REPEATMASKER_DIR" ]] && echo "export REPEATMASKER_DIR=$REPEATMASKER_DIR" >> $SETTINGS
+if [[ -n "$REPEATMASKER_DIR" ]]; then
+	REPEATMASKER_DIR=$(readlink -f "$(eval echo "$REPEATMASKER_DIR")")
+	echo "export REPEATMASKER_DIR=$REPEATMASKER_DIR" >> $SETTINGS
+fi
 echo "export ALU_ALL_FA=$ALU_ALL_FA" >> $SETTINGS
 
-while [[ -z "$ALU_NO_POLYA_FA" || ! -re "$ALU_NO_POLYA_FA" ]]; do
+while [[ -z "$ALU_NO_POLYA_FA" || ! -r "$ALU_NO_POLYA_FA" ]]; do
 	ALU_NO_POLYA_FA=$DIR/data/alu.hidden-polya.$REF_NAME.fa
 	cd $DIR/bin
 	$DIR/bin/hide-polya <$ALU_ALL_FA >$ALU_NO_POLYA_FA
@@ -141,11 +150,11 @@ while [[ -z "$ALU_NO_POLYA_FA" || ! -re "$ALU_NO_POLYA_FA" ]]; do
 done
 echo "export ALU_NO_POLYA_FA=$ALU_NO_POLYA_FA" >> $SETTINGS
 
-while [[ -z "$ALUS_BED" || ! -re "$ALUS_BED" ]]; do
+while [[ -z "$ALUS_BED" || ! -r "$ALUS_BED" ]]; do
 	echo "alus.$REF_NAME.bed.gz not found" 1>&2
 	if [[ -z "$CHROM_FA_OUT" ]]; then
 		echo "Enter paths to RepeatMasker output files"
-		CHROM_FA_OUT=$(read -e CHROM_FA_OUT; eval echo "$CHROM_FA_OUT")
+		CHROM_FA_OUT=$(readlink -f "$(read -e CHROM_FA_OUT; eval echo "$CHROM_FA_OUT")")
 	fi
 	echo "Generating reference list of alus in bed format"
 	ALUS_BED=$DIR/data/alus.$REF_NAME.bed.gz
@@ -161,5 +170,6 @@ while [[ -z "$ALUS_BED" || ! -re "$ALUS_BED" ]]; do
 	gzip >$ALUS_BED
 done
 #[[ -n "$CHROM_FA_OUT" ]] && echo "export CHROM_FA_OUT=$CHROM_FA_OUT" >> $SETTINGS
+ALUS_BED=$(readlink -f "$(eval echo "$ALUS_BED")")
 echo "export ALUS_BED=$ALUS_BED" >> $SETTINGS
 
