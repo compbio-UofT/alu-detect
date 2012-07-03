@@ -386,9 +386,10 @@ def get_mapping_set_gen(in_fd, mapping_parser=mapping_parser, header_line_hook=N
         d = mapping_parser(tmp)
         if 'clone_id' not in d:
             my.crash('mapping parser produced no clone_id: [%s]' % tmp[0])
-        if ((ignore_duplicate and is_duplicate(d))
-            or (ignore_failed_qc and failed_qc(d))
-            or (ignore_secondary and secondary_alignment(d))):
+#        if ((ignore_duplicate and is_duplicate(d))
+#            or (ignore_failed_qc and failed_qc(d))
+#            or (ignore_secondary and secondary_alignment(d))):
+        if ignore_secondary and secondary_alignment(d):
             my.note('ignoring mapping: ' + str(d), 3)
             continue
         if check_pairing and (d['paired'] != (pairing['paired'] == 1)):
@@ -398,6 +399,10 @@ def get_mapping_set_gen(in_fd, mapping_parser=mapping_parser, header_line_hook=N
                 ((pairing['paired'] == 0 and len(map_set) != 1)
                  or (pairing['paired'] == 1 and len(map_set) != 2))):
                 my.crash('incorrect number of mappings (check clone_ids?): ' + str(map_set))
-            yield map_set
+            if ((ignore_duplicate and any(map(is_duplicate, map_set)))
+                or (ignore_failed_qc and any(map(failed_qc, map_set)))):
+                my.note('ignoring mapping: ' + str(d), 3)
+            else:
+                yield map_set
             map_set = []
         map_set.append(d)
