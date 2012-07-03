@@ -10,7 +10,7 @@ SETTINGS="$DIR/settings/settings.$REF_NAME"
 
 #Load env variables from old settings file
 #PATHLINE="\$PATH"
-if [[ -wre "$SETTINGS" ]]; then
+if [[ -w "$SETTINGS" && -r "$SETTINGS" ]]; then
 	BEDTOOLS=$(grep "#BEDTOOLS" $SETTINGS | cut -d " " -f 5)
 	GMAPPER=$(grep "#GMAPPER" $SETTINGS | cut -d " " -f 5)
 	BOWTIE2=$(grep "#BOWTIE2" $SETTINGS | cut -d " " -f 5)
@@ -27,7 +27,7 @@ while [[ -n "$(which intersectBed 2>&1 > $DN)" && -z "$BEDTOOLS" ]]; do
 	echo "bedtools not found" 1>&2
 	echo "Enter bedtools directory"
 	BEDTOOLS=$(readlink -f "$(read -e BEDTOOLS; eval echo "$BEDTOOLS")")
-	if [[ ! -xe "$BEDTOOLS/intersectBed" ]]; then
+	if [[ ! -x "$BEDTOOLS/intersectBed" ]]; then
 		BEDTOOLS=""
 	fi
 done
@@ -40,7 +40,7 @@ while [[ -n "$(which gmapper-ls 2>&1 > $DN)" && -z "$GMAPPER" ]]; do
 	echo "gmapper not found" 1>&2
 	echo "Enter gmapper directory"
 	GMAPPER=$(readlink -f "$(read -e GMAPPER; eval echo "$GMAPPER")")
-	if [[ ! -xe "$GMAPPER/gmapper-ls" ]]; then
+	if [[ ! -x "$GMAPPER/gmapper-ls" ]]; then
 		GMAPPER=""
 	fi
 done
@@ -53,7 +53,7 @@ while [[ -n "$(which bowtie2 2>&1 > $DN)" && -z "$BOWTIE2" ]]; do
 	echo "bowtie2 not found" 1>&2
 	echo "Enter bowtie2 directory"
 	BOWTIE2=$(readlink -f "$(read -e BOWTIE2; eval echo "$BOWTIE2")")
-	if [[ ! -xe "$BOWTIE2/bowtie2" ]]; then
+	if [[ ! -x "$BOWTIE2/bowtie2" ]]; then
 		BOWTIE2=""
 	fi
 done
@@ -79,7 +79,7 @@ echo "[[ ! \$AWKPATH =~ alu-detect ]] && export AWKPATH=$DIR/bin:\$AWKPATH" >> $
 echo "[[ ! \$PYTHONPATH =~ alu-detect ]] && export PYTHONPATH=$DIR/bin:\$PYTHONPATH" >> $SETTINGS
 
 # check of src compiled, if not, compile it
-if [[ ! -xe "$DIR/bin/get-regions" || ! -xe "$DIR/bin/inalign" || ! -xe "$DIR/bin/get-coverage" || ! -xe "$DIR/bin/zc" ]]; then
+if [[ ! -x "$DIR/bin/get-regions" || ! -x "$DIR/bin/inalign" || ! -x "$DIR/bin/get-coverage" || ! -x "$DIR/bin/zc" ]]; then
 	# Check for libboost
 	while [[ ! -d /usr/include/boost && ! -d "$DIR/src/boost" && -z "$BOOST" ]]; do
 		echo "libboost directory not found" 1>&2
@@ -103,7 +103,7 @@ if [[ -n "$BOOST" ]]; then
 fi
 
 #Check for data files
-while [[ -z "$REF_FA" || ! -re "$REF_FA" ]]; do
+while [[ -z "$REF_FA" || ! -r "$REF_FA" ]]; do
 	echo "Reference genome not found" 1>&2
 	echo "Enter reference genome FASTA file"
 	REF_FA=$(read -e REF_FA; eval echo "$REF_FA")
@@ -118,13 +118,13 @@ done
 BOWTIE2_INDEX=$(readlink -f "$(eval echo "$BOWTIE2_INDEX")")
 echo "export BOWTIE2_INDEX=$BOWTIE2_INDEX" >> $SETTINGS
 
-while [[ -z "$ALU_ALL_FA" || ! -re "$ALU_ALL_FA" ]]; do
+while [[ -z "$ALU_ALL_FA" || ! -r "$ALU_ALL_FA" ]]; do
 	echo "Reference alu positions not found..." 1>&2
 	if [[ -z "$REPEATMASKER_DIR" ]]; then
 		while [[ -z "$REPEATMASKER_DIR" ]]; do
 			echo "Enter RepeatMasker directory"
 			REPEATMASKER_DIR=$(readlink -f "$(read -e REPEATMASKER_DIR; eval echo "$REPEATMASKER_DIR")")
-			[[ ! -xe "$REPEATMASKER_DIR"/util/queryRepeatDatabase.pl ]] && REPEATMASKER_DIR=""
+			[[ ! -x "$REPEATMASKER_DIR"/util/queryRepeatDatabase.pl ]] && REPEATMASKER_DIR=""
 		done
 	fi
 	ALU_ALL_FA=$DIR/data/alu.pos.$REF_NAME.fa
@@ -142,7 +142,7 @@ if [[ -n "$REPEATMASKER_DIR" ]]; then
 fi
 echo "export ALU_ALL_FA=$ALU_ALL_FA" >> $SETTINGS
 
-while [[ -z "$ALU_NO_POLYA_FA" || ! -re "$ALU_NO_POLYA_FA" ]]; do
+while [[ -z "$ALU_NO_POLYA_FA" || ! -r "$ALU_NO_POLYA_FA" ]]; do
 	ALU_NO_POLYA_FA=$DIR/data/alu.hidden-polya.$REF_NAME.fa
 	cd $DIR/bin
 	$DIR/bin/hide-polya <$ALU_ALL_FA >$ALU_NO_POLYA_FA
@@ -150,7 +150,7 @@ while [[ -z "$ALU_NO_POLYA_FA" || ! -re "$ALU_NO_POLYA_FA" ]]; do
 done
 echo "export ALU_NO_POLYA_FA=$ALU_NO_POLYA_FA" >> $SETTINGS
 
-while [[ -z "$ALUS_BED" || ! -re "$ALUS_BED" ]]; do
+while [[ -z "$ALUS_BED" || ! -r "$ALUS_BED" ]]; do
 	echo "alus.$REF_NAME.bed.gz not found" 1>&2
 	if [[ -z "$CHROM_FA_OUT" ]]; then
 		echo "Enter paths to RepeatMasker output files"
