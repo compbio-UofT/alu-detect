@@ -6,6 +6,7 @@ BASH_XTRACEFD="${BASH_XTRACEFD:-}"
 
 MY_LOG_LEVEL=0
 make_note() {
+    suspend_xtrace
     MSG_LEVEL=0
     OPTIND=1
     while getopts "l:" OPT "$@"; do
@@ -22,14 +23,17 @@ make_note() {
     elif [ "$MSG_LEVEL" -le "$MY_LOG_LEVEL" ] ; then
 	echo "note [$MSG_LEVEL]: $@" 1>&2
     fi
+    restore_xtrace
 }
 
 crash() {
+    suspend_xtrace
     echo "error: $@" 1>&2
     exit 1
 }
 
 find_my_name_and_dir() {
+    suspend_xtrace
     if [ $# -ne 1 ] ; then crash "use: $0 \${BASH_SOURCE[0]}" ; fi
     SOURCE="$1"
     while [ -h "$SOURCE" ] ; do
@@ -37,16 +41,20 @@ find_my_name_and_dir() {
     done
     MY_NAME="$(basename "$SOURCE")"
     MY_DIR="$( cd -P "$( dirname "$SOURCE" )" && pwd )"
+    restore_xtrace
 }
 
 make_temp_dir() {
+    suspend_xtrace
     TDIR="$(mktemp -qd -t "${1:-tmp}"-XXXXXXXXXX)"
     if [ -z "$TDIR" ] ; then crash "could not make temporary dir!" ; fi
     if [ ! -d "$TDIR" ] ; then crash "temporary dir not a dir!" ; fi
     if [ ! -w "$TDIR" ] ; then crash "temporary dir not writable!" ; fi
+    restore_xtrace
 }
 
 print_with_delim() {
+    suspend_xtrace
     DELIM="\t"
     OPTIND=1
     while getopts "d:" OPT "$@" ; do
@@ -68,4 +76,21 @@ print_with_delim() {
 	shift
     done
     printf '\n'
+    restore_xtrace
+}
+
+suspend_xtrace() {
+    OPTS="$SHELLOPTS"
+    set +x
+    if [[ "$OPTS" =~ xtrace ]] ; then
+	XTRACE=1
+    else
+	XTRACE=0
+    fi
+}
+
+restore_xtrace() {
+    if [ "$XTRACE" = 1 ] ; then
+	set -x
+    fi
 }
