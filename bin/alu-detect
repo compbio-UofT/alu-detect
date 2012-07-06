@@ -120,6 +120,7 @@ make_note "using START_STAGE=$START_STAGE and END_STAGE=$END_STAGE"
 [ -z "$ALUS_BED" ] && crash "ALUS_BED undefined"
 [ -z "$AWKPATH" ] && crash "AWKPATH undefined"
 [ -z "$PYTHONPATH" ] && crash "PYTHONPATH undefined"
+[ -n "$(echo "$RGID" | grep -P "[^\d]")" ] && crash "RGID must be an integer"
 
 find_my_name_and_dir "${BASH_SOURCE[0]}"
 PATH=$PATH:$MY_DIR
