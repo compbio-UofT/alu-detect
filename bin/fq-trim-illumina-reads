@@ -25,22 +25,29 @@ function detect_phred(s) {
     min_mqv = -5;
     max_mqv = 45;
     for (i = 1; i <= n_h; i++) {
-	works = 1;
+	works[i] = 1;
 	for (j = 1; j <= length(s); j++) {
-	    c = substr(s, i, 1)
+	    c = substr(s, j, 1)
 	    if (ord[c] - h[i] < min_mqv || ord[c] - h[i] > max_mqv) {
 		print "character [" c "] with ord [" ord[c] "] contradicts phred [" h[i] "]" >"/dev/stderr";
-		works = 0;
+		works[i] = 0;
 		break;
 	    }
 	}
-	if (works == 1) {
-	    print "autodetected phred [" h[i] "]" >"/dev/stderr";
-	    return h[i]
+    }
+    k = 0;
+    for (i = 1; i <= n_h; i++) {
+	if (works[i] > 0) {
+	    if (k == 0) {
+		k = i;
+	    } else {
+		print "could not detect phred: " h[k] " and " h[i] " are both possible" >"/dev/stderr";
+		exit(1);
+	    }
 	}
     }
-    print "could not detect phred" >"/dev/stderr";
-    exit(1);
+    print "autodetected phred [" h[k] "]" >"/dev/stderr";
+    return h[k]
 }
 
 function convert_qual(s) {
