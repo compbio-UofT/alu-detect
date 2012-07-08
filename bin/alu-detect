@@ -167,6 +167,10 @@ else
     }
 fi
 
+INPUT_PHRED=${INPUT_PHRED:-0}
+make_note "using input phred: [$INPUT_PHRED]"
+
+
 #
 # Stage 1: detect pairing information in mappings
 #
@@ -243,7 +247,7 @@ STATS_FILE="$READS_TO_REMAP.stats"
 stage_command() {
     $PV $READS_DISCORDANT.fq.gz \
 	| zc \
-	| fq-trim-illumina-reads \
+	| fq-trim-illumina-reads -v input_phred="$INPUT_PHRED" \
 	| {
 	      if [[ "$PAIRING" =~ "paired=1" ]] ; then
 		  fq-remove-short-paired-reads 2>/dev/null \
