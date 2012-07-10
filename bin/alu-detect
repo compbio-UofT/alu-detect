@@ -82,7 +82,7 @@ run_stage() {
 	    typeset -f stage_stats_command >&2
 	    if ask_continue ; then
 	    make_note "starting"
-		stage_stats_command >$STATS_FILE || { rm $OUTPUT_FILES ; crash "failed" ; }
+		stage_stats_command >$STATS_FILE || { rm $STATS_FILE ; crash "failed" ; }
 		make_note "done"
 	    else
 		make_note "skipping"
