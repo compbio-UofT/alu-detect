@@ -50,7 +50,7 @@ run_stage() {
 	make_note "$OUTPUT_FILES up to date"
     else
 	make_note "need to run"
-	typeset -f stage_command
+	typeset -f stage_command >&2
 	if ask_continue ; then
 	    make_note "starting"
 	    ( set -x ; stage_command ) || crash "failed"
@@ -79,7 +79,7 @@ run_stage() {
 	    make_note "using existing stats"
 	else
 	    make_note "collecting stats"
-	    typeset -f stage_stats_command
+	    typeset -f stage_stats_command >&2
 	    if ask_continue ; then
 	    make_note "starting"
 		( set -x ; stage_stats_command >$STATS_FILE ) || crash "failed"
