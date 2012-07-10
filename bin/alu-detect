@@ -11,7 +11,7 @@ ask_continue() {
 }
 
 run_stage() {
-    echo "--------------------" 1>&2
+    echo "--------------------" >&2
     make_note "Stage $STAGE_NUM: $STAGE_NAME"
 
     if [ "$STAGE_NUM" -lt "$START_STAGE" ] ; then
@@ -53,7 +53,7 @@ run_stage() {
 	typeset -f stage_command >&2
 	if ask_continue ; then
 	    make_note "starting"
-	    ( set -x ; stage_command ) || crash "failed"
+	    stage_command || crash "failed"
 	    make_note "done"
 	else
 	    make_note "skipping"
@@ -82,13 +82,13 @@ run_stage() {
 	    typeset -f stage_stats_command >&2
 	    if ask_continue ; then
 	    make_note "starting"
-		( set -x ; stage_stats_command >$STATS_FILE ) || crash "failed"
+		stage_stats_command >$STATS_FILE || crash "failed"
 		make_note "done"
 	    else
 		make_note "skipping"
 	    fi
 	fi
-	cat $STATS_FILE 1>&2
+	cat $STATS_FILE >&2
     fi
 }
 
