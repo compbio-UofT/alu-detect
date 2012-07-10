@@ -1,0 +1,21 @@
+#!/usr/bin/python
+
+import sys
+
+d = {}
+for line in sys.stdin:
+	line = line.strip()
+	if line[0] == '@':
+		print line
+		continue
+	clone_name = line.split('\t')[0]
+	if clone_name in d:
+		print d[clone_name]
+		print line
+		del d[clone_name]
+	else:
+		d[clone_name] = line
+
+if len(d) > 0:
+	print >> sys.stderr, 'error: some reads were unpaired: ' + str(d[d.keys()[0]])
+	sys.exit(1)
