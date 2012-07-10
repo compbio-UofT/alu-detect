@@ -53,7 +53,7 @@ run_stage() {
 	typeset -f stage_command >&2
 	if ask_continue ; then
 	    make_note "starting"
-	    stage_command || crash "failed"
+	    stage_command || { rm $OUTPUT_FILES ; crash "failed" ; }
 	    make_note "done"
 	else
 	    make_note "skipping"
@@ -82,7 +82,7 @@ run_stage() {
 	    typeset -f stage_stats_command >&2
 	    if ask_continue ; then
 	    make_note "starting"
-		stage_stats_command >$STATS_FILE || crash "failed"
+		stage_stats_command >$STATS_FILE || { rm $OUTPUT_FILES ; crash "failed" ; }
 		make_note "done"
 	    else
 		make_note "skipping"
@@ -361,7 +361,7 @@ STAGE_NUM=8
 STAGE_NAME="find potential insertions"
 REGIONS=$RGID.regions
 INPUT_FILES="$MAPPINGS_CLEAN_TO_REFERENCE.sam.gz $MAPPINGS_TO_ALUS.sam.gz"
-OUTPUT_FILES="$REGIONS.bed $REGIONS.log.gz"
+OUTPUT_FILES="$REGIONS.bed"
 STATS_FILE=
 stage_command() {
     get-regions -p $PAIRING -N $NCPU \
