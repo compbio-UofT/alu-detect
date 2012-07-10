@@ -148,6 +148,10 @@ elif [ "$ORIG_MAPPINGS_BAM" ] ; then
     get_orig_mappings() {
 	$PV "$ORIG_MAPPINGS_BAM" | samtools view -h -
     }
+elif [ "$ORIG_MAPPINGS_SORT_BAM" ] ; then
+    get_orig_mappings() {
+	$PV "$ORIG_MAPPINGS_SORT_BAM" | samtools view -h - | sam-rsort
+    }
 else
     get_orig_mappings() {
 	crash "original mappings not available!"
