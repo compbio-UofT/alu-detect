@@ -1,7 +1,10 @@
 #!/bin/bash
 
 . $(which my-lib.sh)
-set -ex
+set -o errexit
+set -o nounset
+set -o pipefail
+set -o xtrace
 
 ask_continue() {
     if [ "${CONF:-}" = a ] ; then return ; fi
