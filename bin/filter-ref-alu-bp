@@ -3,24 +3,20 @@
 import gzip
 from sys import argv, stdin, stderr
 
-chr=["chr"+str(a+1) for a in range(22)]
-chr.extend(['chrX', 'chrY'])
-
 refAlus=dict()
-for a in chr:
-	refAlus[a]=list()
 if argv[1][-3:] == ".gz":
 	f=gzip.open(argv[1],"rb")
 else:
 	f=open(argv[1],"r")
+
 for line in f:
 	line=line.strip()
 	a=line.find("\t")
-	b=line.find("_")
-	if b > -1:
-		a=min(a,b)
-	refAlus[line[:a]].append(line)
-for a in chr:
+	chr=line[:a]
+	if chr not in refAlus.keys():
+		refAlus[chr]=list()
+	refAlus[chr].append(line)
+for a in refAlus.keys():
 	refAlus[a].sort()
 
 def check_not_overlap(refAlus,curLine):
@@ -44,7 +40,8 @@ def check_not_overlap(refAlus,curLine):
 	return int(curLine[9]) or int(curLine[10])
 
 for LINE in stdin.readlines():
-	if check_not_overlap(refAlus[LINE[:LINE.find("\t")]],LINE.strip().split("\t")[:11]):
+	chr=LINE[:LINE.find("\t")]
+	if (chr not in refAlus.keys()) or (check_not_overlap(refAlus[chr],LINE.strip().split("\t")[:11])):
 		print LINE,
 f.close()
 
