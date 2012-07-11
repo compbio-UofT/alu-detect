@@ -1,0 +1,50 @@
+#!/usr/bin/env python
+
+import gzip
+from sys import argv, stdin, stderr
+
+chr=["chr"+str(a+1) for a in range(22)]
+chr.extend(['chrX', 'chrY'])
+
+refAlus=dict()
+for a in chr:
+	refAlus[a]=list()
+if argv[1][-3:] == ".gz":
+	f=gzip.open(argv[1],"rb")
+else:
+	f=open(argv[1],"r")
+for line in f:
+	line=line.strip()
+	a=line.find("\t")
+	b=line.find("_")
+	if b > -1:
+		a=min(a,b)
+	refAlus[line[:a]].append(line)
+for a in chr:
+	refAlus[a].sort()
+
+def check_not_overlap(refAlus,curLine):
+	if not len(refAlus):
+		return int(curLine[9]) or int(curLine[10])
+	curRef=refAlus[len(refAlus) / 2].split("\t")
+	if int(curLine[1])-int(curRef[2]) > 50:
+		return check_not_overlap(refAlus[len(refAlus) / 2 + 1:],curLine)
+	if int(curRef[1])-int(curLine[2]) > 50:
+		return check_not_overlap(refAlus[:len(refAlus) / 2],curLine)
+	if curLine[5] != curRef[5]:
+		return int(curLine[9]) or int(curLine[10])
+#	if abs(int(curRef[1])-int(curLine[1])) <= 50:
+#		curLine[9]=0
+#	if abs(int(curRef[2])-int(curLine[2])) <= 50:
+#		curLine[10]=0
+	if abs(int(curLine[1])-int(curRef[2])) <= 50:
+		curLine[10]=0
+	if abs(int(curLine[2])-int(curRef[1])) <= 50:
+		curLine[9]=0
+	return int(curLine[9]) or int(curLine[10])
+
+for LINE in stdin.readlines():
+	if check_not_overlap(refAlus[LINE[:LINE.find("\t")]],LINE.strip().split("\t")[:11]):
+		print LINE,
+f.close()
+
