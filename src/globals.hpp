@@ -23,7 +23,7 @@
 namespace global {
 
   EXTERN_INIT(int const, min_read_len, 20);
-  EXTERN_INIT(int const, min_tail_len, 8);
+  EXTERN_INIT(int, min_tail_len, 8);
   EXTERN(Pairing, pairing);
   EXTERN(SQDict, refDict);
   EXTERN(SQDict, repDict);
