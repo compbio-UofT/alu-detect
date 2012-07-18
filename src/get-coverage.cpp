@@ -9,8 +9,8 @@ using namespace std;
 
 #include "gzstream/gzstream.h"
 #include "strtk/strtk.hpp"
-/*
 #include "globals.hpp"
+/*
 #include "Clone.hpp"
 #include "Read.hpp"
 #include "Mapping.hpp"
@@ -132,6 +132,8 @@ main(int argc, char* argv[])
 {
   string progName(argv[0]);
   vector<Range> range;
+
+  global::min_tail_len = 1;
 
   char c;
   while ((c = getopt(argc, argv, "N:r:s:m:b")) != -1) {

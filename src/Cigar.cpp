@@ -70,12 +70,15 @@ parseCigar(const string& cigar, long long int dbPos_start,
       break;
     ++it;
   }
-  if (it == cigar_ops.end()) {
-    cerr << "cigar string contains no matches: " << cigar << endl;
-    exit(1);
-  }
   qrPos[0] = x;
   dbPos[0] = y;
+  if (it == cigar_ops.end()) {
+    cerr << "warning: cigar string contains no matches: " << cigar << endl;
+    qrPos[1] = x;
+    dbPos[1] = y;
+    return;
+    //exit(1);
+  }
   x += it->second;
   y += it->second;
   ++it;
