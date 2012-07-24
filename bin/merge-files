@@ -1,0 +1,62 @@
+#!/usr/bin/python
+
+import sys
+from my import *
+
+#
+# main
+#
+if len(sys.argv) != 3:
+	print >> sys.stderr, "usage: %s count1:<file1> count2:<file2>" % (sys.argv[0])
+	sys.exit(1)
+
+if len(sys.argv[1].split(":")) < 2:
+	print >> sys.stderr, "invalid count:<file> specification (%s)" % sys.argv[1]
+	sys.exit(1)
+
+if len(sys.argv[2].split(":")) < 2:
+        print >> sys.stderr, "invalid count:<file> specification (%s)" % sys.argv[2]
+        sys.exit(1)
+
+count = []
+file = []
+count.append(int(sys.argv[1].split(":")[0]))
+file.append(sys.argv[1].split(":")[1])
+count.append(int(sys.argv[2].split(":")[0]))
+file.append(sys.argv[2].split(":")[1])
+
+if count[0] <= 0:
+        print >> sys.stderr, "error: count1 must be positive (%d)" % count[0]
+        sys.exit(1)
+
+if count[1] <= 0:
+        print >> sys.stderr, "error: count2 must be positive (%d)" % count[1]
+        sys.exit(1)
+
+#print >> sys.stderr, "using count1:%d file1:%s count2:%d file2:%s" % (count[0], file[0], count[1], file[1])
+
+fd = []
+fd.append(gzopen(file[0]))
+fd.append(gzopen(file[1]))
+
+buff = []
+buff.append([None] * count[0])
+buff.append([None] * count[1])
+
+k = 0
+while True:
+	for i in range(count[k]):
+		buff[k][i] = fd[k].readline()
+		if len(buff[k][i]) == 0:
+			break
+	if len(buff[k][i]) == 0:
+		break
+	if k == 1:
+		for i in range(count[0]):
+			print buff[0][i],
+		for i in range(count[1]):
+			print buff[1][i],
+	k = 1 - k
+
+gzclose(fd[0])
+gzclose(fd[1])

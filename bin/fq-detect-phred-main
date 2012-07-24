@@ -1,0 +1,21 @@
+#!/bin/bash extend-hashbang
+#/usr/bin/awk -f fq-convert.awk -f fq-detect-phred.awk -f
+
+function ord_init() {
+    for (i = 33; i <= 127; i++) {
+        c = sprintf("%c", i);
+        ord[c] = i;
+    }
+}
+
+BEGIN {
+  ord_init()
+}
+
+{
+    s = get_read($0)
+    split(s, a, "\t")
+    res = detect_phred(a[4])
+    print res
+    exit
+}

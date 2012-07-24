@@ -1,0 +1,15 @@
+#!/usr/bin/python
+
+import argparse
+from my import *
+import my_sam as sam
+
+parser = argparse.ArgumentParser(description=sys.argv[0])
+parser.add_argument('-v', '--verbose', action='append_const', const=1, default=[], dest='verbose')
+parser.add_argument('-p', '--pairing', action='store', default='paired=0', dest='pairing')
+
+args = parser.parse_args()
+set_log_level(len(args.verbose))
+sam.set_pairing(args.pairing)
+
+sam.get_bowtie_pairing()

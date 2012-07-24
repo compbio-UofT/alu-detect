@@ -1,0 +1,7 @@
+#!/bin/bash extend-hashbang
+#/usr/bin/awk -f fq-convert.awk -f
+
+{
+    s = get_read($0)
+    put_read(s)
+}

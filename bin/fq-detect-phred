@@ -1,0 +1,14 @@
+#!/bin/bash
+FILES=()
+OPTS=()
+while [ $# -ge 1 ] ; do
+    CRT="$1"
+    if [ -r "$CRT" ] ; then
+	FILES=("${FILES[@]}" "$CRT")
+    else
+	OPTS=("${OPTS[@]}" "$CRT")
+    fi
+    shift
+done
+exec 0< <(zc "${FILES[@]}")
+fq-detect-phred-main "${OPTS[@]}"
