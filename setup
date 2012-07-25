@@ -85,7 +85,7 @@ if [[ ! -x "$DIR/bin/get-regions" || ! -x "$DIR/bin/inalign" || ! -x "$DIR/bin/g
 		echo "libboost directory not found" 1>&2
 		echo "Enter liboost directory"
 		BOOST=$(readlink -f "$(read -e BOOST; eval echo "$BOOST")")
-		[[ ! -d "$BOOST" || ! -er "$BOOST/regex.h" ]] && BOOST=""
+		[[ ! -d "$BOOST" || ! -r "$BOOST/regex.h" ]] && BOOST=""
 	done
 	echo "Compiling source"
 	if [[ -n "$BOOST" ]]; then
