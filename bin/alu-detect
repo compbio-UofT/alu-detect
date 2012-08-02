@@ -129,7 +129,7 @@ PATH=$PATH:$MY_DIR
 
 
 export RGID=${RGID:-00}
-if [ -n "$(echo "$RGID" | grep -P "[^\d]")" ] ; then
+if [ -n "$(echo "$RGID" | grep -vP "^\d+$")" ] ; then
     crash "RGID must be an integer"
 fi
 
