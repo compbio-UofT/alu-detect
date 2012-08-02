@@ -19,6 +19,22 @@ cigar_qr_op = 'HSIM=X'
 cigar_db_op = 'NDM=X'
 cigar_clip_op = 'HS'
 
+rc_dict = {'A': 'T',
+           'C': 'G',
+           'G': 'C',
+           'T': 'A',
+           'R': 'Y',
+           'Y': 'R',
+           'S': 'W',
+           'W': 'S',
+           'K': 'M',
+           'M': 'K',
+           'B': 'V',
+           'V': 'B',
+           'D': 'H',
+           'H': 'D',
+           'N': 'N'}
+
 
 def is_paired(m):
     return flag(m, IS_PAIRED)
@@ -296,7 +312,6 @@ def reverse(s):
     return s[::-1]
 
 def complement(s):
-    rc_dict = {'A': 'T', 'C': 'G', 'G': 'C', 'T': 'A', 'N': 'N'}
     res = map(lambda e: rc_dict[e.upper()], s)
     if isinstance(s, str):
         return ''.join(res)
