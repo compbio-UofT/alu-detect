@@ -94,3 +94,89 @@ restore_xtrace() {
 	set -x
     fi
 }
+
+#
+# Run several commands in one pass over stdin, report output in CMD_OUTPUT array
+#
+run_cmds() {
+    if [ $# -lt 1 ] ; then
+        crash "run_cmds needs arguments"
+    fi
+    CMDS_STRING=
+    CRT_CMD=1
+    while [ $# -ge 2 ] ; do
+        CMDS_STRING="$CMDS_STRING tee-p >(echo \"$CRT_CMD \$($1)\" >&3 ) |"
+        CRT_CMD=$(($CRT_CMD + 1))
+        shift
+    done
+    CMDS_STRING="$CMDS_STRING echo \"$CRT_CMD \$($1)\" >&3"
+    echo "CMDS_STRING:$CMDS_STRING" >&2
+    CMDS_RAW_OUTPUT=$( { eval $CMDS_STRING ; } 3>&1 )
+    echo "CMDS_RAW_OUTPUT:$CMDS_RAW_OUTPUT" >&2
+    for i in $(seq 1 $CRT_CMD) ; do
+        CMD_OUTPUT[$i]=$(echo "$CMDS_RAW_OUTPUT" | grep "^$i " | cut -d " " -f 2-)
+    done
+}
+
+#
+# Check whether to proceed with action
+#
+ask_confirmation() {
+    if [ "${CONF:-}" = a ] ; then return ; fi
+    read -p "continue? ([y]es/[a]lways/[s]kip/[N]o) " CONF
+    if [ "$CONF" != y -a "$CONF" != a -a "$CONF" != s ] ; then exit ; fi
+    if [ "$CONF" = s ] ; then return 1 ; fi
+}
+
+#
+# Create a file from given prerequisites
+#
+gen_file() {
+    GEN_FILE_SUFFIX=${GEN_FILE_SUFFIX:-.pgen}
+
+    # check prerequisites
+    for f in "${INPUT_FILES[@]}" ; do
+        if [ ! -r "$f" -a ! -r "${f}${GEN_FILE_SUFFIX}" ] ; then
+	    crash "$f[$GEN_FILE_SUFFIX] missing"
+	fi
+    done
+
+    # recursively regenerate prerequisites, if necessary
+    for f in "${INPUT_FILES[@]}" ; do
+	if [ -r "${f}${GEN_FILE_SUFFIX}" ] ; then
+	    bash "${f}${GEN_FILE_SUFFIX}" >/dev/null
+	fi
+    done
+
+    # check if we need to run
+    NEED_TO_RUN=0
+    if [ ! -r "$OUTPUT_FILE" ] ; then
+	make_note "$OUTPUT_FILE does not exist"
+	NEED_TO_RUN=1
+    fi
+    if [ $NEED_TO_RUN = 0 ] ; then
+	for f in "${INPUT_FILES[@]}" ; do
+	    if [ "$f" -nt "$OUTPUT_FILE" ] ; then
+		make_note "$f is newer than $OUTPUT_FILE"
+		NEED_TO_RUN=1
+		break
+	    fi
+	done
+    fi
+
+    if [ $NEED_TO_RUN = 1 ] ; then
+	make_note "need to run"
+	typeset -f COMMAND >&2
+	if ask_confirmation ; then
+	    make_note "starting"
+	    ( set -o pipefail ; COMMAND | tee-p "$OUTPUT_FILE" ; ) \
+		|| { rm "$OUTPUT_FILE" ; crash "failed" ; }
+	    make_note "done"
+	else
+	    make_note "skipping"
+	    cat "$OUTPUT_FILE"
+	fi
+    else
+	cat "$OUTPUT_FILE"
+    fi
+}
