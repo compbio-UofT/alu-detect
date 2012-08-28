@@ -135,16 +135,16 @@ gen_file() {
     GEN_FILE_SUFFIX=${GEN_FILE_SUFFIX:-.pgen}
 
     # check prerequisites
-    for f in "${INPUT_FILES[@]}" ; do
+    for f in "${INPUT_FILES[@]:+${INPUT_FILES[@]}}" ; do
         if [ ! -r "$f" -a ! -r "${f}${GEN_FILE_SUFFIX}" ] ; then
 	    crash "$f[$GEN_FILE_SUFFIX] missing"
 	fi
     done
 
     # recursively regenerate prerequisites, if necessary
-    for f in "${INPUT_FILES[@]}" ; do
+    for f in "${INPUT_FILES[@]:+${INPUT_FILES[@]}}" ; do
 	if [ -r "${f}${GEN_FILE_SUFFIX}" ] ; then
-	    bash "${f}${GEN_FILE_SUFFIX}" >/dev/null
+	    ./"${f}${GEN_FILE_SUFFIX}" >/dev/null
 	fi
     done
 
@@ -155,7 +155,7 @@ gen_file() {
 	NEED_TO_RUN=1
     fi
     if [ $NEED_TO_RUN = 0 ] ; then
-	for f in "${INPUT_FILES[@]}" ; do
+	for f in "${INPUT_FILES[@]:+${INPUT_FILES[@]}}" ; do
 	    if [ "$f" -nt "$OUTPUT_FILE" ] ; then
 		make_note "$f is newer than $OUTPUT_FILE"
 		NEED_TO_RUN=1
