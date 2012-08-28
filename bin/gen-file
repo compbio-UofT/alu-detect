@@ -1,0 +1,17 @@
+#!/bin/bash
+. $(which my-lib.sh)
+set -o nounset
+set -x
+
+if [ $# -ne 1 ] ; then
+  echo "To use gen-file, script must start with:" >&2
+  echo "#!/bin/env gen-file" >&2
+  echo "##file_dependency_1 file_dependency_2" >&2
+  exit 1
+fi
+
+find_my_name_and_dir "$1"
+INPUT_FILES=($(head -n 2 "$1" | tail -n 1 | grep '^##' | cut -c 3-))
+OUTPUT_FILE="${MY_NAME%.*}"
+eval "COMMAND () { $(cat "$1") ; }"
+gen_file
