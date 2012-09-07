@@ -128,20 +128,39 @@ find_my_name_and_dir "${BASH_SOURCE[0]}"
 PATH=$PATH:$MY_DIR
 
 
+INPUT_PHRED=${INPUT_PHRED:-0}
+make_note "using input phred: [$INPUT_PHRED]"
+
 export RGID=${RGID:-00}
 if [ -n "$(echo "$RGID" | grep -vP "^\d+$")" ] ; then
     crash "RGID must be an integer"
 fi
 
-ORIG_READS=${ORIG_READS:-}
+ORIG_READS_1=${ORIG_READS_1:-}
+ORIG_READS_2=${ORIG_READS_2:-}
 ORIG_MAPPINGS_SAM=${ORIG_MAPPINGS_SAM:-}
 ORIG_MAPPINGS_BAM=${ORIG_MAPPINGS_BAM:-}
 ORIG_MAPPINGS_SORT_BAM=${ORIG_MAPPINGS_SORT_BAM:-}
 make_note "using read group: [$RGID]"
-make_note "using reads file: [$ORIG_READS]"
+make_note "using reads file: [$ORIG_READS_1]"
+make_note "using reads file: [$ORIG_READS_2]"
 make_note "using mappings sam file: [$ORIG_MAPPINGS_SAM]"
 make_note "using mappings bam file: [$ORIG_MAPPINGS_BAM]"
 make_note "using sorted mappings file: [$ORIG_MAPPINGS_SORT_BAM]"
+
+# If given only original reads, map them
+if [ "$ORIG_READS_1" -a "$ORIG_READS_2" \
+    -a -z "$ORIG_MAPPINGS_SAM$ORIG_MAPPINGS_BAM$ORIG_MAPPINGS_SORT_BAM" \
+    -a $START_STAGE -lt 3 ] ; then
+    make_note "given reads only; need to map them"
+
+    fq-detect-pairing <(zc $(echo $ORIG_READS_1)) <(zc $(echo $ORIG_READS_2)) >$RGID.initial.pairing
+    $PV $(echo $ORIG_READS_1) | zc \
+	| bowtie2 -x $BOWTIE2_INDEX -1 - -2 <(zc $(echo $ORIG_READS_2)) \
+	  $(get-bowtie-pairing -p $(cat $RGID.initial.pairing)) \
+	  --phred${INPUT_PHRED} -p $NCPU 2>$RGID.map.log | $ZIP >$RGID.map.sam.gz
+    ORIG_MAPPINGS_SAM=$RGID.map.sam.gz
+fi
 
 if [ "$ORIG_MAPPINGS_SAM" ] ; then
     get_orig_mappings() {
@@ -160,9 +179,6 @@ else
 	crash "original mappings not available!"
     }
 fi
-
-INPUT_PHRED=${INPUT_PHRED:-0}
-make_note "using input phred: [$INPUT_PHRED]"
 
 
 #

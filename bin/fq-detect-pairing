@@ -30,10 +30,10 @@ head -n $((8 * $READ_COUNT)) <&3 \
 
 exec 3<&-
 
-PHRED=$(fq-detect-phred "$TDIR"/reads.fq)
+INPUT_PHRED=${INPUT_PHRED:-$(fq-detect-phred "$TDIR"/reads.fq)}
 
 bowtie2 -x "$BOWTIE2_INDEX" -U "$TDIR"/reads.fq -S "$TDIR"/map.sam \
-  --phred${PHRED} -p $NCPU
+  --phred${INPUT_PHRED} -p $NCPU
 zc <(sam-header "$TDIR"/map.sam) <(sam-body "$TDIR"/map.sam | sort -s -t ":" -k 1,1n -k 2,2n) \
     >"$TDIR"/map.rsort.sam
 detect-pairing -f -v --cid-parser cid_parser "$TDIR"/map.rsort.sam
