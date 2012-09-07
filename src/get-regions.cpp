@@ -447,7 +447,7 @@ restrict_bp_ranges(vector<pair<int,Clone*> >& l)
 */
 
 void
-process_chunk(vector<Clone*>& chunk)
+process_chunk(vector<Clone*>& chunk, ostream& out_str, ostream& err_str)
 {
   vector<Clone*>::const_iterator it = chunk.begin();
   Clone* c = *it;
@@ -478,26 +478,26 @@ process_chunk(vector<Clone*>& chunk)
     exit(1);
   }
 
-  cerr << c->ref->name << '\t'
-       << inner_start + 1 << '\t'
-       << inner_end + 1 << '\t'
-       << outter_start + 1 << '\t'
-       << outter_end + 1 << '\t'
-       << chunk.size() << '\t';
+  err_str << c->ref->name << '\t'
+	  << inner_start + 1 << '\t'
+	  << inner_end + 1 << '\t'
+	  << outter_start + 1 << '\t'
+	  << outter_end + 1 << '\t'
+	  << chunk.size() << '\t';
   for (size_t i = 0; i < chunk.size(); ++i) {
     if (i > 0) {
-      cerr << ',';
+      err_str << ',';
     }
-    cerr << chunk[i]->name;
+    err_str << chunk[i]->name;
   }
-  cerr << endl;
+  err_str << endl;
 
   run(*c->ref,
       outter_start, outter_end, inner_start, inner_end,
       global::repeatListSt[c->mappedToRepeatSt[0]? 0 : 1],
       chunk,
       0,
-      cout, cerr);
+      out_str, err_str);
 }
 
 
@@ -540,7 +540,7 @@ partition_region_into_chunks(vector<pair<int,Clone*> >& v, size_t begin, size_t 
     
     ++n_chunks;
     vector<Clone*> active_vector = vector<Clone*>(active.begin(), active.end());
-    process_chunk(active_vector);
+    process_chunk(active_vector, cout, cerr);
 
     for (set<Clone*>::iterator it = active.begin(); it != active.end(); ++it) {
       if ((*it)->fully_mapped()) {
@@ -584,6 +584,8 @@ final_pass(vector<pair<int,Clone*> >& l)
     }
   }
 
+  // next, create list of chunks that will be investigated
+  vector<vector<Clone*> > chunk_list;
   for (int k = 0; k < 2; k++) {
     set<Clone*> active;
     vector<Clone*> chunk;
@@ -599,8 +601,56 @@ final_pass(vector<pair<int,Clone*> >& l)
 	if (active.size() == 0) {
 	  //partition_region_into_chunks(v[k], chunkStartIdx, i + 1);
 	  //chunkStartIdx = i + 1;
-	  process_chunk(chunk);
+
+	  //process_chunk(chunk);
+	  chunk_list.push_back(chunk);
+
 	  chunk.clear();
+	}
+      }
+    }
+  }
+
+  // finally, process chunk list in parallel
+  priority_queue<Chunk,vector<Chunk>,ChunkComparator> h;
+  long long next_chunk = 0;
+
+#pragma omp parallel num_threads(num_threads)
+  {
+    int tid = omp_get_thread_num();
+#pragma omp critical(output)
+    {
+      cerr << "thread " << tid << ": started" << endl;
+    }
+#pragma omp for schedule(dynamic)
+      for (long long i = 0; i < (long long int)chunk_list.size(); ++i) {
+      Chunk chunk;
+      chunk.chunk_id = i;
+      chunk.thread_id = tid;
+      chunk.out_str = new stringstream();
+      chunk.err_str = new stringstream();
+
+      process_chunk(chunk_list[i], *chunk.out_str, *chunk.err_str);
+
+#pragma omp critical(output)
+      {
+	h.push(chunk);
+	while (h.size() > 0) {
+	  chunk = h.top();
+	  assert(chunk.chunk_id >= next_chunk);
+	  if (chunk.chunk_id > next_chunk) {
+	    break;
+	  }
+	  cout << chunk.out_str->str();
+	  cout.flush();
+	  cerr << "chunk=" << chunk.chunk_id << " work_thread=" << chunk.thread_id
+	       << " print_thread=" << tid << endl;
+	  cerr << chunk.err_str->str();
+	  cerr.flush();
+	  delete chunk.out_str;
+	  delete chunk.err_str;
+	  h.pop();
+	  ++next_chunk;
 	}
       }
     }

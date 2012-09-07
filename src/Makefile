@@ -1,3 +1,5 @@
+SHELL=/bin/bash
+
 ifndef BUILD_TYPE
   BUILD_TYPE=testing
 endif
