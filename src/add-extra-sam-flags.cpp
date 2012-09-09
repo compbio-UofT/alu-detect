@@ -236,6 +236,7 @@ main(int argc, char* argv[])
     int tid = omp_get_thread_num();
     pair<string,vector<SamMapping> >* local_m;
     vector<pair<string,vector<SamMapping> >* > local_m_vector;
+    int i;
     while (true) {
       Chunk chunk;
       //chunk.chunk_id = i;
@@ -246,7 +247,6 @@ main(int argc, char* argv[])
 #pragma omp critical(input)
       {
         //omp_set_lock(&input_lock);
-	int i;
 	for (i = 0; i < chunk_size; ++i) {
 	  local_m = mapGen.get_next();
 	  if (local_m == NULL) {
