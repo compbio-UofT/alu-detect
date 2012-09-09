@@ -116,3 +116,50 @@ parseCigar(const string& cigar, long long int dbPos_start,
   qrPos[1] = x - 1;
   dbPos[1] = y - 1;
 }
+
+
+void
+get_tail_insert_size_aux(const vector<pair<char,int> >& cigar_ops, int min_tail_match_len,
+			 int start_idx, int end_idx, int step, int& dest)
+{
+  dest = 0;
+  int i = start_idx;
+  while (i != end_idx) {
+    if (cigar_ops[i].first == 'H'
+	or cigar_ops[i].first == 'S'
+	or cigar_ops[i].first == 'I') {
+      dest += cigar_ops[i].second;
+      i += step;
+    } else if (cigar_ops[i].first == 'M'
+	       or cigar_ops[i].first == '='
+	       or cigar_ops[i].first == 'X') {
+      int tmp = cigar_ops[i].second;
+      int j = i + step;
+      while (j != end_idx
+	     and (cigar_ops[j].first == 'M'
+		  or cigar_ops[j].first == '='
+		  or cigar_ops[j].first == 'X')) {
+	tmp += cigar_ops[j].second;
+	j += step;
+      }
+      if (tmp < min_tail_match_len) {
+	dest += tmp;
+	i = j;
+      } else { // longer match
+	break;
+      }
+    } else { // DN ops
+      break;
+    }
+  }
+}
+
+
+void
+get_tail_insert_size(const string& cigar, int min_tail_match_len, vector<int>& tails)
+{
+  vector<pair<char,int> > cigar_ops = getCigarOps(cigar);
+
+  get_tail_insert_size_aux(cigar_ops, min_tail_match_len, 0, cigar_ops.size(), 1, tails[0]);
+  get_tail_insert_size_aux(cigar_ops, min_tail_match_len, cigar_ops.size() - 1, -1, -1, tails[1]);
+}

@@ -34,5 +34,7 @@ public:
   Clone* get_next();
 };
 
+Mapping convert_SamMapping_to_Mapping(const SamMapping&);
+
 
 #endif

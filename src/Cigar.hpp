@@ -11,6 +11,7 @@ using namespace std;
 
 
 void parseCigar(const string&, long long, Interval<int>&, Interval<long long>&);
+void get_tail_insert_size(const string&, int, vector<int>&);
 
 
 #endif

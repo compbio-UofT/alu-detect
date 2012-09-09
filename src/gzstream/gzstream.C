@@ -58,7 +58,15 @@ gzstreambuf* gzstreambuf::open( const char* name, int open_mode) {
         *fmodeptr++ = 'w';
     *fmodeptr++ = 'b';
     *fmodeptr = '\0';
-    file = gzopen( name, fmode);
+    if (!strncmp(name, "-", 2)) {
+      if (mode & std::ios::in) {
+	file = gzdopen(0, fmode);
+      } else {
+	file = gzdopen(1, fmode);
+      }
+    } else {
+      file = gzopen( name, fmode);
+    }
     if (file == 0)
         return (gzstreambuf*)0;
     opened = 1;

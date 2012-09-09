@@ -40,7 +40,7 @@ endif
 
 LN=ln
 
-all: include-boost get-regions inalign get-coverage zc move-bins
+all: include-boost get-regions inalign get-coverage zc move-bins add-extra-sam-flags
 
 include-boost:
 	if [[ ! -e boost && -d "$(BOOST)" ]]; then ln -s "$(BOOST)" boost; fi
@@ -55,13 +55,18 @@ inalign: inalign.o inalign_core.o \
 	Fasta.o common.o globals.o ScoreMatrix.o deep_size.o gzstream/gzstream.o
 	$(LD) $(CXXFLAGS) -o $@ $+ $(LDFLAGS)
 
+add-extra-sam-flags: add-extra-sam-flags.o globals.o util.o deep_size.o Pairing.o \
+	DNASequence.o Read.o Mapping.o CloneGen.o SamMapping.o SamMappingSetGen.o common.o \
+	gzstream/gzstream.o Cigar.o Clone.o
+	$(LD) $(CXXFLAGS) -o $@ $+ $(LDFLAGS)
+
 get-coverage: get-coverage.o DNASequence.o SamMapping.o Cigar.o globals.o Range.o \
 	gzstream/gzstream.o
 	$(LD) $(CXXFLAGS) -o $@ $+ $(LDFLAGS)
 
 get-regions.o: get-regions.cpp globals.hpp \
 	Read.hpp Clone.hpp Mapping.hpp SamMapping.hpp SamMappingSetGen.hpp \
-	CloneGen.hpp Fasta.hpp common.hpp inalign_core.hpp deep_size.hpp Range.hpp
+	CloneGen.hpp Fasta.hpp common.hpp inalign_core.hpp deep_size.hpp Range.hpp Cigar.hpp
 	$(CXX) $(CXXFLAGS) -c -o $@ $<
 
 inalign.o: inalign.c inalign_core.hpp Clone.hpp DNASequence.hpp Fasta.hpp \
@@ -70,6 +75,11 @@ inalign.o: inalign.c inalign_core.hpp Clone.hpp DNASequence.hpp Fasta.hpp \
 
 inalign_core.o: inalign_core.?pp globals.hpp Clone.hpp DNASequence.hpp \
 	Fasta.hpp common.hpp ScoreMatrix.hpp
+	$(CXX) $(CXXFLAGS) -c -o $@ $<
+
+add-extra-sam-flags.o: add-extra-sam-flags.cpp globals.hpp \
+	Read.hpp Mapping.hpp SamMapping.hpp SamMappingSetGen.hpp Mapping.hpp CloneGen.hpp \
+	common.hpp Cigar.hpp
 	$(CXX) $(CXXFLAGS) -c -o $@ $<
 
 gzstream/gzstream.o: gzstream/gzstream.C gzstream/gzstream.h
