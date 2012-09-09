@@ -264,10 +264,10 @@ main(int argc, char* argv[])
       if (local_m_vector.size() == 0)
         break;
 
-      chunk.err_str << "tid=" << tid << " chunk_id=" << chunk.chunk_id
-		    << " start:" << local_m_vector[0]->first
-		    << " end:" << local_m_vector[i-1]->first
-		    << endl;
+      *chunk.err_str << "tid=" << tid << " chunk_id=" << chunk.chunk_id
+		     << " start:" << local_m_vector[0]->first
+		     << " end:" << local_m_vector[i-1]->first
+		     << endl;
 
       for (i = 0; i < (int)local_m_vector.size(); ++i) {
 	process_mapping_set(local_m_vector[i]->first, local_m_vector[i]->second,
