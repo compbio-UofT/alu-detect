@@ -98,7 +98,7 @@ process_mapping_set(const string& s, vector<SamMapping>& v,
   }
 
   for (size_t i = 0; i < v.size(); ++i) {
-    int len = (!v[i].seq.compare("*")? v[i].seq.size() : 0);
+    int len = (v[i].seq.compare("*")? v[i].seq.size() : 0);
     err_str << "clone s=" << s << " i=" << i << " len=" << len
 	    << " v[i].seq=" << v[i].seq << " v[i].seq.size()=" << v[i].seq.size()
 	    << " v[i].seq.compare(\"*\")=" << v[i].seq.compare("*") << endl;
