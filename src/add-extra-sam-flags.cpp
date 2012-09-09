@@ -131,6 +131,8 @@ process_mapping_set(const string& s, vector<SamMapping>& v,
       int nip = v[i].flags[7];
       if (fnp != NULL) {
 	fnp(v[i].name, c, nip);
+      } else {
+	c.read[nip].len = (v[i].seq.compare("*")? v[i].seq.size() : 0);
       }
       Mapping m = convert_SamMapping_to_Mapping(v[i]);
       m.qr = &c.read[nip];
