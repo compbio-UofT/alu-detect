@@ -227,6 +227,7 @@ main(int argc, char* argv[])
   priority_queue<Chunk,vector<Chunk>,ChunkComparator> h;
   long long next_chunk_in = 0;
   long long next_chunk_out = 0;
+  int chunk_size = 1000;
 
   //omp_lock_t input_lock;
   //omp_init_lock(&input_lock);
@@ -234,6 +235,7 @@ main(int argc, char* argv[])
   {
     int tid = omp_get_thread_num();
     pair<string,vector<SamMapping> >* local_m;
+    vector<pair<string,vector<SamMapping> >* > local_m_vector;
     while (true) {
       Chunk chunk;
       //chunk.chunk_id = i;
@@ -244,17 +246,28 @@ main(int argc, char* argv[])
 #pragma omp critical(input)
       {
         //omp_set_lock(&input_lock);
-        local_m = mapGen.get_next();
+	int i;
+	for (i = 0; i < chunk_size; ++i) {
+	  local_m = mapGen.get_next();
+	  if (local_m == NULL) {
+	    break;
+	  }
+	  local_m_vector.push_back(local_m);
+	}
+
 	chunk.chunk_id = next_chunk_in;
-	if (local_m != NULL)
+	if (i > 0)
 	  ++next_chunk_in;
         //omp_unset_lock(&input_lock);
       }
 
-      if (local_m == NULL)
+      if (local_m_vector.size() == 0)
         break;
 
-      process_mapping_set(local_m->first, local_m->second, *chunk.out_str, *chunk.err_str);
+      for (i = 0; i < local_m_vector.size(); ++i) {
+	process_mapping_set(local_m_vector[i]->first, local_m_vector[i]->second,
+			    *chunk.out_str, *chunk.err_str);
+      }
 
 #pragma omp critical(output)
       {
