@@ -27,6 +27,9 @@ int min_mqv = 5;
 int min_tail_insert_size = 15;
 int min_tail_match_len = 5;
 
+string (*cnp)(const string&);
+void (*fnp)(const string&, Clone&, int&);
+
 class Chunk
 {
 public:
@@ -118,9 +121,19 @@ process_mapping_set(const string& s, vector<SamMapping>& v,
   }
 
   if (global::pairing.paired and v[0].flags[2] == 0 and v[1].flags[2] == 0) {
-    Mapping m1 = convert_SamMapping_to_Mapping(v[0]);
-    Mapping m2 = convert_SamMapping_to_Mapping(v[0]);
-    if (global::pairing.pair_concordant(m1, 0, m2, 0)) {
+    Clone c;
+    for (int i = 0; i < 2; ++i) {
+      int nip = v[i].flags[7];
+      if (fnp != NULL) {
+	fnp(v[i].name, c, nip);
+      }
+      Mapping m = convert_SamMapping_to_Mapping(v[i]);
+      m.qr = &c.read[nip];
+      m.is_ref = true;
+      c.read[nip].mapping.push_back(m);
+    }
+
+    if (global::pairing.pair_concordant(c.read[0].mapping[0], 0, c.read[1].mapping[0], 0)) {
       v[0].flags[15] = 1;
       v[1].flags[15] = 1;
     }
@@ -155,8 +168,7 @@ int
 main(int argc, char* argv[])
 {
   string progName(argv[0]);
-  string (*cnp)(const string&) = &default_cnp;
-  void (*fnp)(const string&, Clone&, int&) = NULL;
+  cnp = &default_cnp;
 
   char c;
   while ((c = getopt(argc, argv, "p:N:Pq:i:")) != -1) {
@@ -184,15 +196,15 @@ main(int argc, char* argv[])
     }
   }
 
-  if (optind + 1 != argc) {
+  if (optind + 1 < argc) {
     cerr << "use: " << argv[0]
-	 << " [options] <mappings_sam>" << endl;
+	 << " [options] [<mappings_sam>]" << endl;
     exit(1);
   }
 
   cerr << "number of threads: " << num_threads << endl;
 
-  igzstream mapIn(argv[optind]);
+  igzstream mapIn(optind < argc? argv[optind] : "-");
   if (mapIn.bad()) {
     cerr << "error opening mappings file: " << argv[optind] << endl;
     exit(1);
