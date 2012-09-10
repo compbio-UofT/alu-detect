@@ -25,8 +25,8 @@ void (*fnp)(const string&, Clone&, int&);
 class Filter
 {
 public:
-  vector<int> must_have;
-  vector<int> must_not_have;
+  vector<unsigned long> must_have;
+  vector<unsigned long> must_not_have;
   bool stop_on_hit;
   string dest_file;
 };
@@ -162,7 +162,7 @@ default_cnp(const string& s)
 }
 
 void
-parse_bitmask(const string& s, int& must_have, int& must_not_have)
+parse_bitmask(const string& s, unsigned long& must_have, unsigned long& must_not_have)
 {
   must_have = 0;
   must_not_have = 0;
@@ -197,8 +197,8 @@ add_filter(const string& s)
   f.dest_file = s.substr(i + 1);
 
   if (!global::pairing.paired) {
-    f.must_have = vector<int>(1);
-    f.must_not_have = vector<int>(1);
+    f.must_have = vector<unsigned long>(1);
+    f.must_not_have = vector<unsigned long>(1);
 
     i = conditions.find(',');
     string one_condition = conditions.substr(0, i);
@@ -209,8 +209,8 @@ add_filter(const string& s)
       f.stop_on_hit = not(atoi(conditions.substr(i + 1).c_str()) == 0);
     }
   } else {
-    f.must_have = vector<int>(2);
-    f.must_not_have = vector<int>(2);
+    f.must_have = vector<unsigned long>(2);
+    f.must_not_have = vector<unsigned long>(2);
 
     i = conditions.find(',');
     if (i == conditions.npos) {
