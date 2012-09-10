@@ -217,7 +217,7 @@ OUTPUT_FILES="$READS_DISCORDANT.fq.gz"
 STATS_FILE="$READS_DISCORDANT.stats"
 stage_command () {
     get_orig_mappings \
-	| add-extra-sam-flags -p $PAIRING \
+	| add-extra-sam-flags -N 4 -p $PAIRING \
 	| {
 	      if [[ "$PAIRING" =~ "paired=1" ]] ; then
 		  filter-mappings -p $PAIRING \
