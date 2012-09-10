@@ -133,11 +133,14 @@ Pairing::pair_concordant(const Mapping& mapping0, int r0_st,
 ostream&
 operator <<(ostream& ostr, const Pairing& pairing)
 {
-  ostr << "paired=" << (pairing.paired? 1 : 0) <<
-    ",st_diff=" << pairing.st_diff <<
-    ",min=" << pairing.min <<
-    ",max=" << pairing.max <<
-    ",mean=" << pairing.mean <<
-    ",stddev=" << pairing.stddev;
+  if (!pairing.paired) 
+    ostr << "paired=0";
+  else
+    ostr << "paired=1"
+	 << ",st_diff=" << pairing.st_diff
+	 << ",min=" << pairing.min
+	 << ",max=" << pairing.max
+	 << ",mean=" << pairing.mean
+	 << ",stddev=" << pairing.stddev;
   return ostr;
 }

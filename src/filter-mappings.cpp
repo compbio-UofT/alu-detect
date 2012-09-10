@@ -51,7 +51,7 @@ public:
 
 
 void
-addSQToRefDict_then_print(const string& line)
+addSQToRefDict(const string& line)
 {
   strtk::std_string::token_list_type token_list;
   strtk::split("\t", line, back_inserter(token_list));
@@ -87,7 +87,7 @@ addSQToRefDict_then_print(const string& line)
       exit(1);
     }
   }
-  cout << line << endl;
+  //cout << line << endl;
 }
 
 void
@@ -299,7 +299,7 @@ main(int argc, char* argv[])
     exit(1);
   }
 
-  SamMappingSetGen mapGen(&mapIn, cnp, addSQToRefDict_then_print, &global::refDict);
+  SamMappingSetGen mapGen(&mapIn, cnp, addSQToRefDict, &global::refDict);
   pair<string,vector<SamMapping> >* m = mapGen.get_next();
   map<string,stringstream*> out_str;
   process_mapping_set(m->first, m->second, out_str, &cerr);

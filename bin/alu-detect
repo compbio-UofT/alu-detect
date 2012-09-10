@@ -319,6 +319,7 @@ STATS_FILE="$MAPPINGS_CLEAN_TO_REFERENCE.stats"
 stage_command() {
     $PV $MAPPINGS_TO_REFERENCE.sam.gz \
 	| clean-mappings 3>/dev/null \
+	| zc <(sam-header $MAPPINGS_TO_REFERENCE.sam.gz) - \
 	| $ZIP >$MAPPINGS_CLEAN_TO_REFERENCE.sam.gz
 }
 stage_stats_command() {
