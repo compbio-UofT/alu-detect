@@ -272,7 +272,9 @@ main(int argc, char* argv[])
       for (i = 0; i < (int)local_m_vector.size(); ++i) {
 	process_mapping_set(local_m_vector[i]->first, local_m_vector[i]->second,
 			    *chunk.out_str, *chunk.err_str);
+	delete local_m_vector[i];
       }
+      local_m_vector.clear();
 
 #pragma omp critical(output)
       {
