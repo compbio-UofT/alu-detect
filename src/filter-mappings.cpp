@@ -249,9 +249,9 @@ add_filter(const string& s)
 
   filter_vector.push_back(f);
 
-  cerr << "added filter: " << hex << f.must_have[0] << "/" << hex << f.must_not_have[0];
+  cerr << "added filter: " << "0x" << hex << f.must_have[0] << "/" << "0x" << hex << f.must_not_have[0];
   if (global::pairing.paired)
-    cerr << "," << hex << f.must_have[1] << "/" << hex << f.must_not_have[1];
+    cerr << "," << "0x" << hex << f.must_have[1] << "/" << "0x" << hex << f.must_not_have[1];
   cerr << "," << f.stop_on_hit << ":" << f.dest_file << endl;
 }
 
