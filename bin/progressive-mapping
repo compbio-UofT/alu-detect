@@ -73,8 +73,8 @@ while [ 1 ] ; do
     else
 	make_note "processing previous stage..."
 	pv -f "$TDIR"/map_body_${PREV_STEP}.sam.gz \
-	    | add-extra-sam-flags -p paired=0 -q $MIN_MQV -i 0 \
-	    | filter-mappings -p paired=0 \
+	    | add-extra-sam-flags -N 4 -p paired=0 -q $MIN_MQV -i 0 \
+	    | filter-mappings -N 4 -p paired=0 \
 	      -f 0x1000:"$TDIR"/pipe-4 \
 	      -f 0/0x1004:"$TDIR"/pipe-5 \
 	      -f 0x4:\&1 \
