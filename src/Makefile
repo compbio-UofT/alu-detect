@@ -40,7 +40,8 @@ endif
 
 LN=ln
 
-all: include-boost get-regions inalign get-coverage zc add-extra-sam-flags move-bins
+all: include-boost get-regions inalign get-coverage zc add-extra-sam-flags filter-mappings \
+	move-bins
 
 include-boost:
 	if [[ ! -e boost && -d "$(BOOST)" ]]; then ln -s "$(BOOST)" boost; fi
@@ -58,6 +59,11 @@ inalign: inalign.o inalign_core.o \
 add-extra-sam-flags: add-extra-sam-flags.o globals.o util.o deep_size.o Pairing.o \
 	DNASequence.o Read.o Mapping.o CloneGen.o SamMapping.o SamMappingSetGen.o common.o \
 	gzstream/gzstream.o Cigar.o Clone.o
+	$(LD) $(CXXFLAGS) -o $@ $+ $(LDFLAGS)
+
+filter-mappings: filter-mappings.o globals.o util.o deep_size.o Pairing.o \
+	DNASequence.o Read.o CloneGen.o SamMapping.o SamMappingSetGen.o common.o \
+	gzstream/gzstream.o Clone.o Mapping.o Cigar.o
 	$(LD) $(CXXFLAGS) -o $@ $+ $(LDFLAGS)
 
 get-coverage: get-coverage.o DNASequence.o SamMapping.o Cigar.o globals.o Range.o \
@@ -78,8 +84,13 @@ inalign_core.o: inalign_core.?pp globals.hpp Clone.hpp DNASequence.hpp \
 	$(CXX) $(CXXFLAGS) -c -o $@ $<
 
 add-extra-sam-flags.o: add-extra-sam-flags.cpp globals.hpp \
-	Read.hpp Mapping.hpp SamMapping.hpp SamMappingSetGen.hpp Mapping.hpp CloneGen.hpp \
+	Read.hpp Mapping.hpp SamMapping.hpp SamMappingSetGen.hpp CloneGen.hpp \
 	common.hpp Cigar.hpp
+	$(CXX) $(CXXFLAGS) -c -o $@ $<
+
+filter-mappings.o: filter-mappings.cpp globals.hpp \
+	Read.hpp SamMapping.hpp SamMappingSetGen.hpp \
+	common.hpp
 	$(CXX) $(CXXFLAGS) -c -o $@ $<
 
 gzstream/gzstream.o: gzstream/gzstream.C gzstream/gzstream.h
@@ -146,7 +157,7 @@ zc: zc.c
 	$(LD) $(CXXFLAGS) -o $@ $+ $(LDFLAGS)
 
 move-bins:
-	mv get-regions inalign get-coverage zc add-extra-sam-flags ../bin 
+	mv get-regions inalign get-coverage zc add-extra-sam-flags filter-mappings ../bin 
 
 clean:
-	rm -f *.o gzstream/gzstream.o get-regions inalign get-coverage zc boost ../bin/get-regions ../bin/inalign ../bin/get-coverage ../bin/zc ../bin/add-extra-sam-flags
+	rm -f *.o gzstream/gzstream.o get-regions inalign get-coverage zc boost ../bin/get-regions ../bin/inalign ../bin/get-coverage ../bin/zc ../bin/add-extra-sam-flags ../bin/filter-mappings
