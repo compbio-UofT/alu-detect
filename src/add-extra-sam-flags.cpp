@@ -21,6 +21,7 @@ using namespace std;
 
 
 int num_threads = 1;
+bool verbose = false;
 
 int min_read_len = 20;
 int min_mqv = 5;
@@ -97,14 +98,24 @@ process_mapping_set(const string& s, vector<SamMapping>& v,
     exit(1);
   }
 
+  Clone c;
+
   for (size_t i = 0; i < v.size(); ++i) {
-    int len = (v[i].seq.compare("*")? v[i].seq.size() : 0);
-    /*
-     *err_str << "clone s=" << s << " i=" << i << " len=" << len
-	    << " v[i].seq=" << v[i].seq << " v[i].seq.size()=" << v[i].seq.size()
-	    << " v[i].seq.compare(\"*\")=" << v[i].seq.compare("*") << endl;
-    */
-    if (len < min_read_len) {
+    int nip = v[i].flags[7];
+    if (fnp != NULL) {
+      fnp(v[i].name, c, nip);
+    } else {
+      c.read[nip].len = (v[i].seq.compare("*")? v[i].seq.size() : 0);
+    }
+
+    if (global::pairing.paired and v[0].flags[2] == 0 and v[1].flags[2] == 0) {
+      Mapping m = convert_SamMapping_to_Mapping(v[i]);
+      m.qr = &c.read[nip];
+      m.is_ref = true;
+      c.read[nip].mapping.push_back(m);
+    }
+
+    if (c.read[nip].len < min_read_len) {
       v[i].flags[16] = 1;
     }
 
@@ -126,20 +137,6 @@ process_mapping_set(const string& s, vector<SamMapping>& v,
   }
 
   if (global::pairing.paired and v[0].flags[2] == 0 and v[1].flags[2] == 0) {
-    Clone c;
-    for (int i = 0; i < 2; ++i) {
-      int nip = v[i].flags[7];
-      if (fnp != NULL) {
-	fnp(v[i].name, c, nip);
-      } else {
-	c.read[nip].len = (v[i].seq.compare("*")? v[i].seq.size() : 0);
-      }
-      Mapping m = convert_SamMapping_to_Mapping(v[i]);
-      m.qr = &c.read[nip];
-      m.is_ref = true;
-      c.read[nip].mapping.push_back(m);
-    }
-
     if (global::pairing.pair_concordant(c.read[0].mapping[0], 0, c.read[1].mapping[0], 0)) {
       v[0].flags[15] = 1;
       v[1].flags[15] = 1;
@@ -183,7 +180,7 @@ main(int argc, char* argv[])
   cnp = &default_cnp;
 
   char c;
-  while ((c = getopt(argc, argv, "p:N:Pq:i:")) != -1) {
+  while ((c = getopt(argc, argv, "p:N:Pq:i:v")) != -1) {
     switch (c) {
     case 'p':
       global::pairing = Pairing(string(optarg));
@@ -201,6 +198,9 @@ main(int argc, char* argv[])
       break;
     case 'i':
       min_tail_insert_size = atoi(optarg);
+      break;
+    case 'v':
+      verbose = true;
       break;
     default:
       cerr << "unrecognized option: " << c << endl;
@@ -268,10 +268,12 @@ main(int argc, char* argv[])
 
       chunk.out_str = new stringstream();
       chunk.err_str = new stringstream();
-      *chunk.err_str << "tid=" << tid << " chunk_id=" << chunk.chunk_id
-		     << " start:" << local_m_vector[0]->first
-		     << " end:" << local_m_vector[load - 1]->first
-		     << endl;
+      if (verbose) {
+	*chunk.err_str << "tid=" << tid << " chunk_id=" << chunk.chunk_id
+		       << " start:" << local_m_vector[0]->first
+		       << " end:" << local_m_vector[load - 1]->first
+		       << endl;
+      }
 
       for (int i = 0; i < load; ++i) {
 	process_mapping_set(local_m_vector[i]->first, local_m_vector[i]->second,
