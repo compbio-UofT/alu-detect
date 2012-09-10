@@ -89,7 +89,7 @@ addSQToRefDict_then_print(const string& line)
 
 void
 process_mapping_set(const string& s, vector<SamMapping>& v,
-		    ostream& out_str, ostream& err_str)
+		    ostream* out_str, ostream* err_str)
 {
   if ((!global::pairing.paired && v.size() != 1)
       or (global::pairing.paired && v.size() != 2)) {
@@ -100,7 +100,7 @@ process_mapping_set(const string& s, vector<SamMapping>& v,
   for (size_t i = 0; i < v.size(); ++i) {
     int len = (v[i].seq.compare("*")? v[i].seq.size() : 0);
     /*
-    err_str << "clone s=" << s << " i=" << i << " len=" << len
+     *err_str << "clone s=" << s << " i=" << i << " len=" << len
 	    << " v[i].seq=" << v[i].seq << " v[i].seq.size()=" << v[i].seq.size()
 	    << " v[i].seq.compare(\"*\")=" << v[i].seq.compare("*") << endl;
     */
@@ -143,28 +143,30 @@ process_mapping_set(const string& s, vector<SamMapping>& v,
     if (global::pairing.pair_concordant(c.read[0].mapping[0], 0, c.read[1].mapping[0], 0)) {
       v[0].flags[15] = 1;
       v[1].flags[15] = 1;
-      err_str << "clone s=" << s << ": concordant" << endl;
+      if (err_str != NULL)
+	*err_str << "clone s=" << s << ": concordant" << endl;
     } else {
-      err_str << "clone s=" << s << ": discordant" << endl;
+      if (err_str != NULL)
+	*err_str << "clone s=" << s << ": discordant" << endl;
     }
   }
 
   for (size_t i = 0; i < v.size(); ++i) {
-    out_str << v[i].name
-	    << '\t' << v[i].flags.to_ulong()
-	    << '\t' << (v[i].db != NULL? v[i].db->name : "*")
-	    << '\t' << v[i].dbPos
-	    << '\t' << v[i].mqv
-	    << '\t' << v[i].cigar
-	    << '\t' << (v[i].mp_db != NULL? (v[i].mp_db == v[i].db? "=" : v[i].mp_db->name) : "*")
-	    << '\t' << v[i].mp_dbPos
-	    << '\t' << v[i].tLen
-	    << '\t' << v[i].seq
-	    << '\t' << v[i].qvString;
+    *out_str << v[i].name
+	     << '\t' << v[i].flags.to_ulong()
+	     << '\t' << (v[i].db != NULL? v[i].db->name : "*")
+	     << '\t' << v[i].dbPos
+	     << '\t' << v[i].mqv
+	     << '\t' << v[i].cigar
+	     << '\t' << (v[i].mp_db != NULL? (v[i].mp_db == v[i].db? "=" : v[i].mp_db->name) : "*")
+	     << '\t' << v[i].mp_dbPos
+	     << '\t' << v[i].tLen
+	     << '\t' << v[i].seq
+	     << '\t' << v[i].qvString;
     for (size_t j = 0; j < v[i].rest.size(); ++j) {
-      out_str << '\t' << v[i].rest[j].key << ':' << v[i].rest[j].type << ':' << v[i].rest[j].value;
+      *out_str << '\t' << v[i].rest[j].key << ':' << v[i].rest[j].type << ':' << v[i].rest[j].value;
     }
-    out_str << endl;
+    *out_str << endl;
   }
 }
 
@@ -222,7 +224,7 @@ main(int argc, char* argv[])
 
   SamMappingSetGen mapGen(&mapIn, cnp, addSQToRefDict_then_print, &global::refDict);
   pair<string,vector<SamMapping> >* m = mapGen.get_next();
-  process_mapping_set(m->first, m->second, cout, cerr);
+  process_mapping_set(m->first, m->second, &cout, &cerr);
   delete m;
 
   priority_queue<Chunk,vector<Chunk>,ChunkComparator> h;
@@ -272,7 +274,13 @@ main(int argc, char* argv[])
 
       for (i = 0; i < (int)local_m_vector.size(); ++i) {
 	process_mapping_set(local_m_vector[i]->first, local_m_vector[i]->second,
-			    *chunk.out_str, *chunk.err_str);
+			    chunk.out_str,
+#ifdef NDEBUG
+			    NULL
+#else
+			    chunk.err_str
+#endif
+			    );
 	delete local_m_vector[i];
       }
       local_m_vector.clear();
