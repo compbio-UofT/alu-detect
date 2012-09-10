@@ -165,7 +165,7 @@ if [ "$ORIG_READS_1" -a "$ORIG_READS_2" \
 fi
 
 if [ "$ORIG_MAPPINGS_SAM" ] ; then
-    if [ "$(file "$ORIG_MAPPINGS_SAM" | head -n 1)" =~ gzip ] ; then
+    if [[ "$(file "$ORIG_MAPPINGS_SAM" | head -n 1)" =~ gzip ]] ; then
 	get_orig_mappings() {
 	    $PV "$ORIG_MAPPINGS_SAM" | $UNZIP
 	}
