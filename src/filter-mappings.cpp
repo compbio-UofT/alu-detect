@@ -322,8 +322,8 @@ main(int argc, char* argv[])
   {
     int tid = omp_get_thread_num();
     pair<string,vector<SamMapping> >* local_m;
-    vector<pair<string,vector<SamMapping> >* > local_m_vector;
-    int i;
+    vector<pair<string,vector<SamMapping> >* > local_m_vector(chunk_size);
+    int load;
     while (true) {
       Chunk chunk;
       //chunk.chunk_id = i;
@@ -332,31 +332,31 @@ main(int argc, char* argv[])
 #pragma omp critical(input)
       {
         //omp_set_lock(&input_lock);
-	for (i = 0; i < chunk_size; ++i) {
+	for (load = 0; load < chunk_size; ++load) {
 	  local_m = mapGen.get_next();
 	  if (local_m == NULL) {
 	    break;
 	  }
-	  local_m_vector.push_back(local_m);
+	  local_m_vector[load] = local_m;
 	}
 
 	chunk.chunk_id = next_chunk_in;
-	if (i > 0)
+	if (load > 0)
 	  ++next_chunk_in;
         //omp_unset_lock(&input_lock);
       }
 
-      if (local_m_vector.size() == 0)
+      if (load == 0)
         break;
 
       //chunk.out_str = new stringstream();
       chunk.err_str = new stringstream();
       *chunk.err_str << "tid=" << tid << " chunk_id=" << chunk.chunk_id
 		     << " start:" << local_m_vector[0]->first
-		     << " end:" << local_m_vector[i-1]->first
+		     << " end:" << local_m_vector[load - 1]->first
 		     << endl;
 
-      for (i = 0; i < (int)local_m_vector.size(); ++i) {
+      for (int i = 0; i < load; ++i) {
 	process_mapping_set(local_m_vector[i]->first, local_m_vector[i]->second,
 			    chunk.out_str,
 #ifdef NDEBUG
@@ -367,7 +367,6 @@ main(int argc, char* argv[])
 			    );
 	delete local_m_vector[i];
       }
-      local_m_vector.clear();
 
 #pragma omp critical(output)
       {
