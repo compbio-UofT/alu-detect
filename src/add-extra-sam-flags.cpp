@@ -223,6 +223,7 @@ main(int argc, char* argv[])
   SamMappingSetGen mapGen(&mapIn, cnp, addSQToRefDict_then_print, &global::refDict);
   pair<string,vector<SamMapping> >* m = mapGen.get_next();
   process_mapping_set(m->first, m->second, cout, cerr);
+  delete m;
 
   priority_queue<Chunk,vector<Chunk>,ChunkComparator> h;
   long long next_chunk_in = 0;
@@ -241,8 +242,6 @@ main(int argc, char* argv[])
       Chunk chunk;
       //chunk.chunk_id = i;
       chunk.thread_id = tid;
-      chunk.out_str = new stringstream();
-      chunk.err_str = new stringstream();
 
 #pragma omp critical(input)
       {
@@ -264,6 +263,8 @@ main(int argc, char* argv[])
       if (local_m_vector.size() == 0)
         break;
 
+      chunk.out_str = new stringstream();
+      chunk.err_str = new stringstream();
       *chunk.err_str << "tid=" << tid << " chunk_id=" << chunk.chunk_id
 		     << " start:" << local_m_vector[0]->first
 		     << " end:" << local_m_vector[i-1]->first
