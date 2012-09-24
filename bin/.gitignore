@@ -2,3 +2,5 @@
 get-regions
 zc
 inalign
+add-extra-sam-flags
+filter-mappings
