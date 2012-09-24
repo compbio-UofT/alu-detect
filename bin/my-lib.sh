@@ -170,7 +170,7 @@ gen_file() {
     fi
 	if [ $NEED_TO_RUN = 0 ] ; then
 		if [ "$OUTPUT_FILE$GEN_FILE_SUFFIX" -nt "$OUTPUT_FILE" ] ; then
-			make_node "$OUTPUT_FILE$GEN_FILE_SUFFIX newer than $OUTPUT_FILE"
+			make_note "$OUTPUT_FILE$GEN_FILE_SUFFIX newer than $OUTPUT_FILE"
 			NEED_TO_RUN=1
 		fi
 	fi
