@@ -1,3 +1,3 @@
 #!/bin/bash
-set -ux
+set -u
 awk -v max_len=$1 '$3-$2<=max_len'
