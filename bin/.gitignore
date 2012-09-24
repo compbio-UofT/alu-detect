@@ -4,3 +4,6 @@ zc
 inalign
 add-extra-sam-flags
 filter-mappings
+get-coverage
+get-bed-coverage
+tsd-search

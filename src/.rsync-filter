@@ -1,0 +1,7 @@
++ /.rsync-root
++ /.rsync-filter
++ */
+- a.out
+- *.o
+- *~
++ *
