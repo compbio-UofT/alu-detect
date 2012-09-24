@@ -129,6 +129,9 @@ make_note "using START_STAGE=$START_STAGE and END_STAGE=$END_STAGE"
 find_my_name_and_dir "${BASH_SOURCE[0]}"
 PATH=$PATH:$MY_DIR
 
+for p in bowtie2 gmapper-ls samtools intersectBed ; do
+  [ -z "$(which $p 2>/dev/null)" ] && crash "$p not found"
+done
 
 INPUT_PHRED=${INPUT_PHRED:-0}
 make_note "using input phred: [$INPUT_PHRED]"
