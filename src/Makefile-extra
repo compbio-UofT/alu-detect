@@ -39,8 +39,8 @@ endif
 
 LN=ln
 
-all: boost get-coverage get-bed-coverage tsd-search
-	mv get-coverage get-bed-coverage tsd-search ../bin
+all: boost get-bed-coverage tsd-search
+	mv get-bed-coverage tsd-search ../bin
 
 boost:
 	if [[ ! -e boost && -d "$(BOOST)" ]]; then ln -s "$(BOOST)" boost; fi
@@ -166,4 +166,4 @@ common/anchors.o: common/anchors.[ch]
 
 
 clean:
-	rm -f *.o gzstream/gzstream.o common/*.o bin/get-coverage bin/get-bed-coverage bin/tsd-search
+	rm -f *.o gzstream/gzstream.o common/*.o bin/get-bed-coverage bin/tsd-search
