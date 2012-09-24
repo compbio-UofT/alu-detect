@@ -56,12 +56,16 @@ make_temp_dir() {
 print_with_delim() {
     suspend_xtrace
     DELIM="\t"
+    NEWLINE="\n"
     OPTIND=1
-    while getopts "d:" OPT "$@" ; do
+    while getopts "d:n" OPT "$@" ; do
 	case $OPT in
 	    d)
 		DELIM="$OPTARG"
 		;;
+            n)
+                NEWLINE=""
+                ;;
 	esac
     done
     shift $(($OPTIND - 1))
@@ -75,7 +79,7 @@ print_with_delim() {
 	FIRST=0
 	shift
     done
-    printf '\n'
+    printf "$NEWLINE"
     restore_xtrace
 }
 
@@ -116,6 +120,7 @@ run_cmds() {
     for i in $(seq 1 $CRT_CMD) ; do
         CMD_OUTPUT[$i]=$(echo "$CMDS_RAW_OUTPUT" | grep "^$i " | cut -d " " -f 2-)
     done
+    echo "CMD_OUTPUT:${CMD_OUTPUT[@]}" >&2
 }
 
 #
