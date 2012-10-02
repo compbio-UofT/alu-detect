@@ -1,0 +1,2 @@
+#!/bin/bash
+zc "$@" | awk -v OFS="\t" '{if ($6=="+") nick=$2+1 ; else nick=$3-1; $2=nick; $3=nick; print}'

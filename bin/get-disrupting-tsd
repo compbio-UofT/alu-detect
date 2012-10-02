@@ -1,0 +1,49 @@
+#!/usr/bin/awk -f
+
+BEGIN {
+  FS = "\t";
+  OFS = "\t";
+  if (flank_len == 0) flank_len = 2;
+}
+
+{
+  for (i = 2; i <= NF && $i != $1; i++);
+  if (i > NF) {
+    print "did not find second interval in record:" >"/dev/stderr";
+    print >"/dev/stderr";
+    print "i=" i, "NF=" NF >"/dev/stderr";
+    exit(1);
+  }
+
+  critical_start = $(i+1) - flank_len + 1;
+  critical_end = $(i+2) + flank_len;
+  dup_start = $2 + 1 + 1;
+  dup_end = $3 - 1;
+  #print "critical:[" critical_start "," critical_end "]", "dup:[" dup_start "," dup_end "]" >"/dev/stderr";
+
+  if ($10 > 0 && $11 > 0) {
+    min_tsd = 0;
+  } else if ($11 > 0) {
+    if (critical_start <= dup_start && dup_start <= critical_end) {
+      min_tsd = 0;
+    } else if (dup_start < critical_start) {
+      min_tsd = critical_start - dup_start + 1;
+    } else {
+      min_tsd = -1; # shouldn't happen
+    }
+  } else if ($10 > 0) {
+    if (critical_start <= dup_end && dup_end <= critical_end) {
+      min_tsd = 0;
+    } else if (critical_end < dup_end) {
+      min_tsd = dup_end - critical_end + 1;
+    } else {
+      min_tsd = -1; # shouldn't happen
+    }
+  } else if (critical_start <= dup_start && dup_end <= critical_end) {
+    min_tsd = 0;
+  } else {
+    min_tsd = 100;
+  }
+
+  print $0, min_tsd;
+}
