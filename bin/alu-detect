@@ -252,6 +252,13 @@ stage_stats_command() {
 }
 run_stage
 
+# Iterate over all read groups
+cat $PAIRING |
+while read F; do
+
+#RG=$(echo "$F" | cut -f 1)	# uncomment this if the actual read group name is required
+RGID=$(echo "$F" | cut -f 2)
+PAIRING=$(echo "$F" | cut -f 3)
 
 #
 # Stage 3: Trim & rename reads
@@ -262,12 +269,13 @@ run_stage
 STAGE_NUM=3
 STAGE_NAME="read renaming"
 READS_TO_REMAP=$RGID.reads.to_remap
-INPUT_FILES="$READS_DISCORDANT.fq.gz"
+MAP_DISCORDANT="$RGID.map.discordant.sam.gz"
+INPUT_FILES="$MAP_DISCORDANT.sam.gz"
 OUTPUT_FILES="$READS_TO_REMAP.fq.gz"
 STATS_FILE="$READS_TO_REMAP.stats"
 stage_command() {
-    $PV $READS_DISCORDANT.fq.gz \
-	| zc \
+    $PV $INPUT_FILES \
+	| sam-to-fq -p $PAIRING \
 	| fq-trim-illumina-reads -v input_phred="$INPUT_PHRED" \
 	| {
 	      if [[ "$PAIRING" =~ "paired=1" ]] ; then
@@ -381,6 +389,7 @@ stage_stats_command() {
 }
 run_stage
 
+done
 
 #
 # Stage 8: Get regions
