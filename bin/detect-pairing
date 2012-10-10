@@ -168,6 +168,7 @@ for ms in sam.get_mapping_set_gen(in_fd, mapping_parser=mapping_parser):
             or (not target_is_paired
                 and rg_dict[target_rg]['unpaired_count'] >= args.unpaired_stop_count)):
             target_rg == ''
+            note('done target:' + target_rg + ' paired:' + str(target_is_paired), 1)
 
     if target_rg == '':
         done = True
@@ -181,8 +182,7 @@ for ms in sam.get_mapping_set_gen(in_fd, mapping_parser=mapping_parser):
                 target_is_paired = (rg_dict[s]['detected_paired']
                                     and (rg_dict[s]['detected_st_diff'] == -1
                                          or rg_dict[s]['detected_delta_min'] == -1))
-                note('new target: ' + target_rg + ', ' +
-                     ['un', ''][int(target_is_paired)] + 'paired', 1)
+                note('new target:' + target_rg + ' paired:' + str(target_is_paired), 1)
                 break
         if done:
             break
