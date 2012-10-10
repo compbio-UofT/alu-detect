@@ -22,7 +22,7 @@ have_as_field = -1
 max_as_val = 0
 
 rg_dict = {}
-
+target_rg = ''
 
 def good_mapping(d):
     global have_nm_field, have_as_field, max_as_val
@@ -161,16 +161,31 @@ for ms in sam.get_mapping_set_gen(in_fd, mapping_parser=mapping_parser):
             rgd['min_r_len'] = -1
             rgd['max_r_len'] = -1
 
-    done = True
-    for s in rg_dict:
-        if ((rg_dict[s]['detected_paired']
-             and (rg_dict[s]['detected_st_diff'] == -1 or rg_dict[s]['detected_delta_min'] == -1))
-            or (rg_dict[s]['detected_unpaired']
-                and rg_dict[s]['unpaired_count'] < args.unpaired_stop_count)):
-            done = False
+    if target_rg != '':
+        if ((target_is_paired
+             and rg_dict[target_rg]['detected_st_diff'] != -1
+             and rg_dict[target_rg]['detected_delta_min'] != -1)
+            or (not target_is_paired
+                and rg_dict[target_rg]['unpaired_count'] >= args.unpaired_stop_count)):
+            target_rg == ''
+
+    if target_rg == '':
+        done = True
+        for s in rg_dict:
+            if ((rg_dict[s]['detected_paired']
+                 and (rg_dict[s]['detected_st_diff'] == -1 or rg_dict[s]['detected_delta_min'] == -1))
+                or (rg_dict[s]['detected_unpaired']
+                    and rg_dict[s]['unpaired_count'] < args.unpaired_stop_count)):
+                done = False
+                target_rg = s
+                target_is_paired = (rg_dict[s]['detected_paired']
+                                    and (rg_dict[s]['detected_st_diff'] == -1
+                                         or rg_dict[s]['detected_delta_min'] == -1))
+                note('new target: ' + target_rg + ', ' +
+                     ['un', ''][int(target_is_paired)] + 'paired', 1)
+                break
+        if done:
             break
-    if done:
-        break
 
     if ms[0]['paired']:
         if len(ms) == 1:
@@ -237,7 +252,7 @@ for ms in sam.get_mapping_set_gen(in_fd, mapping_parser=mapping_parser):
         else:
             crash('could not detect st_diff, neither dominates: [%d] vs [%d]'
                  % (rgd['count_st_diff'][0], rgd['count_st_diff'][1]))
-        note(rg_string + ': detected st_diff: [%d]' % rgd['detected_st_diff'], 1)
+        note(rg_string + ': detected st_diff:%d' % rgd['detected_st_diff'], 1)
 
     if st_diff != rgd['detected_st_diff']:
         note('discarding mappings: bad st_diff ' + str(ms), 2)
@@ -261,7 +276,6 @@ for ms in sam.get_mapping_set_gen(in_fd, mapping_parser=mapping_parser):
 
     if len(rgd['delta']) >= args.stop_count:
         l = rgd['delta']
-        note('len(l)=%d' % len(l), 1)
         l.sort()
         if drop_count > 0:
             l = l[drop_count:-drop_count]
@@ -271,7 +285,7 @@ for ms in sam.get_mapping_set_gen(in_fd, mapping_parser=mapping_parser):
         rgd['detected_delta_stddev'] = math.sqrt(
             sum(map(lambda x: x*x, l)) / (len(l) - 1)
             - (sum(l) * sum(l)) / (len(l) * (len(l) - 1)))
-        note(rg_string + ': detected min:%d max%d mean:%d stddev:%d' %
+        note(rg_string + ': detected min:%d max:%d mean:%d stddev:%d' %
              (rgd['detected_delta_min'], rgd['detected_delta_max'],
               rgd['detected_delta_mean'], rgd['detected_delta_stddev']),
              1)
