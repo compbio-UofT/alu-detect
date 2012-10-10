@@ -167,8 +167,8 @@ for ms in sam.get_mapping_set_gen(in_fd, mapping_parser=mapping_parser):
              and rg_dict[target_rg]['detected_delta_min'] != -1)
             or (not target_is_paired
                 and rg_dict[target_rg]['unpaired_count'] >= args.unpaired_stop_count)):
-            target_rg = ''
             note('done target:' + target_rg + ' paired:' + str(target_is_paired), 1)
+            target_rg = ''
 
     if target_rg == '':
         done = True
