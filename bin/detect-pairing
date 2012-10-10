@@ -8,7 +8,7 @@ import functools
 from my import *
 import my_sam as sam
 
-good_mapping_cigar_ops = 'M=X'
+good_mapping_cigar_ops = 'M=XSH'
 good_mapping_max_nm_val = 2
 good_mapping_min_as_frac = .9
 good_mapping_min_mqv = 10
@@ -272,7 +272,12 @@ for ms in sam.get_mapping_set_gen(in_fd, mapping_parser=mapping_parser):
         rgd['r2_len'] = max(rgd['r2_len'], ms[1]['len'])
     else:
         rgd['r2_len'] = ms[1]['len']
-    pos = [sam.get_pos(ms[0])[0], sam.get_pos(ms[1])[0]]
+    pos = [None, None]
+    [read_pos, read_clip_len] = sam.get_pos(ms[0])
+    pos[0] = [read_pos[0] - clip_len[0], read_pos[1] - clip_len[1]]
+    [read_pos, read_clip_len] = sam.get_pos(ms[1])
+    pos[1] = [read_pos[0] - clip_len[0], read_pos[1] - clip_len[1]]
+    #pos = [sam.get_pos(ms[0])[0], sam.get_pos(ms[1])[0]]
     fivep = [pos[0][ms[0]['st']], pos[1][ms[1]['st']]]
     delta = (fivep[1] - fivep[0]) * [1, -1][ms[0]['st']]
     rgd['delta'].append(delta)
