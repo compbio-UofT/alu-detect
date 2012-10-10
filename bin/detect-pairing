@@ -211,6 +211,9 @@ for ms in sam.get_mapping_set_gen(in_fd, mapping_parser=mapping_parser):
                 rgd['min_r_len'] = min(rgd['min_r_len'], ms[0]['len'])
             else:
                 rgd['min_r_len'] = ms[0]['len']
+        if rgd['unpaired_count'] >= args.unpaired_stop_count:
+            note(rg_string + ': detected unpaired lengths min:%d max:%d'
+                 % (rgd['min_r_len'], rgd['max_r_len']), 1)
         continue
 
     # paired:
