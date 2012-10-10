@@ -4,18 +4,21 @@ import sys
 
 d = {}
 for line in sys.stdin:
-	line = line.strip()
-	if line[0] == '@':
-		print line
-		continue
-	clone_name = line.split('\t')[0]
-	if clone_name in d:
-		print d[clone_name]
-		print line
-		del d[clone_name]
+    line = line.strip()
+    if line[0] == '@':
+        print line
+	continue
+    clone_name = line.split('\t')[0]
+    flag = int(line.split('\t')[1])
+    if flag & 0x1:
+        if clone_name in d:
+            print d[clone_name]
+	    print line
+	    del d[clone_name]
 	else:
-		d[clone_name] = line
+            d[clone_name] = line
+    else:
+        print line
 
 if len(d) > 0:
-	print >> sys.stderr, 'error: some reads were unpaired: ' + str(d[d.keys()[0]])
-	sys.exit(1)
+    print >> sys.stderr, 'warning: some reads were unpaired: ' + str(d[d.keys()[0]])

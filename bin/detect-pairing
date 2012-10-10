@@ -20,6 +20,7 @@ have_nm_field = -1
 have_as_field = -1
 max_as_val = 0
 
+rg_dict = {}
 
 
 def good_mapping(d):
@@ -48,6 +49,10 @@ def good_mapping(d):
     if have_nm_field == 1 and nm_val > good_mapping_max_nm_val:
         note('discarding mapping of [%s]: bad NM value [%d]' % (d['name'], nm_val), 2)
         return False
+
+    if have_as_field != 0 and len(rg_dict) > 1:
+        have_as_field = 0
+        note('2 or more read groups; disabling AS field', 1)
 
     if have_as_field < 0:
         if 'AS' in d:
@@ -120,7 +125,7 @@ for ms in sam.get_mapping_set_gen(in_fd, mapping_parser=mapping_parser):
         rg_string = default_rg
 
     if rg_string not in rg_dict:
-        note('found new read group: ' + rg_string)
+        note(rg_string + ': new read group')
         rgd = {}
         rgd['idx'] = len(rg_dict)
         rgd['detected_unpaired'] = False
@@ -135,8 +140,8 @@ for ms in sam.get_mapping_set_gen(in_fd, mapping_parser=mapping_parser):
             rgd['detected_st_diff'] = -1
             rgd['count_st_diff'] = [0, 0]
             rgd['delta'] = []
-            rgd['r1_len'] = 0
-            rgd['r2_len'] = 0
+            rgd['r1_len'] = -1
+            rgd['r2_len'] = -1
             rgd['detected_delta_min'] = -1
             rgd['detected_delta_max'] = -1
             rgd['detected_delta_mean'] = -1
@@ -146,7 +151,8 @@ for ms in sam.get_mapping_set_gen(in_fd, mapping_parser=mapping_parser):
             note(rg_string + ': found unpaired reads')
             rgd['detected_unpaired'] = True
             rgd['unpaired_count'] = 0
-            rgd['r_len'] = 0
+            rgd['min_r_len'] = -1
+            rgd['max_r_len'] = -1
 
     done = True
     for s in rg_dict:
@@ -162,7 +168,7 @@ for ms in sam.get_mapping_set_gen(in_fd, mapping_parser=mapping_parser):
     if ms[0]['paired']:
         if len(ms) == 1:
             #crash('did not find pair for read: ' + str(ms))
-            note('ignoring single mapping of a read pair: ' + str(ms), 2)
+            note('discarding single mapping of a read pair: ' + str(ms), 2)
             continue
         if not ms[1]['paired']:
             crash('inconsistent pairing flags in a pair: ' + str(ms))
@@ -175,7 +181,14 @@ for ms in sam.get_mapping_set_gen(in_fd, mapping_parser=mapping_parser):
             continue
         rgd['unpaired_count'] += 1
         if 'len' in ms[0]:
-            rgd['r_len'] = max(rgd['r_len'], ms[0]['len'])
+            if rgd['max_r_len'] >= 0:
+                rgd['max_r_len'] = max(rgd['max_r_len'], ms[0]['len'])
+            else:
+                rgd['max_r_len'] = ms[0]['len']
+            if rgd['min_r_len'] >= 0:
+                rgd['min_r_len'] = min(rgd['min_r_len'], ms[0]['len'])
+            else:
+                rgd['min_r_len'] = ms[0]['len']
         continue
 
     # paired:
@@ -184,7 +197,7 @@ for ms in sam.get_mapping_set_gen(in_fd, mapping_parser=mapping_parser):
 
     # if either is not mapped, ignore
     if not ms[0]['mapped'] or not ms[1]['mapped']:
-        note('ignoring unmapped clone: ' + str(ms), 2)
+        note('discarding unmapped clone: ' + str(ms), 2)
         continue
 
     # only paired mappings with both reads paired make it here
@@ -226,8 +239,14 @@ for ms in sam.get_mapping_set_gen(in_fd, mapping_parser=mapping_parser):
     note(rg_string + ': using map set for insert distribution: ' + str(ms), 2)
     if ms[0]['nip'] == 1:
         ms = ms[::-1]
-    rgd['r1_len'] = max(rgd['r1_len'], ms[0]['len'])
-    rgd['r2_len'] = max(rgd['r2_len'], ms[1]['len'])
+    if rgd['r1_len'] >= 0:
+        rgd['r1_len'] = max(rgd['r1_len'], ms[0]['len'])
+    else:
+        rgd['r1_len'] = ms[0]['len']
+    if rgd['r2_len'] >= 0:
+        rgd['r2_len'] = max(rgd['r2_len'], ms[1]['len'])
+    else:
+        rgd['r2_len'] = ms[1]['len']
     pos = [sam.get_pos(ms[0])[0], sam.get_pos(ms[1])[0]]
     fivep = [pos[0][ms[0]['st']], pos[1][ms[1]['st']]]
     delta = (fivep[1] - fivep[0]) * [1, -1][ms[0]['st']]
@@ -261,7 +280,7 @@ for k in sorted(rg_dict):
         s = str(idx)
         s = ('0' * (fill - len(s))) + s
         print ('%s\t%s\tpaired=1,st_diff=%d,min=%d,max=%d,mean=%d,stddev=%d,r1_len=%d,r2_len=%d' %
-               (k + '_paired', s
+               (k + '_paired', s,
                 rg_dict[k]['detected_st_diff'],
                 rg_dict[k]['detected_delta_min'], rg_dict[k]['detected_delta_max'],
                 rg_dict[k]['detected_delta_mean'], rg_dict[k]['detected_delta_stddev'],
@@ -270,9 +289,9 @@ for k in sorted(rg_dict):
     if rg_dict[k]['detected_unpaired']:
         s = str(idx)
         s = ('0' * (fill - len(s))) + s
-        print ('%s\t%s\tpaired=0,r1_len=%d' %
+        print ('%s\t%s\tpaired=0,r1_len=%d,r2_len=%d' %
                (k + '_unpaired', s,
-                rg_dict[k]['r_len']))
+                rg_dict[k]['min_r_len'], rg_dict[k]['max_r_len']))
         idx += 1
 
 gzclose(in_fd)
