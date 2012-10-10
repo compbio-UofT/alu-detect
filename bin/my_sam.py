@@ -194,7 +194,7 @@ def get_pairing_string():
 
 def get_bowtie_pairing():
     if pairing['paired'] == 0:
-        print 'unpaired'
+        print ''
         return
     if pairing['st_diff'] == 0:
         bowtie_orientation = 'ff'
