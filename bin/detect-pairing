@@ -96,7 +96,10 @@ parser.add_argument('--cid-parser', action='store', dest='cid_parser')
 parser.add_argument('input', action='store', nargs='?')
 args = parser.parse_args()
 set_log_level(len(args.verbose))
+
+drop_count = int(args.stop_count * drop_fraction)
 note('using stop count: [%d]' % args.stop_count, 1)
+note('using drop count: [%d]' % drop_count, 1)
 note('using unpaired stop count: [%d]' % args.unpaired_stop_count, 1)
 ignore_flags = args.ignore_flags
 
@@ -260,8 +263,8 @@ for ms in sam.get_mapping_set_gen(in_fd, mapping_parser=mapping_parser):
         l = rgd['delta']
         note('len(l)=%d' % len(l), 1)
         l.sort()
-        drop_count = int(args.stop_count * drop_fraction)
-        l = l[drop_count:-drop_count]
+        if drop_count > 0:
+            l = l[drop_count:-drop_count]
         rgd['detected_delta_min'] = l[0]
         rgd['detected_delta_max'] = l[-1]
         rgd['detected_delta_mean'] = sum(l)/len(l)
