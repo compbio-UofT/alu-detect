@@ -268,7 +268,8 @@ for ms in sam.get_mapping_set_gen(in_fd, mapping_parser=mapping_parser,
     else:
         rgd['detected_unpaired'] = True
         rgd['detected_paired'] = True
-        note(rg_string + ': detected both paired and unpaired reads')
+        note(rg_string + ': detected both unpaired [%d] and paired [%d] reads'
+             % (rgd['count_unpaired'], rgd['count_paired']))
 
     if rgd['detected_unpaired']:
         note(rg_string + ': detected unpaired lengths min:%d max:%d'
@@ -285,12 +286,15 @@ for ms in sam.get_mapping_set_gen(in_fd, mapping_parser=mapping_parser,
         else:
             crash('could not detect st_diff, neither dominates: [%d] vs [%d]'
                  % (len(rgd['delta'][0]), len(rgd['delta'][1])))
-        note(rg_string + ': detected st_diff:%d' % rgd['detected_st_diff'], 1)
+        note(rg_string + ': detected st_diff:%d count0:[%d] vs count1:[%d]'
+             % (rgd['detected_st_diff'], len(rgd['delta'][0]), len(rgd['delta'][1])),
+             1)
 
         l = rgd['delta'][rgd['detected_st_diff']]
         l.sort()
         if drop_count > 0:
             l = l[drop_count:-drop_count]
+        note(rg_string + ': using %d values of delta for detection' % len(l), 1)
         rgd['detected_delta_min'] = l[0]
         rgd['detected_delta_max'] = l[-1]
         rgd['detected_delta_mean'] = sum(l)/len(l)
