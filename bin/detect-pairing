@@ -99,6 +99,9 @@ note('using stop count: [%d]' % args.stop_count, 1)
 note('using drop count: [%d]' % drop_count, 1)
 ignore_flags = args.ignore_flags
 
+if int(args.stop_count / 11.0) - 2 * drop_count < 10:
+    crash('stop count not large enough')
+
 if args.cid_parser:
     _temp = __import__(args.cid_parser, globals(), locals(), ['cid_parser'])
     cid_parser = _temp.cid_parser
@@ -321,7 +324,7 @@ for k in sorted(rg_dict):
                 rg_dict[k]['detected_st_diff'],
                 rg_dict[k]['detected_delta_min'], rg_dict[k]['detected_delta_max'],
                 rg_dict[k]['detected_delta_mean'], rg_dict[k]['detected_delta_stddev'],
-                rg_dict[k]['r1_len'], rg_dict[k]['r2_len']))
+                rg_dict[k]['max_r1_len'], rg_dict[k]['max_r2_len']))
         idx += 1
     if rg_dict[k]['detected_unpaired']:
         s = str(idx)
