@@ -155,3 +155,26 @@ operator <<(ostream& ostr, const SamMapping& samMapping)
 
   return ostr;
 }
+
+Pairing *
+get_pairing_from_SamMapping(const SamMapping& m)
+{
+  RGDict::iterator it;
+  for (size_t i = 0; i < m.rest.size(); ++i) {
+    if (m.rest[i].key == "RG") {
+      it = global::rg_dict.find(m.rest[i].value);
+      if (it == global::rg_dict.end()) {
+	cerr << "error: no pairing info for RG: " << m << endl;
+	exit(1);
+      }
+      return &it->second;
+    }
+  }
+
+  it = global::rg_dict.find(global::default_rg);
+  if (it == global::rg_dict.end()) {
+    cerr << "error: no pairing info for (default) RG: " << m << endl;
+    exit(1);
+  }
+  return &it->second;
+}

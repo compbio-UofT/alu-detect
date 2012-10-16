@@ -1,24 +1,45 @@
-#!/usr/bin/python
+#!/usr/bin/env python2.6+
 
 import sys
+import argparse
+import functools
+from my import *
+import my_sam as sam
 
+
+parser = argparse.ArgumentParser(description=sys.argv[0])
+parser.add_argument('-v', '--verbose', action='append_const', const=1, default=[], dest='verbose')
+parser.add_argument('input', action='store', default='-', nargs='?')
+args = parser.parse_args()
+set_log_level(len(args.verbose))
+
+
+in_fd = gzopen(args.input)
 d = {}
-for line in sys.stdin:
+
+for line in in_fd:
     line = line.strip()
     if line[0] == '@':
         print line
-	continue
-    clone_name = line.split('\t')[0]
-    flag = int(line.split('\t')[1])
-    if flag & 0x1:
-        if clone_name in d:
-            print d[clone_name]
-	    print line
-	    del d[clone_name]
-	else:
-            d[clone_name] = line
-    else:
+        continue
+    a = line.split('\t')
+    flag = int(a[1])
+    if (flag & 0x1 == 0):
+        # unpaired: pass through
         print line
+    else:
+        # paired: wait for mate
+        if a[0] in d:
+            print d[a[0]]
+            print line
+            del d[a[0]]
+        else:
+            d[a[0]] = line
 
 if len(d) > 0:
-    print >> sys.stderr, 'warning: some reads were unpaired: ' + str(d[d.keys()[0]])
+    print >> sys.stderr, 'warning: some paired reads missed mate mappings: ' + str(d[d.keys()[0]])
+
+for k in d.keys():
+    print d[k]
+
+gzclose(in_fd)

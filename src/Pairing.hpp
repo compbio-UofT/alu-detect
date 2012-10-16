@@ -5,6 +5,7 @@ using namespace std;
 
 #include <string>
 #include <vector>
+#include <map>
 
 #include "Interval.hpp"
 #include "Mapping.hpp"
@@ -31,8 +32,10 @@ public:
   bool pair_concordant(const Mapping&, int, const Mapping&, int) const;
 };
 
-ostream& operator <<(ostream&, const Pairing&);
+typedef map<string,Pairing> RGDict;
 
+ostream& operator <<(ostream&, const Pairing&);
+void load_pairing(istream&, RGDict&, RGDict&);
 
 
 #endif

@@ -92,8 +92,8 @@ void
 process_mapping_set(const string& s, vector<SamMapping>& v,
 		    ostream* out_str, ostream* err_str)
 {
-  if ((!global::pairing.paired && v.size() != 1)
-      or (global::pairing.paired && v.size() != 2)) {
+  if ((!global::rg_dict.size() == 0 and v.size() != 1)
+      or (global::rg_dict.size() > 0 and v.size() != 2)) {
     cerr << "incorrect number of mappings for clone [" << s << "]" << endl;
     exit(1);
   }
@@ -103,12 +103,15 @@ process_mapping_set(const string& s, vector<SamMapping>& v,
   for (size_t i = 0; i < v.size(); ++i) {
     int nip = v[i].flags[7];
     if (fnp != NULL) {
-      fnp(v[i].name, c, nip);
+      fnp(v[i].name, c, nip); // including rg_dict
     } else {
       c.read[nip].len = (v[i].seq.compare("*")? v[i].seq.size() : 0);
+      if (global::rg_dict.size() > 0 and c.pairing == NULL) {
+	c.pairing = get_pairing_from_SamMapping(v[i]);
+      }
     }
 
-    if (global::pairing.paired and v[0].flags[2] == 0 and v[1].flags[2] == 0) {
+    if (global::rg_dict.size() > 0 and v[0].flags[2] == 0 and v[1].flags[2] == 0) {
       Mapping m = convert_SamMapping_to_Mapping(v[i]);
       m.qr = &c.read[nip];
       m.is_ref = true;
@@ -136,8 +139,8 @@ process_mapping_set(const string& s, vector<SamMapping>& v,
     }
   }
 
-  if (global::pairing.paired and v[0].flags[2] == 0 and v[1].flags[2] == 0) {
-    if (global::pairing.pair_concordant(c.read[0].mapping[0], 0, c.read[1].mapping[0], 0)) {
+  if (global::rg_dict.size() > 0 and v[0].flags[2] == 0 and v[1].flags[2] == 0) {
+    if (c.pairing->pair_concordant(c.read[0].mapping[0], 0, c.read[1].mapping[0], 0)) {
       v[0].flags[15] = 1;
       v[1].flags[15] = 1;
       if (err_str != NULL)
@@ -177,14 +180,16 @@ int
 main(int argc, char* argv[])
 {
   string progName(argv[0]);
+  string pairing_file;
   cnp = &default_cnp;
 
   char c;
-  while ((c = getopt(argc, argv, "p:N:Pq:i:v")) != -1) {
+  while ((c = getopt(argc, argv, "l:N:Pq:i:vg:")) != -1) {
     switch (c) {
-    case 'p':
-      global::pairing = Pairing(string(optarg));
-      cerr << "set pairing: " << global::pairing << endl;
+    case 'l':
+      pairing_file = optarg;
+      //global::pairing = Pairing(string(optarg));
+      //cerr << "set pairing: " << global::pairing << endl;
       break;
     case 'N':
       num_threads = atoi(optarg);
@@ -202,6 +207,9 @@ main(int argc, char* argv[])
     case 'v':
       verbose = true;
       break;
+    case 'g':
+      global::default_rg = optarg;
+      break;
     default:
       cerr << "unrecognized option: " << c << endl;
       exit(1);
@@ -209,12 +217,18 @@ main(int argc, char* argv[])
   }
 
   if (optind + 1 < argc) {
-    cerr << "use: " << argv[0]
-	 << " [options] [<mappings_sam>]" << endl;
+    cerr << "use: " << argv[0] << " [options] [<mappings_sam>]" << endl;
     exit(1);
   }
 
   cerr << "number of threads: " << num_threads << endl;
+
+  if (pairing_file.size() > 0) {
+    igzstream pairingIn(pairing_file.c_str());
+    if (pairingIn.bad()) { cerr << "error opening pairing file: " << pairing_file << endl; exit(1); }
+    load_pairing(pairingIn, global::rg_dict, global::num_rg_dict);
+    pairingIn.close();
+  }
 
   igzstream mapIn(optind < argc? argv[optind] : "-");
   if (mapIn.bad()) {

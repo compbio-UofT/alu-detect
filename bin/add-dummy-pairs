@@ -1,0 +1,56 @@
+#!/usr/bin/env python2.6+
+
+import sys
+import argparse
+import functools
+from my import *
+import my_sam as sam
+
+
+parser = argparse.ArgumentParser(description=sys.argv[0])
+parser.add_argument('-v', '--verbose', action='append_const', const=1, default=[], dest='verbose')
+parser.add_argument('input', action='store', default='-', nargs='?')
+args = parser.parse_args()
+set_log_level(len(args.verbose))
+
+
+in_fd = gzopen(args.input)
+
+for line in in_fd:
+    line = line.strip()
+    if line[0] == '@':
+        print line
+        continue
+    a = line.split('\t')
+    flag = int(a[1])
+    if flag & 0x1:
+        # alread paired; leave it be
+        print line
+        continue
+    i = 11
+    while (i < len(a) and a[i][0:2] != 'RG'):
+        i += 1
+
+    # fix flags
+    # set: paired (0x1), mate unampped (0x8), first (0x40)
+    flag = (flag | 0x49)
+    # clear: properly aligned (0x2), mate reversed (0x20), last (0x80)
+    flag = (flag & ~(0xA2))
+    a[1] = str(flag)
+    print '\t'.join(a)
+
+    # add dummy mate
+    # set: paired (0x1), unmapped (0x4), last (0x80)
+    flag2 = 0x85
+    if (flag & 0x4):
+        # set mate unampped (0x8)
+        flag2 = (flag2 | 0x8)
+    if (flag & 0x10):
+        # set mate reversed (0x20)
+        flag2 = (flag2 | 0x20)
+    b = [a[0], str(flag2), '*', '0', '0' '*', a[2], a[3], '0', 'N', '!']
+    if i < len(a):
+        b += [a[i]]
+    print '\t'.join(b)
+
+gzclose(fd)

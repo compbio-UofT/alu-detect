@@ -113,15 +113,15 @@ print_sam_mapping(ostream& os, const SamMapping& m)
 
 void
 process_mapping_set(const string& s, vector<SamMapping>& v,
-		    map<string,stringstream*>& out_str, ostream* err_str)
+		    map<string,stringstream*>& out_str) //, ostream* err_str)
 {
-  if ((!global::pairing.paired && v.size() != 1)
-      or (global::pairing.paired && v.size() != 2)) {
+  if ((global::rg_dict.size() == 0 and v.size() != 1)
+      or (global::rg_dict.size() > 0 and v.size() != 2)) {
     cerr << "incorrect number of mappings for clone [" << s << "]" << endl;
     exit(1);
   }
 
-  if (!global::pairing.paired) {
+  if (global::rg_dict.size() == 0) {
     for (size_t i = 0; i < filter_vector.size(); ++i) {
       Filter& f = filter_vector[i];
       if (((v[0].flags.to_ulong() & f.must_have[0]) == f.must_have[0])
@@ -196,7 +196,7 @@ add_filter(const string& s)
   string conditions = s.substr(0, i);
   f.dest_file = s.substr(i + 1);
 
-  if (!global::pairing.paired) {
+  if (global::rg_dict.size() == 0) {
     f.must_have = vector<unsigned long>(1);
     f.must_not_have = vector<unsigned long>(1);
 
@@ -250,7 +250,7 @@ add_filter(const string& s)
   filter_vector.push_back(f);
 
   cerr << "added filter: " << "0x" << hex << f.must_have[0] << "/" << "0x" << hex << f.must_not_have[0];
-  if (global::pairing.paired)
+  if (global::rg_dict.size() > 0)
     cerr << "," << "0x" << hex << f.must_have[1] << "/" << "0x" << hex << f.must_not_have[1];
   cerr << "," << f.stop_on_hit << ":" << f.dest_file << endl;
 }
@@ -260,14 +260,14 @@ int
 main(int argc, char* argv[])
 {
   string progName(argv[0]);
+  string pairing_file;
   cnp = &default_cnp;
 
   char c;
-  while ((c = getopt(argc, argv, "p:N:Pf:")) != -1) {
+  while ((c = getopt(argc, argv, "l:N:Pf:g:")) != -1) {
     switch (c) {
-    case 'p':
-      global::pairing = Pairing(string(optarg));
-      cerr << "set pairing: " << global::pairing << endl;
+    case 'l':
+      pairing_file = optarg;
       break;
     case 'N':
       num_threads = atoi(optarg);
@@ -279,6 +279,9 @@ main(int argc, char* argv[])
     case 'f':
       add_filter(optarg);
       break;
+    case 'g':
+      global::default_rg = optarg;
+      break;
     default:
       cerr << "unrecognized option: " << c << endl;
       exit(1);
@@ -286,12 +289,18 @@ main(int argc, char* argv[])
   }
 
   if (optind + 1 < argc) {
-    cerr << "use: " << argv[0]
-	 << " [options] [<mappings_sam>]" << endl;
+    cerr << "use: " << argv[0] << " [options] [<mappings_sam>]" << endl;
     exit(1);
   }
 
   cerr << "number of threads: " << num_threads << endl;
+
+  if (pairing_file.size() > 0) {
+    igzstream pairingIn(pairing_file.c_str());
+    if (pairingIn.bad()) { cerr << "error opening pairing file: " << pairing_file << endl; exit(1); }
+    load_pairing(pairingIn, global::rg_dict, global::num_rg_dict);
+    pairingIn.close();
+  }
 
   igzstream mapIn(optind < argc? argv[optind] : "-");
   if (mapIn.bad()) {
@@ -302,7 +311,8 @@ main(int argc, char* argv[])
   SamMappingSetGen mapGen(&mapIn, cnp, addSQToRefDict, &global::refDict);
   pair<string,vector<SamMapping> >* m = mapGen.get_next();
   map<string,stringstream*> out_str;
-  process_mapping_set(m->first, m->second, out_str, &cerr);
+  //process_mapping_set(m->first, m->second, out_str, &cerr);
+  process_mapping_set(m->first, m->second, out_str);
   for (map<string,stringstream*>::iterator it = out_str.begin();
        it != out_str.end(); ++it) {
     fputs(it->second->str().c_str(), file_map[it->first]);
@@ -358,13 +368,13 @@ main(int argc, char* argv[])
 
       for (int i = 0; i < load; ++i) {
 	process_mapping_set(local_m_vector[i]->first, local_m_vector[i]->second,
-			    chunk.out_str,
-#ifdef NDEBUG
-			    NULL
-#else
-			    chunk.err_str
-#endif
-			    );
+			    chunk.out_str);
+	//#ifdef NDEBUG
+	//		    NULL
+	//#else
+	//		    chunk.err_str
+	//#endif
+	//		    );
 	delete local_m_vector[i];
       }
 

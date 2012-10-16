@@ -664,16 +664,18 @@ int
 main(int argc, char* argv[])
 {
   string progName(argv[0]);
+  string pairing_file;
 
   vector<pair<int,Clone*> > l;
   vector<Range> range;
 
   char c;
-  while ((c = getopt(argc, argv, "p:N:r:v")) != -1) {
+  while ((c = getopt(argc, argv, "l:N:r:vg:")) != -1) {
     switch (c) {
-    case 'p':
-      global::pairing = Pairing(string(optarg));
-      cerr << "set pairing: " << global::pairing << endl;
+    case 'l':
+      //global::pairing = Pairing(string(optarg));
+      //cerr << "set pairing: " << global::pairing << endl;
+      pairing_file = optarg;
       break;
     case 'N':
       num_threads = atoi(optarg);
@@ -684,6 +686,12 @@ main(int argc, char* argv[])
     case 'v':
       global::full_splitmap_log = true;
       break;
+    case 'g':
+      global::default_rg = optarg;
+      break;
+    default:
+      cerr << "unrecognized option: " << c << endl;
+      exit(1);
     }
   }
 
@@ -694,6 +702,16 @@ main(int argc, char* argv[])
   }
 
   cerr << "number of threads: " << num_threads << endl;
+
+  if (pairing_file.size() > 0) {
+    igzstream pairingIn(pairing_file.c_str());
+    if (pairingIn.bad()) { cerr << "error opening pairing file: " << pairing_file << endl; exit(1); }
+    load_pairing(pairingIn, global::rg_dict, global::num_rg_dict);
+    pairingIn.close();
+  } else {
+    cerr << "missing pairing file" << endl;
+    exit(1);
+  }
 
   igzstream refFaIn(argv[optind]);
   if (refFaIn.bad()) {

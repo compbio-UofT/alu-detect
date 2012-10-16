@@ -204,7 +204,7 @@ CloneGen::get_next()
   }
 
   // compute fragment position and possible breakpoints
-  result->pairing = &global::pairing;
+  //result->pairing = &global::pairing;
   result->computePosition(true, true);
 
   return result;

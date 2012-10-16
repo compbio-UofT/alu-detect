@@ -1,0 +1,134 @@
+Types of Input
+--------------
+
+1. Reads in fastq format.
+2. Mappings in bam format, sorted by position.
+3. Mappings in sam/bam format, sorted by read name.
+
+
+Processing Steps
+----------------
+
+A. Obtain mappings sorted by read name.
+B. Detect pairing information, possibly different by read group.
+C. Extract discordant mappings, using pairing information.
+D. Map reads to reference and to alus, all in unpaired mode.
+E. Aggregate results, using pairing information.
+
+
+Implementation Details
+----------------------
+
+1. Reads in fastq format.
+
+Input is given in separate fastq files with, e.g.:
+$ ORIG_READS_1=file.1.fq ORIG_READS_2=file.2.fq.gz alu-detect
+
+The program detects pairing info directly from the reads by first
+mapping them as unpaired, using fq-detect-pairing. It then maps the
+reads using bowtie (A). After mapping, the workflow proceeds as if the
+input was in sam/bam format sorted by read name (3 below).
+
+Current limitations:
+- Only paired reads.
+- Only 2 files, so it's not possible to specify multiple read groups.
+
+To bypass these limitation, map the reads in other ways "by hand",
+prior to starting alu-detect.
+
+
+2. Mappings in bam format, sorted by position.
+
+Input is given with, e.g.:
+$ ORIG_MAPPINGS_SORT_BAM=file.bam alu-detect
+
+The program first passes the mappings through sam-rsort and
+detect-pairing to achieve (A).
+
+sam-rsort sorts mappings by read name as follows:
+
+- unpaired mappings pass through
+
+- paired mappings are kept and printed with their mate
+
+
+detect-pairing works as follows:
+
+- if RG headers are present and RG sam fields are absent, crash.
+
+- each read (pair) is assigned a RG; if sam field RG is absent, this
+  is a default RG "00".
+
+- for each RG, process up to stop_count *mapped* unpaired or paired
+  mappings.
+
+- if more than 10% are paired, detect pairing information. drop 0.1%
+  outliers then compute fragment min/max/mean/stddev.
+
+- stop when done with all RGs seen. if there are more RG header lines
+  than RGs seen at that point:
+
+  - crash (default). The idea is that detect-pairing doesn't know how
+    far to read into the mappings file. If the mappings are really
+    sorted by position, all read groups should have been seen when
+    using a large enough stop_count.
+
+  - continue until all RGs from header lines are seen (with option
+    "--trust-rg-headers")
+
+- all unpaired RGs are converted to paired with large fragment range
+  (min=0, max=1000)
+
+
+To achieve B, the program passes sorted bam input first through
+add-dummy-pairs, then sam-rsort, then pipes the result to part 3C
+(sam/bam sorted by read name).
+
+add-dummy-pairs, works as follows:
+
+- paired mappings pass through
+
+- unpaired mappings are printed along with a dummy pair, fixing flags
+
+
+Issues:
+- Multiple bam files must be cat together. Careful about headers.
+
+
+3. Mappings in sam/bam format, sorted by read name.
+
+The input is given as, e.g.:
+$ ORIG_MAPPINGS_SAM=file.sam alu-detect
+
+The program performs steps B-E:
+
+- (B, in stage 2) detect pairing information, using detect-pairing.
+
+- (C, in stage 3) extract discordant mappings. For this, alu-detect
+  uses: add-extra-sam-flags and filter-mappings. Both take pairing
+  information into account.
+
+  add-extra-sam-flags adds the following flags to SAM field #2:
+
+  - 0x1000: mqv (of this read only) >= minimum mqv (default: 5)
+
+  - 0x2000: mapping left end has tail of >= min_tail_insert_size bp
+    (default: 15bp) in cigar ops H/S/I.
+
+  - 0x4000: mapping right end has tail of >= min_tail_insert_size bp
+    (default: 15bp) in cigar ops H/S/I.
+
+  - 0x8000: paired mapping is concordant (both reads mapped, correct
+    strand position, within min/max fragment size)
+
+  - 0x10000: read length < min_read_len (default: 20bp)
+
+  filter-mappings is used to extract discordant mappings as follows:
+
+  - for unpaired reads, extract mappings: that are unmapped (0x4) or
+    have large left/right tail (0x2000 or 0x4000)
+
+  - for paired reads, extract paired mappings where: the pair is not
+    mapped concordantly (0/0x8000), or either read has large
+    left/right tail (0x2000 or 0x4000).
+

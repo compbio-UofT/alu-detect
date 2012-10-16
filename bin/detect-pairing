@@ -21,7 +21,20 @@ have_as_field = -1
 max_as_val = 0
 
 rg_dict = {}
+header_rg_dict = {}
 target_rg = ''
+
+def save_header_rg(line):
+    a = line.split('\t')
+    if (a[0][1:] != 'RG'):
+        return
+    i = 1
+    while (i < len(a) and a[i][0:2] != 'ID'):
+        i += 1
+    if (i >= len(a)):
+        crash('header line did not contain ID: ' + line)
+    header_rg_dict[a[i][3:]] = True
+
 
 def good_mapping(d):
     global have_nm_field, have_as_field, max_as_val
@@ -90,7 +103,8 @@ parser.add_argument('-c', '--stop-count', action='store', type=int,
                     default=default_stop_count, dest='stop_count')
 parser.add_argument('-f', '--ignore-flags', action='store_true', default=False, dest='ignore_flags')
 parser.add_argument('--cid-parser', action='store', dest='cid_parser')
-parser.add_argument('input', action='store', nargs='?')
+parser.add_argument('--trust-rg-headers', action='store_true', default=False, dest='trust_rg_headers')
+parser.add_argument('input', action='store', default='-', nargs='?')
 args = parser.parse_args()
 set_log_level(len(args.verbose))
 
@@ -109,13 +123,10 @@ else:
     cid_parser = sam.default_cid_parser
 mapping_parser = functools.partial(sam.mapping_parser, cid_parser=cid_parser)
 
-if args.input:
-    in_fd = gzopen(args.input)
-else:
-    in_fd = gzopen('-')
-
+in_fd = gzopen(args.input)
 
 for ms in sam.get_mapping_set_gen(in_fd, mapping_parser=mapping_parser,
+                                  header_line_hook=save_header_rg,
                                   ignore_duplicate=False, ignore_failed_qc=False):
     # stop condition
     if target_rg != '':
@@ -133,7 +144,20 @@ for ms in sam.get_mapping_set_gen(in_fd, mapping_parser=mapping_parser,
                 note('new target:' + target_rg, 1)
                 break
         if done:
-            break
+            if (len(header_rg_dict) > 0):
+                # check we found all RGs from headers
+                if (len(header_rg_dict) == len(rg_dict)):
+                    break
+                elif not args.trust_rg_headers:
+                    missing = []
+                    for x in header_rg_dict.keys():
+                        if x not in rg_dict:
+                            missing += [x]
+                    crash('did not find mappings for RGs: ' + str(missing))
+                # else, continue with current iteration
+            else:
+                # no RG headers, done.
+                break
 
     if len(ms) > 2:
         crash('found mapping set with more than 2 mappings: ' + str(ms))
@@ -146,7 +170,11 @@ for ms in sam.get_mapping_set_gen(in_fd, mapping_parser=mapping_parser,
 
     if 'RG' in ms[0]:
         rg_string = ms[0]['RG']
+        if (len(header_rg_dict) > 0 and rg_string not in header_rg_dict):
+            crash(rg_string + ': RG missing from sam headers: ' + ms[0])
     else:
+        if len(header_rg_dict) > 0:
+            crash('RG sam headers present, but RG sam field missing: ' + ms[0])
         rg_string = default_rg
 
     if rg_string not in rg_dict:

@@ -24,9 +24,15 @@ namespace global {
 
   EXTERN_INIT(int const, min_read_len, 20);
   EXTERN_INIT(int, min_tail_len, 8);
-  EXTERN(Pairing, pairing);
   EXTERN(SQDict, refDict);
   EXTERN(SQDict, repDict);
+
+  //EXTERN(Pairing, pairing);
+  EXTERN(RGDict, rg_dict);
+  EXTERN(RGDict, num_rg_dict);
+  EXTERN_INIT(int, num_rg_len, 0);
+  EXTERN(string, default_rg);
+
   EXTERN(CONCAT(vector<pair<Contig*,int> >), repeatListAll);
   EXTERN(CONCAT(vector<pair<Contig*,int> >), repeatListSt[2]);
   EXTERN_INIT(bool, full_splitmap_log, false);

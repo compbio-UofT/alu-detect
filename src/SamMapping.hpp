@@ -51,6 +51,7 @@ public:
 };
 
 ostream& operator <<(ostream&, const SamMapping&);
+Pairing* get_pairing_from_SamMapping(const SamMapping&);
 
 
 #endif
