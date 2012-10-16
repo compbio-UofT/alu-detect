@@ -28,20 +28,21 @@ def print_missing_read(d):
         print '\n'.join(['@' + d['name'], '*', '+', '*'])
 
 
-parser = argparse.ArgumentParser(description=sys.argv[0])
+parser = argparse.ArgumentParser(description='Given SAM mappings, produce fastq entries.')
 parser.add_argument('-v', '--verbose', action='append_const', const=1, default=[], dest='verbose')
-parser.add_argument('-p', '--pairing', action='store', default='paired=0', dest='pairing')
+parser.add_argument('-l', '--pairing-file', action='store', dest='pairing_file')
 parser.add_argument('-i', '--incomplete', action='store', dest='incomplete')
 parser.add_argument('--cid-parser', action='store', dest='cid_parser')
-parser.add_argument('input', action='store', nargs='?')
+parser.add_argument('input', action='store', default='-', nargs='?')
 args = parser.parse_args()
 set_log_level(len(args.verbose))
-sam.set_pairing(args.pairing)
 
-if args.input:
-    in_fd = gzopen(args.input)
+if args.pairing_file:
+    sam.set_pairing('paired=1')
 else:
-    in_fd = gzopen('-')
+    sam.set_pairing('paired=0')
+
+in_fd = gzopen(args.input)
 
 if args.cid_parser:
     _temp = __import__(args.cid_parser, globals(), locals(), ['cid_parser'])

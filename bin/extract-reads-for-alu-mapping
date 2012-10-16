@@ -12,4 +12,4 @@ else
     exec 3< <(sam-body "$@")
 fi
 
-<&3 sam-to-fq-trimmed -p $PAIRING
+<&3 sam-to-fq-trimmed

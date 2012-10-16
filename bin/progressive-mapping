@@ -79,7 +79,7 @@ while [ 1 ] ; do
 	      -f 0x1000:"$TDIR"/pipe-4 \
 	      -f 0/0x1004:"$TDIR"/pipe-5 \
 	      -f 0x4:\&1 \
-	    | sam-to-fq -p paired=0 \
+	    | sam-to-fq \
 	    | fq-trim-reads-relative -v trim_len_${CRT_TRIM_SIDE}=$TRIM_STEP >"$TDIR"/pipe-3 &
 	$ZIP <"$TDIR"/pipe-4 >>"$TDIR"/final-${CRT_TRIM_SIDE}_${PREV_STEP}.sam.gz &
 	$ZIP <"$TDIR"/pipe-5 >>"$TDIR"/bad-${CRT_TRIM_SIDE}_${PREV_STEP}.sam.gz &
