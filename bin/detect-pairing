@@ -347,20 +347,30 @@ while 2 * len(rg_dict) > 10**fill:
 
 idx = 0
 for k in sorted(rg_dict):
-    if rg_dict[k]['detected_paired']:
-        s = str(idx)
-        s = ('0' * (fill - len(s))) + s
-        print ('%s\t%s\tpaired=1,st_diff=%d,min=%d,max=%d,mean=%d,stddev=%d,r1_len=%d,r2_len=%d' %
-               (k, s,
-                rg_dict[k]['detected_st_diff'],
-                rg_dict[k]['detected_delta_min'], rg_dict[k]['detected_delta_max'],
-                rg_dict[k]['detected_delta_mean'], rg_dict[k]['detected_delta_stddev'],
-                rg_dict[k]['max_r1_len'], rg_dict[k]['max_r2_len']))
-        idx += 1
-    elif rg_dict[k]['detected_unpaired']:
-        s = str(idx)
-        s = ('0' * (fill - len(s))) + s
-        print ('%s\t%s\tpaired=0,r1_len=%d,r2_len=%d' %
-               (k, s,
-                rg_dict[k]['min_r_len'], rg_dict[k]['max_r_len']))
-        idx += 1
+    if not rg_dict[k]['detected_paired']:
+        # use generous settings
+        rg_dict[k]['detected_st_diff'] = 1
+        rg_dict[k]['detected_delta_min'] = 0
+        rg_dict[k]['detected_delta_max'] = 1000
+        rg_dict[k]['detected_delta_mean'] = 300
+        rg_dict[k]['detected_delta_stddev'] = 50
+        rg_dict[k]['max_r1_len'] = rg_dict[k]['max_r_len']
+        rg_dict[k]['max_r2_len'] = rg_dict[k]['max_r_len']
+
+    #if rg_dict[k]['detected_paired']:
+    s = str(idx)
+    s = ('0' * (fill - len(s))) + s
+    print ('%s\t%s\tpaired=1,st_diff=%d,min=%d,max=%d,mean=%d,stddev=%d,r1_len=%d,r2_len=%d' %
+           (k, s,
+            rg_dict[k]['detected_st_diff'],
+            rg_dict[k]['detected_delta_min'], rg_dict[k]['detected_delta_max'],
+            rg_dict[k]['detected_delta_mean'], rg_dict[k]['detected_delta_stddev'],
+            rg_dict[k]['max_r1_len'], rg_dict[k]['max_r2_len']))
+    idx += 1
+    # elif rg_dict[k]['detected_unpaired']:
+    #     s = str(idx)
+    #     s = ('0' * (fill - len(s))) + s
+    #     print ('%s\t%s\tpaired=0,r1_len=%d,r2_len=%d' %
+    #            (k, s,
+    #             rg_dict[k]['min_r_len'], rg_dict[k]['max_r_len']))
+    #     idx += 1
