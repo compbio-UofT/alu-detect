@@ -154,7 +154,7 @@ while [[ -z "$ALUS_BED" || ! -r "$ALUS_BED" ]]; do
 	echo "alus.$REF_NAME.bed.gz not found" 1>&2
 	if [[ -z "$CHROM_FA_OUT" ]]; then
 		echo "Enter paths to RepeatMasker output files"
-		CHROM_FA_OUT=$(readlink -f "$(read -e CHROM_FA_OUT; eval echo "$CHROM_FA_OUT")")
+		CHROM_FA_OUT=$(read -e CHROM_FA_OUT ; eval echo "$CHROM_FA_OUT" | xargs -n 1 readlink -f)
 	fi
 	echo "Generating reference list of alus in bed format"
 	ALUS_BED=$DIR/data/alus.$REF_NAME.bed.gz
