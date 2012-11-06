@@ -55,8 +55,8 @@ make_temp_dir() {
 
 print_with_delim() {
     suspend_xtrace
-    DELIM="\t"
-    NEWLINE="\n"
+    DELIM="${DELIM-"\\t"}"
+    NEWLINE="${NEWLINE-"\\n"}"
     OPTIND=1
     while getopts "d:n" OPT "$@" ; do
 	case $OPT in
@@ -117,6 +117,7 @@ run_cmds() {
     echo "CMDS_STRING:$CMDS_STRING" >&2
     CMDS_RAW_OUTPUT=$( { eval $CMDS_STRING ; } 3>&1 )
     echo "CMDS_RAW_OUTPUT:$CMDS_RAW_OUTPUT" >&2
+    CMD_OUTPUT=()
     for i in $(seq 1 $CRT_CMD) ; do
         CMD_OUTPUT[$i]=$(echo "$CMDS_RAW_OUTPUT" | grep "^$i " | cut -d " " -f 2-)
     done
