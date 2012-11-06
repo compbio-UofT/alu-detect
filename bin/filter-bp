@@ -1,3 +1,4 @@
 #!/bin/bash
+set +x
 set -u
-awk -v min_bp=${1-1} '{if (int($10>0) + int($11>0) >= min_bp) print}'
+exec awk -v min_bp="$1" 'int($10>0)+int($11>0)>=min_bp'

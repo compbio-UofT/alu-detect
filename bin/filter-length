@@ -1,3 +1,5 @@
 #!/bin/bash
+set +x
 set -u
-awk -v min_len=$1 '{if (($6 == "+" && $8 - $7 >= min_len)||($6 == "-" && $7 - $8 >= min_len)) print}'
+exec awk -v min_len="$1" '($6=="+" && $8-$7+1>=min_len) || ($6=="-" && $7-$8+1>=min_len)'
+
