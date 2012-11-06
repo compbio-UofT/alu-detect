@@ -92,7 +92,7 @@ void
 process_mapping_set(const string& s, vector<SamMapping>& v,
 		    ostream* out_str, ostream* err_str)
 {
-  if ((!global::rg_dict.size() == 0 and v.size() != 1)
+  if ((global::rg_dict.size() == 0 and v.size() != 1)
       or (global::rg_dict.size() > 0 and v.size() != 2)) {
     cerr << "incorrect number of mappings for clone [" << s << "]" << endl;
     exit(1);
