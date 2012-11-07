@@ -138,6 +138,7 @@ ask_confirmation() {
 # Create a file from given prerequisites
 #
 gen_file() {
+    suspend_xtrace
     GEN_FILE_SUFFIX=${GEN_FILE_SUFFIX:-.pgen}
 
     # check prerequisites
@@ -150,7 +151,7 @@ gen_file() {
     # recursively regenerate prerequisites, if necessary
     for f in "${INPUT_FILES[@]:+${INPUT_FILES[@]}}" ; do
 	if [ -r "${f}${GEN_FILE_SUFFIX}" ] ; then
-	    ./"${f}${GEN_FILE_SUFFIX}" >/dev/null
+	    PRINT_OUTPUT= ./"${f}${GEN_FILE_SUFFIX}"
 	fi
     done
 
@@ -169,26 +170,39 @@ gen_file() {
 	    fi
 	done
     fi
-	if [ $NEED_TO_RUN = 0 ] ; then
-		if [ "$OUTPUT_FILE$GEN_FILE_SUFFIX" -nt "$OUTPUT_FILE" ] ; then
-			make_note "$OUTPUT_FILE$GEN_FILE_SUFFIX newer than $OUTPUT_FILE"
-			NEED_TO_RUN=1
-		fi
+    if [ $NEED_TO_RUN = 0 ] ; then
+	if [ "$OUTPUT_FILE$GEN_FILE_SUFFIX" -nt "$OUTPUT_FILE" ] ; then
+	    make_note "$OUTPUT_FILE$GEN_FILE_SUFFIX newer than $OUTPUT_FILE"
+	    NEED_TO_RUN=1
 	fi
+    fi
 
     if [ $NEED_TO_RUN = 1 ] ; then
 	make_note "need to run"
 	typeset -f COMMAND >&2
 	if ask_confirmation ; then
 	    make_note "starting"
-	    ( set -o pipefail ; COMMAND | tee-p "$OUTPUT_FILE" ; ) \
+	    if [ "$PRINT_OUTPUT" ]; then
+		exec 3>&1
+	    else
+		exec 3>/dev/null
+	    fi
+
+	    ( set -o pipefail ; COMMAND | tee-p "$OUTPUT_FILE" >&3 ; ) \
 		|| { rm "$OUTPUT_FILE" ; crash "failed" ; }
+
+	    exec 3>&-
 	    make_note "done"
 	else
 	    make_note "skipping"
-	    cat "$OUTPUT_FILE"
+	    if [ "$PRINT_OUTPUT" ]; then
+		cat "$OUTPUT_FILE"
+	    fi
 	fi
     else
-	cat "$OUTPUT_FILE"
+	if [ "$PRINT_OUTPUT" ]; then
+	    cat "$OUTPUT_FILE"
+	fi
     fi
+    restore_xtrace
 }

@@ -3,6 +3,17 @@
 set -o nounset
 set -x
 
+PRINT_OUTPUT="${PRINT_OUTPUT-1}"
+OPTIND=1
+while getopts "g:" OPT "$@"; do
+    case $OPT in
+	g)
+	    PRINT_OUTPUT=
+	    ;;
+    esac
+done
+shift $(($OPTIND - 1))
+
 if [ $# -ne 1 ] ; then
   echo "To use gen-file, script must start with:" >&2
   echo "#!/bin/env gen-file" >&2
