@@ -31,6 +31,5 @@ done
 #echo "OPTIND=$OPTIND" >&2
 shift $(($OPTIND - 1))
 
-pushd $MY_DIR
+cd $MY_DIR 
 gen_file
-popd
