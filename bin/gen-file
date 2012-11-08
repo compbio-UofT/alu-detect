@@ -1,6 +1,7 @@
 #!/bin/bash
 . $(which my-lib.sh)
 set -u
+#set -x
 
 if [ $# -lt 1 ] ; then
   echo "To use gen-file, script must start with:" >&2
@@ -30,4 +31,6 @@ done
 #echo "OPTIND=$OPTIND" >&2
 shift $(($OPTIND - 1))
 
+pushd $MY_DIR
 gen_file
+popd
