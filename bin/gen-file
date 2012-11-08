@@ -1,22 +1,10 @@
 #!/bin/bash
 . $(which my-lib.sh)
-set -o nounset
-set -x
+set -u
 
-PRINT_OUTPUT="${PRINT_OUTPUT-1}"
-OPTIND=1
-while getopts "g:" OPT "$@"; do
-    case $OPT in
-	g)
-	    PRINT_OUTPUT=
-	    ;;
-    esac
-done
-shift $(($OPTIND - 1))
-
-if [ $# -ne 1 ] ; then
+if [ $# -lt 1 ] ; then
   echo "To use gen-file, script must start with:" >&2
-  echo "#!/bin/env gen-file" >&2
+  echo "#!/usr/bin/env gen-file" >&2
   echo "##file_dependency_1 file_dependency_2" >&2
   exit 1
 fi
@@ -27,4 +15,19 @@ OUTPUT_FILE="${MY_NAME%.*}"
 eval "COMMAND () {
 $(cat "$1")
 }"
+
+shift
+PRINT_OUTPUT="${PRINT_OUTPUT-1}"
+OPTIND=1
+while getopts "g" OPT "$@"; do
+#    echo "got option: $OPT" >&2
+    case $OPT in
+	g)
+	    PRINT_OUTPUT=
+	    ;;
+    esac
+done
+#echo "OPTIND=$OPTIND" >&2
+shift $(($OPTIND - 1))
+
 gen_file

@@ -10,10 +10,10 @@ endif
 
 ifndef CXXFLAGS
   ifeq ($(BUILD_TYPE), production)
-    CXXFLAGS=-O3 -DNDEBUG
+    CXXFLAGS=-g -O2 -DNDEBUG
   else
     ifeq ($(BUILD_TYPE), testing)
-      CXXFLAGS=-g -O3
+      CXXFLAGS=-g -O2
     else
       CXXFLAGS=-g
     endif
@@ -40,33 +40,32 @@ endif
 
 LN=ln
 
-all: include-boost get-regions inalign get-coverage zc add-extra-sam-flags filter-mappings \
-	move-bins
+all: include-boost ../bin/get-regions ../bin/inalign ../bin/get-coverage ../bin/zc ../bin/add-extra-sam-flags ../bin/filter-mappings ../bin/print_tab
 
 include-boost:
 	if [[ ! -e boost && -d "$(BOOST)" ]]; then ln -s "$(BOOST)" boost; fi
 
-get-regions: get-regions.o Read.o Clone.o Mapping.o DNASequence.o \
+../bin/get-regions: get-regions.o Read.o Clone.o Mapping.o DNASequence.o \
 	SamMapping.o SamMappingSetGen.o CloneGen.o Pairing.o Fasta.o common.o globals.o \
 	inalign_core.o util.o ScoreMatrix.o deep_size.o Range.o Cigar.o gzstream/gzstream.o
 	$(LD) $(CXXFLAGS) -o $@ $+ $(LDFLAGS)
 
-inalign: inalign.o inalign_core.o \
+../bin/inalign: inalign.o inalign_core.o \
 	Clone.o Read.o Mapping.o Pairing.o DNASequence.o \
 	Fasta.o common.o globals.o ScoreMatrix.o deep_size.o gzstream/gzstream.o
 	$(LD) $(CXXFLAGS) -o $@ $+ $(LDFLAGS)
 
-add-extra-sam-flags: add-extra-sam-flags.o globals.o util.o deep_size.o Pairing.o \
+../bin/add-extra-sam-flags: add-extra-sam-flags.o globals.o util.o deep_size.o Pairing.o \
 	DNASequence.o Read.o Mapping.o CloneGen.o SamMapping.o SamMappingSetGen.o common.o \
 	gzstream/gzstream.o Cigar.o Clone.o
 	$(LD) $(CXXFLAGS) -o $@ $+ $(LDFLAGS)
 
-filter-mappings: filter-mappings.o globals.o util.o deep_size.o Pairing.o \
+../bin/filter-mappings: filter-mappings.o globals.o util.o deep_size.o Pairing.o \
 	DNASequence.o Read.o CloneGen.o SamMapping.o SamMappingSetGen.o common.o \
 	gzstream/gzstream.o Clone.o Mapping.o Cigar.o
 	$(LD) $(CXXFLAGS) -o $@ $+ $(LDFLAGS)
 
-get-coverage: get-coverage.o DNASequence.o SamMapping.o Cigar.o globals.o Range.o \
+../bin/get-coverage: get-coverage.o DNASequence.o SamMapping.o Cigar.o globals.o Range.o \
 	gzstream/gzstream.o
 	$(LD) $(CXXFLAGS) -o $@ $+ $(LDFLAGS)
 
@@ -153,11 +152,14 @@ Cigar.o: Cigar.?pp Interval.hpp
 get-coverage.o: get-coverage.?pp Range.hpp
 	$(CXX) $(CXXFLAGS) -c -o $@ $<
 
-zc: zc.c
+../bin/zc: zc.c
+	$(LD) $(CXXFLAGS) -o $@ $+ $(LDFLAGS)
+
+../bin/print_tab: print_tab.cpp
 	$(LD) $(CXXFLAGS) -o $@ $+ $(LDFLAGS)
 
 move-bins:
-	mv get-regions inalign get-coverage zc add-extra-sam-flags filter-mappings ../bin 
+	mv get-regions inalign get-coverage zc add-extra-sam-flags filter-mappings print_tab ../bin 
 
 clean:
-	rm -f *.o gzstream/gzstream.o get-regions inalign get-coverage zc boost ../bin/get-regions ../bin/inalign ../bin/get-coverage ../bin/zc ../bin/add-extra-sam-flags ../bin/filter-mappings
+	rm -f *.o gzstream/gzstream.o boost ../bin/get-regions ../bin/inalign ../bin/get-coverage ../bin/zc ../bin/add-extra-sam-flags ../bin/filter-mappings

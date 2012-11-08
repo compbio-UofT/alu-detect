@@ -130,7 +130,7 @@ run_cmds() {
 ask_confirmation() {
     if [ "${CONF:-}" = a ] ; then return ; fi
     read -p "continue? ([y]es/[a]lways/[s]kip/[N]o) " CONF
-    if [ "$CONF" != y -a "$CONF" != a -a "$CONF" != s ] ; then exit ; fi
+    if [ "$CONF" != y -a "$CONF" != a -a "$CONF" != s ] ; then exit 1 ; fi
     if [ "$CONF" = s ] ; then return 1 ; fi
 }
 
@@ -151,7 +151,7 @@ gen_file() {
     # recursively regenerate prerequisites, if necessary
     for f in "${INPUT_FILES[@]:+${INPUT_FILES[@]}}" ; do
 	if [ -r "${f}${GEN_FILE_SUFFIX}" ] ; then
-	    PRINT_OUTPUT= ./"${f}${GEN_FILE_SUFFIX}"
+	    PRINT_OUTPUT= ./"${f}${GEN_FILE_SUFFIX}" || crash "./${f}${GEN_FILE_SUFFIX}: failed"
 	fi
     done
 
