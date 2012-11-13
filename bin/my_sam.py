@@ -2,6 +2,7 @@
 
 import operator
 import my
+import sys
 
 IS_PAIRED = 0x1
 ALL_PROPERLY_ALIGNED = 0x2
@@ -404,6 +405,7 @@ def get_mapping_set_gen(in_fd, mapping_parser=mapping_parser, header_line_hook=N
 #        if ((ignore_duplicate and is_duplicate(d))
 #            or (ignore_failed_qc and failed_qc(d))
 #            or (ignore_secondary and secondary_alignment(d))):
+#        sys.stderr.write(str(d['clone_id'])+"\n")
         if ignore_secondary and secondary_alignment(d):
             my.note('ignoring mapping: ' + str(d), 3)
             continue

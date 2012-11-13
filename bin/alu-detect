@@ -233,10 +233,13 @@ stage_command () {
 #	      if [[ "$PAIRING" =~ "paired=1" ]] ; then
 		  filter-mappings -N 4 -l $PAIRING_FILE 2>/dev/null \
 		      -f 0/0x8000,0:\&1 \
-		      -f 0x2000,0:\&1 \
+			  -f 0x2000,0:\&1 \
 		      -f 0x4000,0:\&1 \
 		      -f 0,0x2000:\&1 \
 		      -f 0,0x4000:\&1
+#		      -f 0x2000,0x10000:\&1 \
+#              -f 0x4000,0x10000:\&1 \
+#			  -f 0/0x6001,0x10000:\&3 \
 #	      else
 #		  filter-mappings -N 4 -p $PAIRING 2>/dev/null \
 #		      -f 0x4:\&1 \
@@ -253,12 +256,12 @@ stage_stats_command() {
 run_stage
 
 # Iterate over all read groups
-cat $PAIRING |
-while read F; do
+#cat $PAIRING |
+#while read F; do
 
 #RG=$(echo "$F" | cut -f 1)	# uncomment this if the actual read group name is required
-RGID=$(echo "$F" | cut -f 2)
-PAIRING=$(echo "$F" | cut -f 3)
+#RGID=$(echo "$F" | cut -f 2)
+#PAIRING=$(echo "$F" | cut -f 3)
 
 #
 # Stage 3: Trim & rename reads
@@ -269,7 +272,7 @@ PAIRING=$(echo "$F" | cut -f 3)
 STAGE_NUM=3
 STAGE_NAME="read renaming"
 READS_TO_REMAP=$RGID.reads.to_remap
-MAP_DISCORDANT=$RGID.map.discordant.sam.gz
+MAP_DISCORDANT=$RGID.map.discordant
 INPUT_FILES="$MAP_DISCORDANT.sam.gz"
 OUTPUT_FILES="$READS_TO_REMAP.fq.gz"
 STATS_FILE="$READS_TO_REMAP.stats"
@@ -389,7 +392,7 @@ stage_stats_command() {
 }
 run_stage
 
-done
+#done
 
 #
 # Stage 8: Get regions
