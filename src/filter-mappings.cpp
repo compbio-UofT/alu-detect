@@ -261,6 +261,7 @@ main(int argc, char* argv[])
 {
   string progName(argv[0]);
   string pairing_file;
+  vector<string> filter_list;
   cnp = &default_cnp;
 
   char c;
@@ -277,7 +278,8 @@ main(int argc, char* argv[])
       fnp = fullNameParser;
       break;
     case 'f':
-      add_filter(optarg);
+      filter_list.push_back(string(optarg));
+      //add_filter(optarg);
       break;
     case 'g':
       global::default_rg = optarg;
@@ -300,6 +302,10 @@ main(int argc, char* argv[])
     if (pairingIn.bad()) { cerr << "error opening pairing file: " << pairing_file << endl; exit(1); }
     load_pairing(pairingIn, global::rg_dict, global::num_rg_dict);
     pairingIn.close();
+  }
+
+  for (size_t i = 0; i < filter_list.size(); ++i) {
+    add_filter(filter_list[i]);
   }
 
   igzstream mapIn(optind < argc? argv[optind] : "-");
