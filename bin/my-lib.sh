@@ -206,3 +206,32 @@ gen_file() {
     fi
     restore_xtrace
 }
+
+#
+# Get relative path to file 1 from dir 2
+#
+rel_path() {
+    [ $# -ne 2 ] && { make_note "use: rel_path <dest_file> <src_dir>"; return 1; }
+    dest="$(cd -P $(dirname "$1") ; pwd)"
+    src="$(cd -P "$2" ; pwd)"
+    dest_array=($(echo "$dest" | sed 's/\// /g'))
+    src_array=($(echo "$src" | sed 's/\// /g'))
+    i=0
+    while true; do
+	[ $i -ge ${#dest_array[@]} ] && break
+	[ $i -ge ${#src_array[@]} ] && break
+	[ ! ${dest_array[i]} = ${src_array[i]} ] && break
+	i=$(($i + 1))
+    done
+    j=$i
+    res=""
+    while [ $j -lt ${#src_array[@]} ]; do
+	res="${res}../"
+	j=$(($j + 1))
+    done
+    while [ $i -lt ${#dest_array[@]} ]; do
+	res="${res}${dest_array[$i]}/"
+	i=$(($i + 1))
+    done
+    echo "${res}$(basename "$1")"
+}
