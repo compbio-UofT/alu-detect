@@ -272,7 +272,7 @@ run_stage
 STAGE_NUM=3
 STAGE_NAME="read renaming"
 READS_TO_REMAP=$RGID.reads.to_remap
-MAP_DISCORDANT=$RGID.map.discordant
+MAP_DISCORDANT=$RGID.reads.discordant
 INPUT_FILES="$MAP_DISCORDANT.sam.gz"
 OUTPUT_FILES="$READS_TO_REMAP.fq.gz"
 STATS_FILE="$READS_TO_REMAP.stats"
