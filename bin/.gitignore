@@ -8,3 +8,4 @@ get-coverage
 get-bed-coverage
 tsd-search
 print_tab
+tee-p

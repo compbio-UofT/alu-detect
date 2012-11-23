@@ -1,5 +1,0 @@
-#!/bin/bash
-trap '' SIGPIPE
-exec 4> >(grep -v "Broken pipe" >&2)
-tee "$@" 2>&4
-exec 4>&-

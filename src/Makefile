@@ -40,7 +40,7 @@ endif
 
 LN=ln
 
-all: include-boost ../bin/get-regions ../bin/inalign ../bin/get-coverage ../bin/zc ../bin/add-extra-sam-flags ../bin/filter-mappings ../bin/print_tab
+all: include-boost ../bin/get-regions ../bin/inalign ../bin/get-coverage ../bin/zc ../bin/add-extra-sam-flags ../bin/filter-mappings ../bin/print_tab ../bin/tee-p
 
 include-boost:
 	if [[ ! -e boost && -d "$(BOOST)" ]]; then ln -s "$(BOOST)" boost; fi
@@ -158,8 +158,11 @@ get-coverage.o: get-coverage.?pp Range.hpp
 ../bin/print_tab: print_tab.cpp
 	$(LD) $(CXXFLAGS) -o $@ $+ $(LDFLAGS)
 
+../bin/tee-p: tee-p.cpp
+	$(LD) $(CXXFLAGS) -o $@ $+ $(LDFLAGS)
+
 move-bins:
 	mv get-regions inalign get-coverage zc add-extra-sam-flags filter-mappings print_tab ../bin 
 
 clean:
-	rm -f *.o gzstream/gzstream.o boost ../bin/get-regions ../bin/inalign ../bin/get-coverage ../bin/zc ../bin/add-extra-sam-flags ../bin/filter-mappings
+	rm -f *.o gzstream/gzstream.o boost ../bin/get-regions ../bin/inalign ../bin/get-coverage ../bin/zc ../bin/add-extra-sam-flags ../bin/filter-mappings ../bin/tee-p
