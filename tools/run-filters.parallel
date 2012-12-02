@@ -1,0 +1,6 @@
+#!/bin/bash
+. $(which my-lib.sh)
+
+find_my_name_and_dir "${BASH_SOURCE[0]}"
+
+exec make -f "$MY_DIR/run-filters.make" -j "$1" -l "$1"

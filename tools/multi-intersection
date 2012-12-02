@@ -1,0 +1,57 @@
+#!/bin/bash
+. $(which my-lib.sh)
+set -x
+
+REF_BED=${REF_BED:-"../results-others/calls-dbrip+stewart.bed"}
+
+label="$1"
+shift
+
+f=()
+while [ $# -ge 1 ] ; do
+  f+=("$1")
+  shift
+done
+
+CMD_POS="bedtools multiinter -cluster -i"
+CMD_NEG="bedtools multiinter -cluster -i"
+
+rm $label.stats
+i=0
+while [ $i -lt "${#f[@]}" ] ; do
+  print_with_delim \
+    $(($i+1)) \
+    ${f[i]} \
+    $(wc -l <${f[i]}) \
+    $(echo "scale=4; $(intersectBed -u -s -a ${f[i]} -b $REF_BED | wc -l)/$(wc -l <${f[i]})" | bc) \
+    >>$label.stats
+  CMD_POS="$CMD_POS <(<${f[i]} awk '\$6==\"+\"' | sort -s -k 1,1 -k 2,2n)"
+  CMD_NEG="$CMD_NEG <(<${f[i]} awk '\$6==\"-\"' | sort -s -k 1,1 -k 2,2n)"
+  i=$(($i + 1))
+done
+
+CMD_POS="$CMD_POS | awk -v OFS=\"\t\" '{\$3=\$3 \"\t.\t.\t+\"; print}'"
+CMD_NEG="$CMD_NEG | awk -v OFS=\"\t\" '{\$3=\$3 \"\t.\t.\t-\"; print}'"
+
+eval $CMD_POS >$label.bed
+eval $CMD_NEG >>$label.bed
+
+cut -f 8 $label.bed | sort -n | uniq -c >>$label.stats
+
+i=0
+while [ $i -lt "${#f[@]}" ] ; do
+  awk "\$8==\"$(($i + 1))\"" $label.bed \
+    | cut -f -6 \
+    | intersectBed -c -s -a - -b <(extend-bed 1 $label.bed) \
+    | awk '$NF==1' \
+    | cut -f -6 >"$label.only-$(basename ${f[i]})"
+  i=$(($i + 1))
+done
+
+i=0
+while [ $i -lt "${#f[@]}" ] ; do
+  awk "\$$((9 + $i))==\"1\"" $label.bed \
+    | cut -f 1,2,3,6 \
+    | tr '\t' '_' >"$label.$(basename ${f[i]})"
+  i=$(($i + 1))
+done

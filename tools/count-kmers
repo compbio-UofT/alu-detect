@@ -1,0 +1,76 @@
+#!/usr/bin/python
+
+import sys
+import argparse
+import itertools
+from my import *
+import my_sam as sam
+
+
+parser = argparse.ArgumentParser(description=sys.argv[0])
+parser.add_argument('-v', '--verbose', action='append_const', const=1, default=[], dest='verbose')
+parser.add_argument('ref_fasta', action='store')
+args = parser.parse_args()
+set_log_level(len(args.verbose))
+
+warned_beginning = False
+counts = {}
+l = list(itertools.combinations('ACGT' * 6, 6))
+l.sort()
+i = 0
+while i < len(l):
+    if i == 0 or l[i] != l[i - 1]:
+        counts[''.join(l[i])] = [0, 0]
+        note('added: ' + ''.join(l[i]), 2)
+    i += 1
+
+f = gzopen(args.ref_fasta)
+s = ''
+while True:
+    s = f.readline()
+    if len(s) == 0 or s[0] == '>':
+        break
+    if not warned_beginning:
+        note('file ' + file_name + ' does not begin with >')
+        warned_beginning = True
+while len(s) > 0:
+    chr = s.strip()[1:]
+    kmer = ''
+    kmer_last_bad = 0
+    kmer_buff = []
+    while True:
+        s = f.readline()
+        if len(s) == 0 or s[0] == '>':
+            break
+        s = s.strip().upper()
+        for c in s:
+            kmer += c
+            if c not in 'ACGT':
+                kmer_last_bad = len(kmer)
+            #note('c=' + c + ' kmer=' + kmer + ' kmer_last_bad=' + str(kmer_last_bad) + ' kmer_buff=' + str(kmer_buff), 2)
+            if len(kmer) == 6:
+                kmer_buff += [[kmer, kmer_last_bad]]
+                kmer = kmer[1:]
+                if kmer_last_bad > 0:
+                    kmer_last_bad -= 1
+            if len(kmer_buff) == 5:
+                if kmer_buff[2][1] == 0:
+                    #note('adding counts for kmer=' + kmer_buff[2][0], 2)
+                    counts[kmer_buff[2][0]][0] += 1
+                    counts[kmer_buff[2][0]][1] += 1
+                del kmer_buff[2]
+    if len(kmer_buff) > 2:
+        if len(kmer_buff) == 3:
+            del kmer_buff[1]
+        while len(kmer_buff) > 0:
+            if kmer_buff[0][1] == 0:
+                counts[kmer_buff[0][0]][1] += 1
+            del kmer_buff[0]
+            if kmer_buff[-1][1] == 0:
+                counts[kmer_buff[-1][0]][0] += 1
+            del kmer_buff[-1]
+    note('done contig [' + chr + ']', 1)
+gzclose(f)
+
+for kmer in sorted(counts.keys()):
+    print '%s\t%d\t%d' % (kmer, counts[kmer][0], counts[sam.reverse_complement(kmer)][1])

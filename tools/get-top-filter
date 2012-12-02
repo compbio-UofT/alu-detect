@@ -1,0 +1,4 @@
+#!/bin/bash
+set -o lastpipe 2>/dev/null
+MIN_PREC="${MIN_PREC:-.96}"
+awk "\$8>=$MIN_PREC" "$@" | sort -k 10,10nr | exec head -n 1

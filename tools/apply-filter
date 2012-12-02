@@ -1,0 +1,4 @@
+#!/bin/bash
+set -u
+set -o lastpipe 2>/dev/null
+filter-length "$1" | filter-support "$2" | filter-weak-null "$3" | exec filter-ci-length "$4"

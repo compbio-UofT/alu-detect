@@ -1,0 +1,50 @@
+#!/usr/bin/python
+
+import sys
+import argparse
+import scipy.misc
+import math
+import scipy.stats
+from my import *
+
+parser = argparse.ArgumentParser(description=sys.argv[0])
+parser.add_argument('-v', '--verbose', action='append_const', const=1, default=[], dest='verbose')
+parser.add_argument('pr_hit', type=float, action='store')
+parser.add_argument('n_trials', type=int, action='store')
+parser.add_argument('n_hits', type=int, action='store')
+args = parser.parse_args()
+set_log_level(len(args.verbose))
+
+def normal_pdf(x, m, v):
+    return 1.0/math.sqrt(2*math.pi*v) * math.exp(-(x-m)**2/(2*v))
+
+def binomial_pdf(p, n, k):
+    if n < 100:
+        return scipy.misc.comb(n, k) * p**k * p**(n-k)  # Fall back to your current method
+    return normal_pdf(k, n*p, n*p*(1.0-p))
+
+
+mean = args.pr_hit * args.n_trials
+note('mean=' + str(mean), 1)
+r = [0, 0]
+if args.n_hits <= mean:
+    r[0] = 0
+    r[1] = args.n_hits
+else:
+    r[0] = args.n_hits
+    r[1] = args.n_trials
+note('range=' + str(r), 1)
+i = r[0]
+s = 0
+while i <= r[1]:
+#    x = scipy.misc.comb(args.n_trials, i) * (args.pr_hit ** i) * ((1 - args.pr_hit) ** (args.n_trials - i))
+    x = binomial_pdf(args.pr_hit, args.n_trials, i)
+    if math.isnan(x) or math.isinf(x):
+        s = -1
+        break
+    s += x
+    i += 1
+if s < 0:
+    note('explicit computation failed, using library', 1)
+    s = scipy.stats.binom_test(args.n_hits, args.n_trials, args.pr_hit)
+print s

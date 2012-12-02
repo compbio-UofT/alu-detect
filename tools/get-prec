@@ -1,0 +1,13 @@
+#!/bin/bash
+. $(which my-lib.sh)
+
+run_cmds "bedtools intersect -sorted -s -u -a - -b $TRUTH | wc -l" "wc -l" 2>/dev/null
+
+SCALE=${SCALE:-6}
+if [ "${CMD_OUTPUT[2]}" -eq 0 ] ; then
+  PRECISION="-"
+else
+  PRECISION=$(echo "scale=$SCALE; ${CMD_OUTPUT[1]} / ${CMD_OUTPUT[2]}" | bc)
+fi
+
+exec print_tab -n -- "${CMD_OUTPUT[1]}" "${CMD_OUTPUT[2]}" "$PRECISION"

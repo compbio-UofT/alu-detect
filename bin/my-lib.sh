@@ -139,7 +139,8 @@ ask_confirmation() {
 #
 gen_file() {
     suspend_xtrace
-    GEN_FILE_SUFFIX=${GEN_FILE_SUFFIX:-.pgen}
+    GEN_FILE_SUFFIX="${GEN_FILE_SUFFIX:-.pgen}"
+    PRINT_OUTPUT="${PRINT_OUTPUT:-}"
 
     # check prerequisites
     for f in "${INPUT_FILES[@]:+${INPUT_FILES[@]}}" ; do

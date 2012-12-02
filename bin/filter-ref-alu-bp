@@ -51,17 +51,19 @@ def check_not_overlap(refAlus, curLine):
     ins_end = int(curLine[1])
     # check insert start endpoint
     i = bisect.bisect_left(refAlus[0], ins_start - delta)
+    left_end = curLine[9]
     if i < len(refAlus[0]) and refAlus[0][i] < ins_start + delta:
         # insert start is ambiguous
         ambiguous_insert = True
-        curLine[9] = '0'
+        left_end = '0'
     # check insert end endpoint
     i = bisect.bisect_left(refAlus[1], ins_end - delta)
+    right_end = curLine[10]
     if i < len(refAlus[1]) and refAlus[1][i] < ins_end + delta:
         # insert end is ambiguous
         ambiguous_insert = True
-        curLine[10] = '0'
-    res = not ambiguous_insert or curLine[9] != '0' or curLine[10] != '0'
+        right_end = '0'
+    res = not ambiguous_insert or left_end != '0' or right_end != '0'
     if not res:
         note('filtering out:' + '\t'.join(curLine), 1)
     return res

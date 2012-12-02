@@ -1,0 +1,95 @@
+#!/usr/bin/python
+
+import sys
+import argparse
+from my import *
+
+d = dict()
+
+def load_deletions(s):
+    f = gzopen(s)
+    d = dict()
+    for l in f:
+        l = l.strip().split('\t')
+        if l[0] not in d:
+            d[l[0]] = list()
+        d[l[0]].append([int(l[1]), int(l[2])])
+    gzclose(f)
+    for chr in d:
+        d[chr] = sorted(d[chr])
+    return d
+
+def convert_pos(pos, l):
+#    note('convert_pos() with pos=' + str(pos) + ' l=' + str(l))
+    i = 0
+    j = len(l)
+    while i < j:
+        m = (i + j)/2
+        if pos < l[m][0]:
+            j = m
+        else:
+            i = m + 1
+#    note('binsearch for ' + str(pos) + ' returned i=' + str(i))
+    if i == 0:
+        return pos
+    else:
+#        note('l[i - 1]=' + str(l[i - 1]))
+        if pos < l[i - 1][1]:
+            pos = l[i - 1][1]
+        return l[i - 1][0] - l[i - 1][2] + (pos - l[i - 1][1])
+
+
+parser = argparse.ArgumentParser(description=sys.argv[0])
+parser.add_argument('-v', '--verbose', action='append_const', const=1, default=[], dest='verbose')
+parser.add_argument('-o', '--original-coordinates', action='store_true', default=False, dest='orig_coord')
+parser.add_argument('del_file', action='store')
+parser.add_argument('input_file', action='store')
+args = parser.parse_args()
+set_log_level(len(args.verbose))
+
+
+d = load_deletions(args.del_file)
+#for chr in d:
+#    print >> sys.stderr, '\n'.join(map(lambda e: '\t'.join(map(str, [chr] + e)), d[chr]))
+
+# collapse overlaps
+for chr in d:
+    note('before collapsing, contig [' + chr + '] has [' + str(len(d[chr])) + '] deletions', 1)
+    k = 0
+    i = 0
+    while k < len(d[chr]):
+        if d[chr][k][0] <= i:
+            if d[chr][k][0] < i:
+                note('warning: overlap detected for deletion at [' + ' '.join(map(str, [chr] + d[chr][k])) + '] of length [' + str(min(i, d[chr][k][1]) - d[chr][k][0]) + ']', 1)
+            i = max(i, d[chr][k][1])
+            if k > 0:
+                d[chr][k-1][1] = i
+            del d[chr][k]
+        else:
+            i = d[chr][k][1]
+            k += 1
+    note('after collapsing, contig [' + chr + '] has [' + str(len(d[chr])) + '] deletions', 1)
+
+#for chr in d:
+#    print >> sys.stderr, '\n'.join(map(lambda e: '\t'.join(map(str, [chr] + e)), d[chr]))
+
+# add length of previous deletions
+for chr in d:
+    l = 0
+    k = 0
+    while k < len(d[chr]):
+        d[chr][k].append(l)
+        l += d[chr][k][1] - d[chr][k][0]
+        k += 1
+
+f = gzopen(args.input_file)
+for line in f:
+    line = line.strip().split('\t')
+    if args.orig_coord:
+        line += [line[1], line[2]]
+    chr = line[0]
+    if chr in d:
+        line[1] = str(convert_pos(int(line[1]), d[chr]))
+        line[2] = str(convert_pos(int(line[2]), d[chr]))
+    print '\t'.join(line)
+gzclose(f)

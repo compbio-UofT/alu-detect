@@ -1,0 +1,44 @@
+#!/bin/bash
+. $(which my-lib.sh)
+
+CHROMINFO="${CHROMINFO:-../data/chromInfo.hg18.txt}"
+[ $# -ne 2 ] && crash "use: $0 <5p|3p><+|-><start_offset> <5p|3p><+|-><end_offset>"
+
+[ "$1" != "$(echo "$1" | grep -E "^[35]p[+-][0-9]+$")" ] && crash "bad start specification: $1"
+[ "$2" != "$(echo "$2" | grep -E "^[35]p[+-][0-9]+$")" ] && crash "bad end specification: $2"
+
+start_endpoint="${1:0:2}"
+start_offset="${1:2}"
+end_endpoint="${2:0:2}"
+end_offset="${2:2}"
+start_offset=$((- $start_offset))
+#set | grep -E "(start|end)_(endpoint|offset)" >&2
+
+tawk -v start_endpoint=$start_endpoint -v end_endpoint=$end_endpoint '
+	$6=="+" {
+	  if (start_endpoint=="5p")
+	    start=$2;
+	  else
+	    start=$3;
+	  if (end_endpoint=="3p")
+	    end=$3;
+	  else
+	    end=$2;
+	  $2=start;
+	  $3=end;
+	  print
+	}
+	$6=="-" {
+	  if (start_endpoint=="5p")
+	    start=$3;
+	  else
+	    start=$2;
+	  if (end_endpoint=="3p")
+	    end=$2;
+	  else
+	    end=$3;
+	  $2=end;
+	  $3=start;
+	  print
+	}' \
+  | slopBed -i - -g "$CHROMINFO" -s -l "$start_offset" -r "$end_offset"

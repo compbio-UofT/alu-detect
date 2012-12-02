@@ -1,0 +1,23 @@
+#!/bin/bash
+#set -x
+. $(which my-lib.sh)
+
+REF_FA=${REF_FA:-/filer/hg18/hg18.fa}
+echo "Using reference: $REF_FA" >&2
+
+zc "$@" | while read -a line ; do
+   chr=${line[0]}
+   if [ "${line[5]}" = "+" ] ; then
+       start=$((${line[1]}))
+       end=$(($start + 5))
+       line=("${line[@]}" $(samtools faidx $REF_FA $chr:$start-$end | grep -v '^>' | tr acgt ACGT))
+       line=("${line[@]}" $(samtools faidx $REF_FA $chr:$((${line[1]}+2))-$((${line[2]}-1)) | grep -v '^>' | tr acgt ACGT))
+   else
+       end=$((${line[2]} + 1))
+       start=$(($end - 5))
+       line=("${line[@]}" $(samtools faidx $REF_FA $chr:$start-$end | reverse-complement | grep -v '^>' | tr acgt ACGT))
+       line=("${line[@]}" $(samtools faidx $REF_FA $chr:$((${line[1]}+2))-$((${line[2]}-1)) | reverse-complement | grep -v '^>' | tr acgt ACGT))
+   fi
+#   echo ${line[0]}
+   print_tab -- "${line[@]}"
+done

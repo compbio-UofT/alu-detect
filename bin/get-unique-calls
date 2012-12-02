@@ -1,4 +1,5 @@
 #!/bin/bash
-zc "$@" \
-  | sort -s -k 1,1 -k 2,2n \
-  | awk -v OFS="\t" '{if ($1 != last_chr || $2 >= last_pos) print; last_chr = $1; last_pos = $3;}'
+shopt -s lastpipe 2>/dev/null
+sort -s -k 1,1 -k 6,6 -k 2,2n "$@" \
+  | tawk '{if ($1!=last_chr || $6!=last_st || $2>=last_pos) print; last_chr=$1; last_st=$6; last_pos=$3;}' \
+  | exec sort -s -k 1,1 -k 2,2n
