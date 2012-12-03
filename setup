@@ -88,7 +88,7 @@ else
     #
     # bowtie2 indexes
     #
-    while [[ -z "$BOWTIE2_INDEX" || -z "$(ls "$BOWTIE2_INDEX"* 2>/dev/null)" ) ]]; do
+    while [[ -z "$BOWTIE2_INDEX" || -z "$(ls "$BOWTIE2_INDEX"* 2>/dev/null)" ]]; do
 	echo "bowtie2 indexes not found"
 	BOWTIE2_INDEX=$(readlink -f "$(read -p "Enter bowtie2 index prefix: " -e BOWTIE2_INDEX; eval echo "$BOWTIE2_INDEX")")
     done
