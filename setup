@@ -43,7 +43,7 @@ else
 	ALU_NO_POLYA_FA=$DIR/data/alu.hidden-polya.fa
 
 	add_dependency "RepeatMasker" "which RepeatMasker >/dev/null 2>&1"
-	REPEATMASKER_DIR=$(dirname $(PATH=$new_path:$PATH which RepeatMasker))
+	REPEATMASKER_DIR=$(dirname $(readlink -f $(PATH=$new_path:$PATH which RepeatMasker)))
 
 	echo -n "Generating list of alu consensus sequences... "
 	$REPEATMASKER_DIR/util/queryRepeatDatabase.pl -species homo -class SINE | 
