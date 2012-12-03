@@ -1,0 +1,74 @@
+#!/usr/bin/python
+
+import sys
+from lib_alu_detect import *
+
+warned_beginning = False
+d = dict()
+fasta_chr_per_line = 50
+
+def load_deletions(s):
+    f = gzopen(sys.argv[1])
+    d = dict()
+    for l in f:
+        l = l.strip().split('\t')
+        if l[0] not in d:
+            d[l[0]] = list()
+        d[l[0]].append([int(l[1]), int(l[2])])
+    gzclose(f)
+    for chr in d:
+        d[chr] = sorted(d[chr])
+    return d
+
+def print_contig(chr, seq):
+    print '>' + chr
+    i = 0
+    while i < len(seq):
+        n = min(len(seq) - i, fasta_chr_per_line)
+        print seq[i:i+n]
+        i += n
+
+def process_contig(chr, seq):
+    if chr not in d:
+        return seq
+    res = ''
+    i = 0
+    for e in d[chr]:
+        if e[0] <= i:
+            if e[0] < i:
+                note('warning: overlap detected for deletion at [' + ' '.join(map(str, [chr] + e)) + '] of length [' + str(i - e[0]) + ']')
+            i = max(i, e[1])
+            continue
+        res += seq[i:e[0]]
+        i = e[1]
+    res += seq[i:]
+    return res
+
+
+d = load_deletions(sys.argv[1])
+#for chr in d:
+#    print >> sys.stderr, '\n'.join(map(lambda e: '\t'.join(map(str, [chr] + e)), d[chr]))
+
+f = gzopen(sys.argv[2])
+seq = ''
+chr = ''
+while True:
+    s = f.readline()
+    if len(s) == 0 or s[0] == '>':
+        break
+    if not warned_beginning:
+        note('file ' + sys.argv[2] + ' does not begin with >')
+        warned_beginning = True
+while len(s) > 0:
+    chr = s.strip()[1:]
+    seq = ''
+    while True:
+        s = f.readline()
+        if len(s) == 0 or s[0] == '>':
+            break
+        seq += s.strip()
+    note('got contig [' + chr + '] of length [' + str(len(seq)) + ']')
+    new_seq = process_contig(chr, seq)
+    note('after deletions, contig [' + chr + '] has length [' + str(len(new_seq)) + ']')
+    print_contig(chr, new_seq)
+gzclose(f)

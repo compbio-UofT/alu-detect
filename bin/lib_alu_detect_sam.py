@@ -1,8 +1,8 @@
 #!/usr/bin/python
 
-import operator
-import my
 import sys
+import operator
+from lib_alu_detect import *
 
 IS_PAIRED = 0x1
 ALL_PROPERLY_ALIGNED = 0x2
@@ -116,7 +116,7 @@ def mapping_parser(m, cid_parser=default_cid_parser):
     return d
 
 def parse_cigar_string(s):
-    my.note('parsing cigar [%s]' % s, 3)
+    note('parsing cigar [%s]' % s, 3)
     res = []
     crt_len = ''
     i = 0
@@ -174,10 +174,10 @@ def set_pairing(s):
         for setting in settings_list:
             [lhs, rhs] = setting.split('=')
             if lhs not in pairing:
-                my.note('invalid pairing keyword [%s]' % lhs)
+                note('invalid pairing keyword [%s]' % lhs)
             else:
                 pairing[lhs] = int(rhs)
-    my.note('set pairing mode: ' + str(pairing) + ' (\'' + get_pairing_string() + '\')', 1)
+    note('set pairing mode: ' + str(pairing) + ' (\'' + get_pairing_string() + '\')', 1)
 
 def get_pairing_string():
     if pairing['st_diff'] == 1:
@@ -247,16 +247,16 @@ def is_mp_downstream(nip, st):
 def get_mp_pos(nip, st, pos, clip_len, rlen_mp):
     mp_st = get_mp_st(st)
     pos_5p = pos[st] + [-1, +1][st] * clip_len[st]
-    #my.note('pos_5p=' + str(pos_5p), 1)
+    #note('pos_5p=' + str(pos_5p), 1)
     if nip == 0:
         sign_5p_difference = [+1, -1][st]
     else:
         sign_5p_difference = -1 * [+1, -1][mp_st]
-    #my.note('sign_5p_difference=' + str(sign_5p_difference), 1)
+    #note('sign_5p_difference=' + str(sign_5p_difference), 1)
     mp_pos_5p = [pos_5p + sign_5p_difference * pairing['min'],
                  pos_5p + sign_5p_difference * pairing['max']]
     mp_pos_5p.sort()
-    #my.note('mp_pos_5p=' + str(mp_pos_5p), 1)
+    #note('mp_pos_5p=' + str(mp_pos_5p), 1)
     sign_mp_st = [+1, -1][mp_st]
     res = [[mp_pos_5p[0], mp_pos_5p[0] + sign_mp_st * (rlen_mp - 1)],
            [mp_pos_5p[1], mp_pos_5p[1] + sign_mp_st * (rlen_mp - 1)]]
@@ -292,11 +292,11 @@ def autodetect_phred(s):
         valid = True
         for c in s:
             if ord(c) - x < min_mqv or ord(c) - x > max_mqv:
-                my.note('c=[%s] with ord=[%d] contradicts phred value [%d]' % (c, ord(c), x))
+                note('c=[%s] with ord=[%d] contradicts phred value [%d]' % (c, ord(c), x))
                 valid = False
                 break
         if valid:
-            my.note('detected phred value [%d]' % x)
+            note('detected phred value [%d]' % x)
             return x
     crash('could not detect input phred value')
 
@@ -330,19 +330,19 @@ def get_tail_insert_size(ops, min_tail_match_len=5):
                                                  [len(ops) - 1, -1, -1, 1]]:
         i = start_idx
         while i != end_idx:
-            #my.note('considering op: ' + str(ops[i]))
+            #note('considering op: ' + str(ops[i]))
             if ops[i][0] in 'HSI':
                 res[dest_idx] += ops[i][1]
                 i += step
             elif ops[i][0] in 'M=X':
-                #my.note('starting match stretch')
+                #note('starting match stretch')
                 tmp = ops[i][1]
                 j = i + step
                 while j != end_idx and ops[j][0] in 'M=X':
-                    my.note('including op in match stretch: ' + str(ops[j]))
+                    note('including op in match stretch: ' + str(ops[j]))
                     tmp += ops[j][1]
                     j += step
-                #my.note('stretch len: ' + str(tmp))
+                #note('stretch len: ' + str(tmp))
                 if tmp < min_tail_match_len:
                     res[dest_idx] += tmp
                     i = j
@@ -396,29 +396,29 @@ def get_mapping_set_gen(in_fd, mapping_parser=mapping_parser, header_line_hook=N
                 if (check_num_mappings and
                     ((pairing['paired'] == 0 and len(map_set) != 1)
                      or (pairing['paired'] == 1 and len(map_set) != 2))):
-                    my.crash('incorrect number of mappings (check clone_ids): ' + str(map_set))
+                    crash('incorrect number of mappings (check clone_ids): ' + str(map_set))
                 yield map_set
             break
         d = mapping_parser(tmp)
         if 'clone_id' not in d:
-            my.crash('mapping parser produced no clone_id: [%s]' % tmp[0])
+            crash('mapping parser produced no clone_id: [%s]' % tmp[0])
 #        if ((ignore_duplicate and is_duplicate(d))
 #            or (ignore_failed_qc and failed_qc(d))
 #            or (ignore_secondary and secondary_alignment(d))):
 #        sys.stderr.write(str(d['clone_id'])+"\n")
         if ignore_secondary and secondary_alignment(d):
-            my.note('ignoring mapping: ' + str(d), 3)
+            note('ignoring mapping: ' + str(d), 3)
             continue
         if check_pairing and (d['paired'] != (pairing['paired'] == 1)):
-            my.crash('got mapping with bad pairing: ' + str(d))
+            crash('got mapping with bad pairing: ' + str(d))
         if len(map_set) > 0 and d['clone_id'] != map_set[0]['clone_id']:
             if (check_num_mappings and
                 ((pairing['paired'] == 0 and len(map_set) != 1)
                  or (pairing['paired'] == 1 and len(map_set) != 2))):
-                my.crash('incorrect number of mappings (check clone_ids?): ' + str(map_set))
+                crash('incorrect number of mappings (check clone_ids?): ' + str(map_set))
             if ((ignore_duplicate and any(map(is_duplicate, map_set)))
                 or (ignore_failed_qc and any(map(failed_qc, map_set)))):
-                my.note('ignoring mapping: ' + str(d), 3)
+                note('ignoring mapping: ' + str(d), 3)
             else:
                 yield map_set
             map_set = []

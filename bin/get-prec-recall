@@ -1,5 +1,5 @@
 #!/bin/bash
-. $(which my-lib.sh)
+. $(which lib.alu-detect.sh)
 
 run_cmds "bedtools intersect -sorted -s -u -a - -b $TRUTH | wc -l" "wc -l" 2>/dev/null
 
@@ -13,4 +13,4 @@ else
   F_MEASURE=$(echo "scale=$SCALE; (2 * $PRECISION * $RECALL)/($PRECISION + $RECALL)" | bc)
 fi
 
-exec print_tab -n -- "${CMD_OUTPUT[1]}" "${CMD_OUTPUT[2]}" $PRECISION $(wc -l <"$TRUTH") $RECALL "$F_MEASURE"
+exec print_tab -- "${CMD_OUTPUT[1]}" "${CMD_OUTPUT[2]}" $PRECISION $(wc -l <"$TRUTH") $RECALL "$F_MEASURE"

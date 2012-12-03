@@ -1,6 +1,5 @@
 #!/bin/bash
-
-. $(which my-lib.sh)
+. $(which lib.alu-detect.sh)
 set -x
 set -o errexit
 

@@ -37,8 +37,8 @@ else
     add_dependency "gmapper" "which gmapper-ls >/dev/null 2>&1"
 
     echo "[[ ! \"\$PATH\" =~ $DIR/bin ]] && PATH=\"$DIR/bin:$new_path${new_path:+:}\$PATH\"" >"$GLOBAL_SETTINGS"
-    echo "[[ ! \"\$AWKPATH\" =~ $DIR/bin ]] && AWKPATH=\"$DIR/bin:\$AWKPATH\"" >>"$GLOBAL_SETTINGS"
-    echo "[[ ! \"\$PYTHONPATH\" =~ $DIR/bin ]] && PYTHONPATH=\"$DIR/bin:\$PYTHONPATH\"" >>"$GLOBAL_SETTINGS"
+#    echo "[[ ! \"\$AWKPATH\" =~ $DIR/bin ]] && AWKPATH=\"$DIR/bin:\$AWKPATH\"" >>"$GLOBAL_SETTINGS"
+#    echo "[[ ! \"\$PYTHONPATH\" =~ $DIR/bin ]] && PYTHONPATH=\"$DIR/bin:\$PYTHONPATH\"" >>"$GLOBAL_SETTINGS"
 
     #
     # next, alu consensus sequences
@@ -82,27 +82,40 @@ else
     # fasta file
     #
     while [[ -z "$REF_FA" || ! -r "$REF_FA" ]]; do
-	echo "Reference genome not found"
 	read -p "Enter reference genome FASTA file: " -e REF_FA
+	if [[ "$REF_FA" && ! -r "$REF_FA" ]]; then
+	    echo "$REF_FA: not found"
+	    REF_FA=
+	fi
     done
     echo "export REF_FA=\"$REF_FA\"" >"$REF_SETTINGS"
     REF_FA_LINK="$DIR/data/$REF_NAME.fa"
-    rm "$REF_FA_LINK" 2>/dev/null
     ln -s "$REF_FA" "$REF_FA_LINK"
 
     #
     # fasta index
     #
-    samtools faidx "$REF_FA_LINK"
-    CHROMINFO="$DIR/data/$REF_NAME.fa.fai"
+    CHROMINFO="$REF_FA".fai
+    CHROMINFO_LINK="$REF_FA_LINK".fai
+    if [ -r "$CHROMINFO" ]; then
+	ln -s "$CHROMINFO" "$CHROMINFO_LINK"
+    else
+	CHROMINFO="$CHROMINFO_LINK"
+	echo -n "Creating fasta index... "
+	samtools faidx "$REF_FA_LINK"
+	echo "done"
+    fi
     echo "export CHROMINFO=\"$CHROMINFO\"" >>"$REF_SETTINGS"
 
     #
     # bowtie2 indexes
     #
     while [[ -z "$BOWTIE2_INDEX" || ! -r "$BOWTIE2_INDEX.1.bt2" ]]; do
-	echo "bowtie2 indexes not found"
 	read -p "Enter bowtie2 index prefix: " -e BOWTIE2_INDEX
+	if [[ "$BOWTIE2_INDEX" && ! -r "$BOWTIE2_INDEX.1.bt2" ]]; then
+	    echo "$BOWTIE2_INDEX.1.bt2: not found"
+	    BOWTIE2_INDEX=
+	fi
     done
     echo "export BOWTIE2_INDEX=\"$BOWTIE2_INDEX\"" >>"$REF_SETTINGS"
     BOWTIE2_INDEX_LINK="$DIR/data/$REF_NAME"
@@ -120,7 +133,7 @@ else
 	while [[ -z "$CHROM_FA_OUT" ]]; do
 	    echo "RepeatMasker output files not found"
 	    read -p "Enter bash regexp describing path to RepeatMasker output files: " -e CHROM_FA_OUT
-	    CHROM_FA_OUT="$(eval echo "$CHROM_FA_OUT" | xargs -n 1 readlink)"
+	    CHROM_FA_OUT="$(eval echo "$CHROM_FA_OUT" | xargs -n 1 readlink -e)"
 	done
 	echo -n "Generating list of reference alus in bed format... "
 	grep -h SINE/Alu $CHROM_FA_OUT | 

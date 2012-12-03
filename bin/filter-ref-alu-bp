@@ -3,7 +3,7 @@
 import sys
 import argparse
 import bisect
-from my import *
+from lib_alu_detect import *
 
 delta = 50
 

@@ -1,5 +1,5 @@
 #!/bin/bash extend-hashbang
-#/usr/bin/awk -f fq-convert.awk --re-interval -f
+#/usr/bin/awk -f lib.alu-detect.awk --re-interval -f
 
 BEGIN {
     if (tail_1_regexp == "") { tail_1_regexp = "/1$" }

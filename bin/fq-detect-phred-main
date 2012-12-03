@@ -1,15 +1,8 @@
 #!/bin/bash extend-hashbang
-#/usr/bin/awk -f fq-convert.awk -f fq-detect-phred.awk -f
-
-function ord_init() {
-    for (i = 33; i <= 127; i++) {
-        c = sprintf("%c", i);
-        ord[c] = i;
-    }
-}
+#/usr/bin/awk -f lib.alu-detect.awk -f
 
 BEGIN {
-  ord_init()
+    ord_init()
 }
 
 {

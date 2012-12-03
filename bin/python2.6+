@@ -1,9 +1,0 @@
-#!/bin/bash
-if [ -x /usr/bin/python2.7 ] ; then
-  exec /usr/bin/python2.7 "$@"
-elif [ -x /usr/bin/python2.6 ] ; then
-  exec /usr/bin/python2.6 "$@"
-else
-  echo "cannot find Python 2.6+" >&2
-  exit 1
-fi

@@ -1,6 +1,6 @@
 #!/bin/bash
 
-. $(which my-lib.sh)
+. $(which lib.alu-detect.sh)
 
 if [ -z "${PAIRING:-}" ] ; then crash "PAIRING undefined" ; fi
 make_note "PAIRING=${PAIRING}"

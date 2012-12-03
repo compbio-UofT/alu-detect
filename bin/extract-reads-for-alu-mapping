@@ -1,6 +1,6 @@
 #!/bin/bash
 
-. $(which my-lib.sh)
+. $(which lib.alu-detect.sh)
 find_my_name_and_dir "${BASH_SOURCE[0]}"
 
 if [ -z "${PAIRING:-}" ] ; then crash "PAIRING undefined" ; fi

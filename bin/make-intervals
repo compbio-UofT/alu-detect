@@ -1,5 +1,5 @@
 #!/bin/bash
-. $(which my-lib.sh)
+. $(which lib.alu-detect.sh)
 
 CHROMINFO="${CHROMINFO:-../data/chromInfo.hg18.txt}"
 [ $# -ne 2 ] && crash "use: $0 <5p|3p><+|-><start_offset> <5p|3p><+|-><end_offset>"

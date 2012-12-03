@@ -5,7 +5,7 @@ import argparse
 import scipy.misc
 import math
 import scipy.stats
-from my import *
+from lib_alu_detect import *
 
 parser = argparse.ArgumentParser(description=sys.argv[0])
 parser.add_argument('-v', '--verbose', action='append_const', const=1, default=[], dest='verbose')

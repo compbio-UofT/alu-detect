@@ -1,5 +1,5 @@
 #!/bin/bash extend-hashbang
-#/usr/bin/awk -f my-lib.awk -f fq-convert.awk --re-interval -f
+#/usr/bin/awk -f lib.alu-detect.awk --re-interval -f
 
 BEGIN {
     if (separator == "") field_separator = ":";

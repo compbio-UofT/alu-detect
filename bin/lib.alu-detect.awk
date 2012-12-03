@@ -102,3 +102,56 @@ function put_readpair(s)
     put_read(rp[1] "\t" rp[2] "\t" rp[3] "\t" rp[4])
     put_read(rp[5] "\t" rp[6] "\t" rp[7] "\t" rp[8])
 }
+
+function ord_init() {
+    for (i = 33; i <= 127; i++) {
+        c = sprintf("%c", i);
+        ord[c] = i;
+    }
+}
+
+function detect_phred(s) {
+    # must autodetect input_phred
+    # this is done on the first qual string
+    # if autodetection fails, crash
+    h[1] = 33;
+    h[2] = 64;
+    n_h = 2;
+    min_mqv = -5;
+    max_mqv = 45;
+    for (i = 1; i <= n_h; i++) {
+	works[i] = 1;
+	for (j = 1; j <= length(s); j++) {
+	    c = substr(s, j, 1)
+	    if (ord[c] - h[i] < min_mqv || ord[c] - h[i] > max_mqv) {
+		print "character [" c "] with ord [" ord[c] "] contradicts phred [" h[i] "]" >"/dev/stderr";
+		works[i] = 0;
+		break;
+	    }
+	}
+    }
+    k = 0;
+    for (i = 1; i <= n_h; i++) {
+	if (works[i] > 0) {
+	    if (k == 0) {
+		k = i;
+	    } else {
+		print "could not detect phred: " h[k] " and " h[i] " are both possible" >"/dev/stderr";
+		exit(1);
+	    }
+	}
+    }
+    print "autodetected phred [" h[k] "]" >"/dev/stderr";
+    return h[k]
+}
+
+function n_index(s, t, n) {
+    start_idx = 1
+    for (i = 0; i < n; i++) {
+	k = index(substr(s, start_idx), t);
+	#print "i= " i " k=" k > "/dev/fd/2"
+	if (k == 0) return 0;
+	start_idx += k
+    }
+    return start_idx - 1;
+}

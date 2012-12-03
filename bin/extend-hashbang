@@ -8,12 +8,6 @@ crash() {
 FILE="$1"
 shift
 
-#echo 1>&2 "$0 called with parameters:"
-#while [ $# -gt 0 ] ; do
-#  echo 1>&2 \"$1\"
-#  shift
-#done
-
 [ -z "$FILE" ] && crash "$(basename $0): no arguments"
 [ ! -r "$FILE" ] && crash "$(basename $0): file \"$FILE\" unreadable"
 [ ! "$(head -n 2 <"$FILE" | wc -l)" = "2" ] && crash "$(basename $0): file \"$FILE\" has less than 2 lines"

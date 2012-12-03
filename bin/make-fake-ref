@@ -1,0 +1,5 @@
+#!/bin/bash
+. $(which lib.alu-detect.sh)
+
+base_dir="$(dirname "$(readlink -e "$(which alu-detect)")" | sed 's/\/bin$//')"
+[ -z "$base_dir" ] && crash "

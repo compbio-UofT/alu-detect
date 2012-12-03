@@ -1,8 +1,8 @@
 #!/usr/bin/python
 
 import argparse
-from my import *
-import my_sam as sam
+from lib_alu_detect import *
+import lib_alu_detect_sam as sam
 
 parser = argparse.ArgumentParser(description=sys.argv[0])
 parser.add_argument('-v', '--verbose', action='append_const', const=1, default=[], dest='verbose')

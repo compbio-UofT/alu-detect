@@ -1,5 +1,5 @@
 #!/bin/bash extend-hashbang
-#/usr/bin/awk -f my-lib.awk -f fq-convert.awk --re-interval -f
+#/usr/bin/awk -f lib.alu-detect.awk --re-interval -f
 
 BEGIN {
     if (separator == "") field_separator = ":";
@@ -31,9 +31,6 @@ BEGIN {
 
     seq = substr($1, start_seq_idx + 3, l);
     qual = substr($1, start_seq_idx + 3 + l + 1, l);
-
-    #print "seq=", seq >"/dev/fd/2"
-    #print "qual=", qual >"/dev/fd/2"
 
     put_read($1 "\t" seq "\t" "" "\t" qual);
 }

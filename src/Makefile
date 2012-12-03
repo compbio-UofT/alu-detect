@@ -40,7 +40,10 @@ endif
 
 LN=ln
 
-all: include-boost ../bin/get-regions ../bin/inalign ../bin/get-coverage ../bin/zc ../bin/add-extra-sam-flags ../bin/filter-mappings ../bin/print_tab ../bin/tee-p
+CC=${CXX}
+CFLAGS=${CXXFLAGS}
+
+all: include-boost ../bin/get-regions ../bin/inalign ../bin/get-coverage ../bin/tsd-search ../bin/zc ../bin/add-extra-sam-flags ../bin/filter-mappings ../bin/print_tab ../bin/tee-p
 
 include-boost:
 	if [[ ! -e boost && -d "$(BOOST)" ]]; then ln -s "$(BOOST)" boost; fi
@@ -67,6 +70,11 @@ include-boost:
 
 ../bin/get-coverage: get-coverage.o DNASequence.o SamMapping.o Cigar.o globals.o Range.o \
 	gzstream/gzstream.o
+	$(LD) $(CXXFLAGS) -o $@ $+ $(LDFLAGS)
+
+../bin/tsd-search: tsd-search.o DNASequence.o Range.o BedLine.o Fasta.o \
+	gzstream/gzstream.o common/sw-vector.o common/sw-full-ls.o \
+	common/util.o common/fasta.o common/anchors.o
 	$(LD) $(CXXFLAGS) -o $@ $+ $(LDFLAGS)
 
 get-regions.o: get-regions.cpp globals.hpp \
@@ -165,4 +173,4 @@ move-bins:
 	mv get-regions inalign get-coverage zc add-extra-sam-flags filter-mappings print_tab ../bin 
 
 clean:
-	rm -f *.o gzstream/gzstream.o boost ../bin/get-regions ../bin/inalign ../bin/get-coverage ../bin/zc ../bin/add-extra-sam-flags ../bin/filter-mappings ../bin/tee-p
+	rm -f *.o common/*.o gzstream/gzstream.o boost ../bin/get-regions ../bin/inalign ../bin/get-coverage ../bin/tsd-search.cpp ../bin/zc ../bin/add-extra-sam-flags ../bin/filter-mappings ../bin/tee-p

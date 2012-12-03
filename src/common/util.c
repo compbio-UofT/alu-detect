@@ -1138,7 +1138,7 @@ comma_integer(uint64_t val)
 	int skip, i, j;
 
 	memset(str, 0, sizeof(str));	// XXX - shut up, valgrind
-	snprintf(str, sizeof(str), "%" PRIu64, val);
+	snprintf(str, sizeof(str), "%llu", (long long unsigned)val);
 
 	skip = 3 - (strlen(str) % 3);
 	for (i = j = 0; str[i] != '\0'; i++) {

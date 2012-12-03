@@ -1,6 +1,5 @@
 #!/bin/bash
-. $(which my-lib.sh)
-set -u
+. $(which lib.alu-detect.sh)
 #set -x
 
 if [ $# -lt 1 ] ; then
@@ -21,14 +20,12 @@ shift
 PRINT_OUTPUT="${PRINT_OUTPUT-1}"
 OPTIND=1
 while getopts "g" OPT "$@"; do
-#    echo "got option: $OPT" >&2
     case $OPT in
 	g)
 	    PRINT_OUTPUT=
 	    ;;
     esac
 done
-#echo "OPTIND=$OPTIND" >&2
 shift $(($OPTIND - 1))
 
 cd $MY_DIR 

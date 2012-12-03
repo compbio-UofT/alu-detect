@@ -1,6 +1,5 @@
 #!/bin/bash
-. $(which my-lib.sh)
-set -u
+. $(which lib.alu-detect.sh)
 set -x
 
 NCPU="${NCPU:-20}"

@@ -1,10 +1,10 @@
-#!/usr/bin/env python2.6+
+#!/usr/bin/env python
 
 import sys
 import argparse
 import functools
-from my import *
-import my_sam as sam
+from lib_alu_detect import *
+import lib_alu_detect_sam as sam
 from cid_parser import cid_parser, remove_seq_from_name
 mapping_parser = functools.partial(sam.mapping_parser, cid_parser=cid_parser)
 

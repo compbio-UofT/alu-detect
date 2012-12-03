@@ -1,6 +1,5 @@
 #!/bin/bash
-#set -x
-. $(which my-lib.sh)
+. $(which lib.alu-detect.sh)
 
 REF_FA=${REF_FA:-/filer/hg18/hg18.fa}
 echo "Using reference: $REF_FA" >&2
@@ -18,6 +17,5 @@ zc "$@" | while read -a line ; do
        line=("${line[@]}" $(samtools faidx $REF_FA $chr:$start-$end | reverse-complement | grep -v '^>' | tr acgt ACGT))
        line=("${line[@]}" $(samtools faidx $REF_FA $chr:$((${line[1]}+2))-$((${line[2]}-1)) | reverse-complement | grep -v '^>' | tr acgt ACGT))
    fi
-#   echo ${line[0]}
    print_tab -- "${line[@]}"
 done

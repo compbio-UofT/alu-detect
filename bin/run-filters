@@ -1,6 +1,5 @@
 #!/bin/bash
-. $(which my-lib.sh)
-set -u
+. $(which lib.alu-detect.sh)
 #set -x
 
 #LEN_VALS=${LEN_VALS:-"$(seq 150 10 290)"}

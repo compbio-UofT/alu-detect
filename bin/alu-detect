@@ -1,8 +1,7 @@
 #!/bin/bash
 
-. $(which my-lib.sh)
+. $(which lib.alu-detect.sh)
 set -o errexit
-set -o nounset
 #set -o pipefail
 set -o xtrace
 

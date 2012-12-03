@@ -2,7 +2,7 @@
 
 import sys
 import argparse
-from my import *
+from lib_alu_detect import *
 
 d = dict()
 

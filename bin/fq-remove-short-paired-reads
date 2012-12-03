@@ -1,5 +1,5 @@
 #!/bin/bash extend-hashbang
-#/usr/bin/awk -f fq-convert.awk -f
+#/usr/bin/awk -f lib.alu-detect.awk -f
 
 BEGIN {
   if (min_len_either == 0 && min_len_each == 0 && min_len_sum == 0)
