@@ -1,12 +1,76 @@
 #!/bin/bash
+#set -x
+
+add_dependency() {
+    label="$1"
+    check_command="$2"
+    extra_path=
+
+    while ! PATH="$new_path:$extra_path:$PATH" eval "$check_command"; do
+	echo "$label not found"
+	extra_path=$(readlink -f "$(read -p "Enter $label path: " -e extra_path; eval echo "$extra_path")")
+    done
+    [ "$extra_path" ] && new_path="$new_path${new_path:+:}$extra_path"
+}
+
 
 DIR="$( cd -P "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
-DN="/dev/null"
-REF_NAME="hg18"
-SETTINGS="$DIR/settings/settings.$REF_NAME"
-[[ ! -d "$DIR/settings" ]] && mkdir settings
-[[ ! -d "$DIR/data" ]] && mkdir data
-[[ -n "$1" ]] && REF_NAME=$1
+REF_NAME="${1:-}"
+
+[ ! -d "$DIR/settings" ] && mkdir settings
+[ ! -d "$DIR/data" ] && mkdir data
+
+GLOBAL_SETTINGS="$DIR/settings/global"
+if [ -r "$GLOBAL_SETTINGS" ]; then
+    echo "Global settings file already exists: $GLOBAL_SETTINGS"
+    echo "If you need to regenerate it, remove the existing file"
+else
+    # first the paths
+    new_path=
+    add_dependency "bedtools" "which intersectBed >/dev/null 2>&1"
+    add_dependency "gmapper" "which gmapper-ls >/dev/null 2>&1"
+    add_dependency "bowtie2" "which bowtie2 >/dev/null 2>&1"
+    add_dependency "python2.6+" "which python >/dev/null 2>&1 && [ \"\$(python --version 2>&1 | cut -d ' ' -f 2 | cut -d '.' -f 2)\" -ge 6 ]"
+
+    echo "[[ ! \"\$PATH\" =~ $DIR/bin ]] && PATH=\"$DIR/bin:$new_path${new_path:+:}\$PATH\"" >"$GLOBAL_SETTINGS"
+    echo "[[ ! \"\$AWKPATH\" =~ $DIR/bin ]] && AWKPATH=\"$DIR/bin:\$AWKPATH\"" >>"$GLOBAL_SETTINGS"
+    echo "[[ ! \"\$PYTHONPATH\" =~ $DIR/bin ]] && PYTHONPATH=\"$DIR/bin:\$PYTHONPATH\"" >>"$GLOBAL_SETTINGS"
+
+    # next, alu consensus sequences
+    if [[ -z "$ALU_ALL_FA" || ! -r "$ALU_ALL_FA" ]]; then
+	echo "Need to build list of Alu consensus sequences"
+	ALU_ALL_FA=$DIR/data/alu.pos.fa
+	ALU_NO_POLYA_FA=$DIR/data/alu.hidden-polya.fa
+
+	add_dependency "RepeatMasker" "which RepeatMasker >/dev/null 2>&1"
+	REPEATMASKER_DIR=$(dirname $(PATH=$new_path:$PATH which RepeatMasker))
+
+	echo -n "Generating list of alu consensus sequences... "
+	$REPEATMASKER_DIR/util/queryRepeatDatabase.pl -species homo -class SINE | 
+	$DIR/bin/grep-fasta "^>Alu[JSY][a-z0-9]*#" | 
+	sed 's/^\(.*\)#SINE\/Alu/\1/' | 
+	sed 's/^\(.*\)RepbaseID:/\1/' | 
+	sed 's/^\(.*\)ALU/\1/' | 
+	awk '/^>/ {if (substr($2,1,3)=="Alu"&&$2!=substr($1,2)) $1=$1"/"substr($2,4); print $1} /^[^>]/' >$ALU_ALL_FA
+	echo "done"
+
+	echo "Building list with hidden poly-A streches"
+	pushd $DIR/bin >/dev/null
+	./hide-polya <$ALU_ALL_FA >$ALU_NO_POLYA_FA
+	popd >/dev/null
+    fi
+    echo "export ALU_ALL_FA=$ALU_ALL_FA" >>"$GLOBAL_SETTINGS"
+    echo "export ALU_NO_POLYA_FA=$ALU_NO_POLYA_FA" >>"$GLOBAL_SETTINGS"
+fi
+
+exit
+
+
+
+while [ -z "$REF_NAME" ]; do
+    read -f "reference name: " -e REF_NAME
+done
+REF_SETTINGS="$DIR/settings/ref.$REF_NAME"
 
 #Load env variables from old settings file
 #PATHLINE="\$PATH"
@@ -35,6 +99,7 @@ if [[ -n "$BEDTOOLS" ]]; then
 	BEDTOOLS=$(readlink -f "$(eval echo "$BEDTOOLS")")
 	echo "[[ ! "\$PATH" =~ "$BEDTOOLS" ]] && export PATH=$BEDTOOLS:\$PATH #BEDTOOLS" >> $SETTINGS
 fi
+
 # Check for gmapper
 while [[ -n "$(which gmapper-ls 2>&1 > $DN)" && -z "$GMAPPER" ]]; do
 	echo "gmapper not found" 1>&2
@@ -48,6 +113,7 @@ if [[ -n "$GMAPPER" ]]; then
 	GMAPPER=$(eval echo "$GMAPPER")
 	echo "[[ ! "\$PATH" =~ "$GMAPPER" ]] && export PATH=$GMAPPER:\$PATH #GMAPPER" >> $SETTINGS
 fi
+
 # Check for bowtie2
 while [[ -n "$(which bowtie2 2>&1 > $DN)" && -z "$BOWTIE2" ]]; do
 	echo "bowtie2 not found" 1>&2
@@ -61,6 +127,7 @@ if [[ -n "$BOWTIE2" ]]; then
 	BOWTIE2=$(readlink -f "$(eval echo "$BOWTIE2")")
 	echo "[[ ! "\$PATH" =~ "$BOWTIE2" ]] && export PATH=$BOWTIE2:\$PATH #BOWTIE2" >> $SETTINGS
 fi
+
 # Check for python>=2.6
 PYTHON2_LATEST=$(echo "$PATH" | sed 's/:/\n/g' | while read LINE; do find $LINE/python* 2>$DN | grep -P "python(2\.?\d?)?$" | cat <(while read EXEC; do $EXEC -V 2>&1 | sed 's/Python //g' | cut -d "." -f 2; done;) | sort | tail -n 1; done)
 while [[ "$PYTHON2_LATEST" -le 5 ]]; do
@@ -74,9 +141,9 @@ if [[ -n "$PYTHON2_PATH" ]]; then
 	echo "[[ ! "\$PATH" =~ "$PYTHON2_PATH" ]] && export PATH=$PYTHON2_PATH:\$PATH #PYTHON2_PATH" >> $SETTINGS
 fi
 
-echo "[[ ! \$PATH =~ alu-detect ]] && export PATH=$DIR/bin:$DIR/tools:\$PATH" >> $SETTINGS
-echo "[[ ! \$AWKPATH =~ alu-detect ]] && export AWKPATH=$DIR/bin:\$AWKPATH" >> $SETTINGS
-echo "[[ ! \$PYTHONPATH =~ alu-detect ]] && export PYTHONPATH=$DIR/bin:\$PYTHONPATH" >> $SETTINGS
+echo "[[ ! \$PATH =~ $DIR/bin ]] && export PATH=$DIR/bin:\$PATH" >> $SETTINGS
+echo "[[ ! \$AWKPATH =~ $DIR/bin ]] && export AWKPATH=$DIR/bin:\$AWKPATH" >> $SETTINGS
+echo "[[ ! \$PYTHONPATH =~ $DIR/bin ]] && export PYTHONPATH=$DIR/bin:\$PYTHONPATH" >> $SETTINGS
 
 # check of src compiled, if not, compile it
 if [[ ! -x "$DIR/bin/get-regions" || ! -x "$DIR/bin/inalign" || ! -x "$DIR/bin/get-coverage" || ! -x "$DIR/bin/zc" ]]; then
