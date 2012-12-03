@@ -29,10 +29,12 @@ else
     # first the paths
     #
     new_path=
-    add_dependency "bedtools" "which intersectBed >/dev/null 2>&1"
-    add_dependency "gmapper" "which gmapper-ls >/dev/null 2>&1"
-    add_dependency "bowtie2" "which bowtie2 >/dev/null 2>&1"
     add_dependency "python2.6+" "which python >/dev/null 2>&1 && [ \"\$(python --version 2>&1 | cut -d ' ' -f 2 | cut -d '.' -f 2)\" -ge 6 ]"
+    add_dependency "samtools" "which samtools >/dev/null 2>&1"
+    add_dependency "bedtools" "which intersectBed >/dev/null 2>&1"
+    add_dependency "RepeatMasker" "which RepeatMasker >/dev/null 2>&1"
+    add_dependency "bowtie2" "which bowtie2 >/dev/null 2>&1"
+    add_dependency "gmapper" "which gmapper-ls >/dev/null 2>&1"
 
     echo "[[ ! \"\$PATH\" =~ $DIR/bin ]] && PATH=\"$DIR/bin:$new_path${new_path:+:}\$PATH\"" >"$GLOBAL_SETTINGS"
     echo "[[ ! \"\$AWKPATH\" =~ $DIR/bin ]] && AWKPATH=\"$DIR/bin:\$AWKPATH\"" >>"$GLOBAL_SETTINGS"
@@ -46,7 +48,6 @@ else
 	ALU_ALL_FA=$DIR/data/alu.pos.fa
 	ALU_NO_POLYA_FA=$DIR/data/alu.hidden-polya.fa
 
-	add_dependency "RepeatMasker" "which RepeatMasker >/dev/null 2>&1"
         REPEATMASKER_DIR=$(dirname $(readlink -f $(PATH=$new_path:$PATH which RepeatMasker)))
 
 	echo -n "Generating list of alu consensus sequences... "
@@ -76,6 +77,7 @@ if [ -r "$REF_SETTINGS" ]; then
     echo "Reference settings file already exists: $REF_SETTINGS"
     echo "If you need to regenerate it, remove the existing file"
 else
+    . "$GLOBAL_SETTINGS"
     #
     # fasta file
     #
@@ -83,17 +85,31 @@ else
 	echo "Reference genome not found"
 	read -p "Enter reference genome FASTA file: " -e REF_FA
     done
-    echo "export REF_FA=$REF_FA" >"$REF_SETTINGS"
+    echo "export REF_FA=\"$REF_FA\"" >"$REF_SETTINGS"
+    REF_FA_LINK="$DIR/data/$REF_NAME.fa"
+    rm "$REF_FA_LINK" 2>/dev/null
+    ln -s "$REF_FA" "$REF_FA_LINK"
+
+    #
+    # fasta index
+    #
+    samtools faidx "$REF_FA_LINK"
+    CHROMINFO="$DIR/data/$REF_NAME.fa.fai"
+    echo "export CHROMINFO=\"$CHROMINFO\"" >>"$REF_SETTINGS"
 
     #
     # bowtie2 indexes
     #
-    while [[ -z "$BOWTIE2_INDEX" || -z "$(ls "$BOWTIE2_INDEX"* 2>/dev/null)" ]]; do
+    while [[ -z "$BOWTIE2_INDEX" || ! -r "$BOWTIE2_INDEX.1.bt2" ]]; do
 	echo "bowtie2 indexes not found"
-	BOWTIE2_INDEX=$(readlink -f "$(read -p "Enter bowtie2 index prefix: " -e BOWTIE2_INDEX; eval echo "$BOWTIE2_INDEX")")
+	read -p "Enter bowtie2 index prefix: " -e BOWTIE2_INDEX
     done
-    BOWTIE2_INDEX=$(readlink -f "$(eval echo "$BOWTIE2_INDEX")")
-    echo "export BOWTIE2_INDEX=$BOWTIE2_INDEX" >>"$REF_SETTINGS"
+    echo "export BOWTIE2_INDEX=\"$BOWTIE2_INDEX\"" >>"$REF_SETTINGS"
+    BOWTIE2_INDEX_LINK="$DIR/data/$REF_NAME"
+    rm "$BOWTIE2_INDEX_LINK".*.bt2
+    for suffix in .1.bt2 .2.bt2 .3.bt2 .4.bt2 .rev.1.bt2 .rev.2.bt2; do
+	ln -s "$BOWTIE2_INDEX$suffix" "$BOWTIE2_INDEX_LINK$suffix"
+    done
 
     #
     # reference alu annotations
@@ -103,7 +119,8 @@ else
 	echo "Reference Alu annotations not found"
 	while [[ -z "$CHROM_FA_OUT" ]]; do
 	    echo "RepeatMasker output files not found"
-	    CHROM_FA_OUT=$(read -p "Enter bash regexp describing path to RepeatMasker output files: " -e CHROM_FA_OUT ; eval echo "$CHROM_FA_OUT" | xargs -n 1 readlink -f)
+	    read -p "Enter bash regexp describing path to RepeatMasker output files: " -e CHROM_FA_OUT
+	    CHROM_FA_OUT="$(eval echo "$CHROM_FA_OUT" | xargs -n 1 readlink)"
 	done
 	echo -n "Generating list of reference alus in bed format... "
 	grep -h SINE/Alu $CHROM_FA_OUT | 
