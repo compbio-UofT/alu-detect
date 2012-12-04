@@ -117,6 +117,7 @@ stage_command() {
 run_stage
 
 export PAIRING="$(cat $PAIRING_FILE)"
+export PAIRING_FILE=$RGID.pairing
 if [[ ! "$PAIRING" =~ "paired=" ]] ; then
     crash "could not determine pairing information"
 fi
