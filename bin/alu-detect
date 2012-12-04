@@ -173,7 +173,7 @@ run_stage
 #RG=$(echo "$F" | cut -f 1)	# uncomment this if the actual read group name is required
 #RGID=$(echo "$F" | cut -f 2)
 #PAIRING=$(echo "$F" | cut -f 3)
-PAIRING="$(cat $PAIRING_FILE)"
+#PAIRING="$(cat $PAIRING_FILE)"
 
 #
 # Stage 3: Trim & rename reads
