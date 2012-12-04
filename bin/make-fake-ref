@@ -1,5 +1,47 @@
 #!/bin/bash
 . $(which lib.alu-detect.sh)
+set -x
 
-base_dir="$(dirname "$(readlink -e "$(which alu-detect)")" | sed 's/\/bin$//')"
-[ -z "$base_dir" ] && crash "
+NCPU=${NCPU:-4}
+if pigz --version >/dev/null 2>/dev/null ; then
+    ZIP="pigz -9 -p $NCPU"
+    UNZIP="pigz -d -p $NCPU"
+else
+    ZIP=gzip -9
+    UNZIP=gunzip
+fi
+
+START_STAGE="${START_STAGE:-1}"
+END_STAGE="${END_STAGE:-100}"
+make_note "using START_STAGE=$START_STAGE and END_STAGE=$END_STAGE"
+
+
+BASE_DIR="$(dirname "$(readlink -e "$(which alu-detect 2>/dev/null)")" | sed 's/\/bin$//')"
+[ -z "$BASE_DIR" ] && crash "could not find alu-detect installation folder"
+
+REF_NAME="${1:-}"
+[ -z "$REF_NAME" ] && read -p "Enter reference name: " -e REF_NAME
+
+REF_SETTINGS="$BASE_DIR/settings/ref.$REF_NAME"
+[ ! -r "$REF_SETTINGS" ] && crash "could not find settings for reference: $REF_NAME"
+. "$REF_SETTINGS"
+
+FAKE_REF_NAME="fake_$REF_NAME"
+
+#
+# step 1: annotate tsd-s
+#
+ALUS_TSD_BED="alus.${REF_NAME}.tsd.bed.gz"
+STAGE_NUM=1
+STAGE_NAME="annotate tsd-s in reference alus"
+INPUT_FILES="$REF_FA $ALUS_BED"
+OUTPUT_FILES="$ALUS_TSD_BED"
+STATS_FILE=
+stage_command () {
+    tsd-search -N $NCPU "$REF_FA" "$ALUS_BED" | $ZIP >"$ALUS_TSD_BED"
+}
+run_stage
+
+#
+# step 2: select alu targets
+#

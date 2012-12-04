@@ -1,98 +1,9 @@
 #!/bin/bash
-
 . $(which lib.alu-detect.sh)
 set -o errexit
 #set -o pipefail
 set -o xtrace
 
-ask_continue() {
-    if [ "${CONF:-}" = a ] ; then return ; fi
-    read -p "continue? (y/a/s/N) " CONF
-    if [ "$CONF" != y -a "$CONF" != a -a "$CONF" != s ] ; then exit ; fi
-    if [ "$CONF" = s ] ; then return 1 ; fi
-}
-
-run_stage() {
-    echo "--------------------" >&2
-    make_note "Stage $STAGE_NUM: $STAGE_NAME"
-
-    if [ "$STAGE_NUM" -lt "$START_STAGE" ] ; then
-	make_note "skipping"
-	return
-    elif [ "$STAGE_NUM" -gt "$END_STAGE" ] ; then
-	make_note "done because END_STAGE=$END_STAGE"
-	exit
-    fi
-
-    for f in $INPUT_FILES ; do
-	if [ ! -r $f ] ; then crash "$f missing" ; fi
-    done
-
-    NEED_TO_RUN=0
-    for f in $OUTPUT_FILES ; do
-	if [ ! -r "$f" ] ; then
-	    make_note "$f does not exist"
-	    NEED_TO_RUN=1
-	    break
-	fi
-    done
-    if [ $NEED_TO_RUN = 0 ] ; then
-	for f in $OUTPUT_FILES ; do
-	    for g in $INPUT_FILES ; do
-		if [ "$g" -nt "$f" ] ; then
-		    make_note "$g is newer than $f"
-		    NEED_TO_RUN=1
-		    break
-		fi
-	    done
-	    if [ $NEED_TO_RUN = 1 ] ; then break ; fi
-	done
-    fi
-    if [ $NEED_TO_RUN = 0 ] ; then
-	make_note "$OUTPUT_FILES up to date"
-    else
-	make_note "need to run"
-	typeset -f stage_command >&2
-	if ask_continue ; then
-	    make_note "starting"
-	    stage_command || { rm $OUTPUT_FILES ; crash "failed" ; }
-	    make_note "done"
-	else
-	    make_note "skipping"
-	fi
-    fi
-
-    if [ "$STATS_FILE" ] ; then
-	NEED_TO_RUN=0
-	if [ ! -r "$STATS_FILE" ] ; then
-	    make_note "$STATS_FILE does not exist"
-	    NEED_TO_RUN=1
-	fi
-	if [ $NEED_TO_RUN = 0 ] ; then
-	    for g in $OUTPUT_FILES ; do
-		if [ "$g" -nt "$STATS_FILE" ] ; then
-		    make_note "$g is newer than $STATS_FILE"
-		    NEED_TO_RUN=1
-		    break
-		fi
-	    done
-	fi
-	if [ $NEED_TO_RUN = 0 ] ; then
-	    make_note "using existing stats"
-	else
-	    make_note "collecting stats"
-	    typeset -f stage_stats_command >&2
-	    if ask_continue ; then
-	    make_note "starting"
-		stage_stats_command >$STATS_FILE || { rm $STATS_FILE ; crash "failed" ; }
-		make_note "done"
-	    else
-		make_note "skipping"
-	    fi
-	fi
-	cat $STATS_FILE >&2
-    fi
-}
 
 NCPU=${NCPU:-2}
 make_note "using NCPU=$NCPU"

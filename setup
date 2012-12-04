@@ -29,7 +29,7 @@ else
     # first the paths
     #
     new_path=
-    add_dependency "python2.6+" "which python >/dev/null 2>&1 && [ \"\$(python --version 2>&1 | cut -d ' ' -f 2 | cut -d '.' -f 2)\" -ge 6 ]"
+    add_dependency "python2.6+" "which python >/dev/null 2>&1 && [ \"\$(python --version 2>&1 | cut -d '.' -f 2)\" -ge 6 ]"
     add_dependency "samtools" "which samtools >/dev/null 2>&1"
     add_dependency "bedtools" "which intersectBed >/dev/null 2>&1"
     add_dependency "RepeatMasker" "which RepeatMasker >/dev/null 2>&1"
