@@ -190,7 +190,6 @@ OUTPUT_FILES="$READS_TO_REMAP.fq.gz"
 STATS_FILE="$READS_TO_REMAP.stats"
 stage_command() {
     $PV $INPUT_FILES \
-	| sam-to-fq -l $PAIRING \
 	| fq-trim-illumina-reads -v input_phred="$INPUT_PHRED" \
 	| {
 	      if [[ "$PAIRING" =~ "paired=1" ]] ; then
