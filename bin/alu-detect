@@ -117,6 +117,7 @@ stage_command() {
 run_stage
 
 export PAIRING="$(cat $PAIRING_FILE)"
+export PAIRING_FILE=$RGID.pairing
 if [[ ! "$PAIRING" =~ "paired=" ]] ; then
     crash "could not determine pairing information"
 fi
@@ -146,7 +147,8 @@ stage_command () {
 			  -f 0x2000,0:\&1 \
 		      -f 0x4000,0:\&1 \
 		      -f 0,0x2000:\&1 \
-		      -f 0,0x4000:\&1
+		      -f 0,0x4000:\&1 \
+			  -f 0/0x6000,0x10000:\&3
 #		      -f 0x2000,0x10000:\&1 \
 #              -f 0x4000,0x10000:\&1 \
 #			  -f 0/0x6001,0x10000:\&3 \
@@ -172,6 +174,7 @@ run_stage
 #RG=$(echo "$F" | cut -f 1)	# uncomment this if the actual read group name is required
 #RGID=$(echo "$F" | cut -f 2)
 #PAIRING=$(echo "$F" | cut -f 3)
+#PAIRING="$(cat $PAIRING_FILE)"
 
 #
 # Stage 3: Trim & rename reads
@@ -183,12 +186,11 @@ STAGE_NUM=3
 STAGE_NAME="read renaming"
 READS_TO_REMAP=$RGID.reads.to_remap
 MAP_DISCORDANT=$RGID.reads.discordant
-INPUT_FILES="$MAP_DISCORDANT.sam.gz"
+INPUT_FILES="$MAP_DISCORDANT.fq.gz"
 OUTPUT_FILES="$READS_TO_REMAP.fq.gz"
 STATS_FILE="$READS_TO_REMAP.stats"
 stage_command() {
     $PV $INPUT_FILES \
-	| sam-to-fq -l $PAIRING \
 	| fq-trim-illumina-reads -v input_phred="$INPUT_PHRED" \
 	| {
 	      if [[ "$PAIRING" =~ "paired=1" ]] ; then
