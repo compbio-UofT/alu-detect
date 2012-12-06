@@ -1,13 +1,14 @@
 #!/bin/bash
 . $(which lib.alu-detect.sh)
 
+SCALE=${SCALE:-6}
+
 run_cmds "bedtools intersect -sorted -s -u -a - -b $TRUTH | wc -l" "wc -l" 2>/dev/null
 
-SCALE=${SCALE:-6}
-if [ "${CMD_OUTPUT[2]}" -eq 0 ] ; then
-  PRECISION="-"
+if [ ${CMD_OUTPUT[2]} -eq 0 ] ; then
+    PRECISION=-
 else
-  PRECISION=$(echo "scale=$SCALE; ${CMD_OUTPUT[1]} / ${CMD_OUTPUT[2]}" | bc)
+    PRECISION=$(echo "scale=$SCALE; ${CMD_OUTPUT[1]} / ${CMD_OUTPUT[2]}" | bc)
 fi
 
-exec print_tab -- "${CMD_OUTPUT[1]}" "${CMD_OUTPUT[2]}" "$PRECISION"
+exec print_tab -- ${CMD_OUTPUT[1]} ${CMD_OUTPUT[2]} $PRECISION

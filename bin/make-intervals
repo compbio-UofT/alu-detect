@@ -1,7 +1,6 @@
 #!/bin/bash
 . $(which lib.alu-detect.sh)
 
-CHROMINFO="${CHROMINFO:-../data/chromInfo.hg18.txt}"
 [ $# -ne 2 ] && crash "use: $0 <5p|3p><+|-><start_offset> <5p|3p><+|-><end_offset>"
 
 [ "$1" != "$(echo "$1" | grep -E "^[35]p[+-][0-9]+$")" ] && crash "bad start specification: $1"

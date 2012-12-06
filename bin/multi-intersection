@@ -2,8 +2,6 @@
 . $(which lib.alu-detect.sh)
 set -x
 
-REF_BED=${REF_BED:-"../results-others/calls-dbrip+stewart.bed"}
-
 label="$1"
 shift
 

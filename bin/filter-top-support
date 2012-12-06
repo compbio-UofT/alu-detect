@@ -1,3 +1,0 @@
-#!/bin/bash
-set -u
-sort -s -k 9,9nr | head -n $1

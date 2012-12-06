@@ -45,6 +45,10 @@ def process_contig(chr, seq):
     return res
 
 
+if len(sys.argv) != 3:
+    print 'use: %s <deletions_bed> <ref_fa>' % sys.argv[0]
+    sys.exit(1)
+
 d = load_deletions(sys.argv[1])
 #for chr in d:
 #    print >> sys.stderr, '\n'.join(map(lambda e: '\t'.join(map(str, [chr] + e)), d[chr]))

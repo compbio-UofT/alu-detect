@@ -1,3 +1,3 @@
 #!/bin/bash
-shopt -s lastpipe
+shopt -s lastpipe 2>/dev/null
 zc "$@" | exec awk '/^[^>]/ {print; next} {if (not_first) {print "NNNNNNNNNNNNNNNNNNNN"} print; print "NNNNNNNNNNNNNNNNNNNN"; not_first=1} END{print "NNNNNNNNNNNNNNNNNNNN"}'

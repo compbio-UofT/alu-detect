@@ -1,26 +1,27 @@
 #!/bin/bash
 #set -x
+set -e
 
 add_dependency() {
-    label="$1"
-    check_command="$2"
+    label=$1
+    check_command=$2
     extra_path=
 
-    while ! PATH="$new_path:$extra_path:$PATH" eval "$check_command"; do
+    while ! PATH=$new_path:$extra_path:$PATH eval $check_command; do
 	echo "$label not found"
 	extra_path=$(readlink -f "$(read -p "Enter $label path: " -e extra_path; eval echo "$extra_path")")
     done
-    [ "$extra_path" ] && new_path="$new_path${new_path:+:}$extra_path"
+    [ "$extra_path" ] && new_path=$new_path${new_path:+:}$extra_path
 }
 
 
-DIR="$( cd -P "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
-REF_NAME="${1:-}"
+DIR=$( cd -P "$( dirname "${BASH_SOURCE[0]}" )" && pwd )
+REF_NAME=${1:-}
 
 [ ! -d "$DIR/settings" ] && mkdir settings
 [ ! -d "$DIR/data" ] && mkdir data
 
-GLOBAL_SETTINGS="$DIR/settings/global"
+GLOBAL_SETTINGS=$DIR/settings/global
 if [ -r "$GLOBAL_SETTINGS" ]; then
     echo "Global settings file already exists: $GLOBAL_SETTINGS"
     echo "If you need to regenerate it, remove the existing file"
@@ -36,19 +37,19 @@ else
     add_dependency "bowtie2" "which bowtie2 >/dev/null 2>&1"
     add_dependency "gmapper" "which gmapper-ls >/dev/null 2>&1"
 
-    echo "[[ ! \"\$PATH\" =~ $DIR/bin ]] && PATH=\"$DIR/bin:$new_path${new_path:+:}\$PATH\"" >"$GLOBAL_SETTINGS"
-#    echo "[[ ! \"\$AWKPATH\" =~ $DIR/bin ]] && AWKPATH=\"$DIR/bin:\$AWKPATH\"" >>"$GLOBAL_SETTINGS"
-#    echo "[[ ! \"\$PYTHONPATH\" =~ $DIR/bin ]] && PYTHONPATH=\"$DIR/bin:\$PYTHONPATH\"" >>"$GLOBAL_SETTINGS"
+    echo "[[ ! \"\$PATH\" =~ $DIR/bin ]] && PATH=$DIR/bin:$new_path${new_path:+:}\$PATH" >"$GLOBAL_SETTINGS"
+#    echo "[[ ! \"\$AWKPATH\" =~ $DIR/bin ]] && AWKPATH=$DIR/bin:\$AWKPATH" >>"$GLOBAL_SETTINGS"
+#    echo "[[ ! \"\$PYTHONPATH\" =~ $DIR/bin ]] && PYTHONPATH=$DIR/bin:\$PYTHONPATH" >>"$GLOBAL_SETTINGS"
 
     #
     # next, alu consensus sequences
     #
     if [[ -z "$ALU_ALL_FA" || ! -r "$ALU_ALL_FA" ]]; then
 	echo "Need to build list of Alu consensus sequences"
-	ALU_ALL_FA=$DIR/data/alu.pos.fa
-	ALU_NO_POLYA_FA=$DIR/data/alu.hidden-polya.fa
+	ALU_ALL_FA=$DIR/data/alus.pos.fa
+	ALU_NO_POLYA_FA=$DIR/data/alus.hidden-polya.fa
 
-        REPEATMASKER_DIR=$(dirname $(readlink -f $(PATH=$new_path:$PATH which RepeatMasker)))
+        REPEATMASKER_DIR=$(dirname "$(readlink -f "$(PATH=$new_path:$PATH which RepeatMasker)")")
 
 	echo -n "Generating list of alu consensus sequences... "
 	$REPEATMASKER_DIR/util/queryRepeatDatabase.pl -species homo -class SINE | 
@@ -64,15 +65,15 @@ else
 	./hide-polya <$ALU_ALL_FA >$ALU_NO_POLYA_FA
 	popd >/dev/null
     fi
-    echo "export ALU_ALL_FA=$ALU_ALL_FA" >>"$GLOBAL_SETTINGS"
-    echo "export ALU_NO_POLYA_FA=$ALU_NO_POLYA_FA" >>"$GLOBAL_SETTINGS"
+    echo "export ALU_ALL_FA=\"$ALU_ALL_FA\"" >>"$GLOBAL_SETTINGS"
+    echo "export ALU_NO_POLYA_FA=\"$ALU_NO_POLYA_FA\"" >>"$GLOBAL_SETTINGS"
 fi
 
 
 while [ -z "$REF_NAME" ]; do
     read -p "Enter reference name: " -e REF_NAME
 done
-REF_SETTINGS="$DIR/settings/ref.$REF_NAME"
+REF_SETTINGS=$DIR/settings/ref.$REF_NAME
 if [ -r "$REF_SETTINGS" ]; then
     echo "Reference settings file already exists: $REF_SETTINGS"
     echo "If you need to regenerate it, remove the existing file"
@@ -89,18 +90,20 @@ else
 	fi
     done
     echo "export REF_FA=\"$REF_FA\"" >"$REF_SETTINGS"
-    REF_FA_LINK="$DIR/data/$REF_NAME.fa"
-    ln -s "$REF_FA" "$REF_FA_LINK"
+
+    # link if not already there
+    REF_FA_LINK=$DIR/data/$REF_NAME.fa
+    [ ! -r "$REF_FA_LINK" ] && ln -s "$REF_FA" "$REF_FA_LINK"
 
     #
     # fasta index
     #
-    CHROMINFO="$REF_FA".fai
+    CHROMINFO=$REF_FA.fai
     CHROMINFO_LINK="$REF_FA_LINK".fai
     if [ -r "$CHROMINFO" ]; then
-	ln -s "$CHROMINFO" "$CHROMINFO_LINK"
+	[ ! -r "$CHROMINFO_LINK" ] && ln -s "$CHROMINFO" "$CHROMINFO_LINK"
     else
-	CHROMINFO="$CHROMINFO_LINK"
+	CHROMINFO=$CHROMINFO_LINK
 	echo -n "Creating fasta index... "
 	samtools faidx "$REF_FA_LINK"
 	echo "done"
@@ -118,10 +121,9 @@ else
 	fi
     done
     echo "export BOWTIE2_INDEX=\"$BOWTIE2_INDEX\"" >>"$REF_SETTINGS"
-    BOWTIE2_INDEX_LINK="$DIR/data/$REF_NAME"
-    rm "$BOWTIE2_INDEX_LINK".*.bt2
+    BOWTIE2_INDEX_LINK=$DIR/data/$REF_NAME
     for suffix in .1.bt2 .2.bt2 .3.bt2 .4.bt2 .rev.1.bt2 .rev.2.bt2; do
-	ln -s "$BOWTIE2_INDEX$suffix" "$BOWTIE2_INDEX_LINK$suffix"
+	[ ! -r "$BOWTIE2_INDEX_LINK$suffix" ] && ln -s "$BOWTIE2_INDEX$suffix" "$BOWTIE2_INDEX_LINK$suffix"
     done
 
     #
@@ -133,7 +135,7 @@ else
 	while [[ -z "$CHROM_FA_OUT" ]]; do
 	    echo "RepeatMasker output files not found"
 	    read -p "Enter bash regexp describing path to RepeatMasker output files: " -e CHROM_FA_OUT
-	    CHROM_FA_OUT="$(eval echo "$CHROM_FA_OUT" | xargs -n 1 readlink -e)"
+	    CHROM_FA_OUT=$(eval echo "$CHROM_FA_OUT" | xargs -n 1 readlink -e)
 	done
 	echo -n "Generating list of reference alus in bed format... "
 	grep -h SINE/Alu $CHROM_FA_OUT | 
@@ -144,5 +146,5 @@ else
 	gzip >$ALUS_BED
 	echo "done"
     done
-    echo "export ALUS_BED=$ALUS_BED" >>"$REF_SETTINGS"
+    echo "export ALUS_BED=\"$ALUS_BED\"" >>"$REF_SETTINGS"
 fi

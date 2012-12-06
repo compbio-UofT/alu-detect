@@ -1,118 +1,99 @@
 #!/bin/bash
 . $(which lib.alu-detect.sh)
 set -x
+set -e
 
-NCPU="${NCPU:-20}"
-export NGS_NAME="$1"
-export REAL_CALLS="$2"
-ORIG_FAKE_CALLS="$3"
+export NGS_NAME=$1
+REAL_REF_NAME=$2
+FAKE_REF_NAME=$3
+RAW_REAL_CALLS=$4
+RAW_FAKE_CALLS=$5
+NCPU=${NCPU:-4}
 
-# used to transfrom real<->fake coordinates
-DELETIONS="${DELETIONS:-deletions.bed}"
+# find install directory
+BASE_DIR=$(dirname $(readlink -e $(which alu-detect 2>/dev/null)) | sed 's/\/bin$//')
+[ -z "$BASE_DIR" ] && crash "could not find alu-detect installation folder"
 
-# targets to look for
-export TARGETS="${TARGETS:-targets.fake.bed}"
-export TARGETS_IN_ALUS="${TARGETS_IN_ALUS:-targets.near-clear-alus.fake.bed}"
+# load real reference settings
+REAL_REF_SETTINGS=$BASE_DIR/settings/ref.$REAL_REF_NAME
+[ ! -r "$REAL_REF_SETTINGS" ] && crash "could not find settings for real reference: $REAL_REF_NAME"
+. "$REAL_REF_SETTINGS"
+REAL_REF_FA=$REF_FA
+REAL_CHROMINFO=$CHROMINFO
+REAL_ALUS_BED=$ALUS_BED
 
-# alus in references
-REAL_REF_ALUS="${REAL_REF_ALUS:-alus.real.bed}"
-FAKE_REF_ALUS="${FAKE_REF_ALUS:-alus.fake.bed}"
-CLEAR_FAKE_REF_ALUS="${CLEAR_FAKE_REF_ALUS:-clear-alus.fake.bed}"
+# load fake reference settings
+FAKE_REF_SETTINGS=$BASE_DIR/settings/ref.$FAKE_REF_NAME
+[ ! -r "$FAKE_REF_SETTINGS" ] && crash "could not find settings for fake reference: $FAKE_REF_NAME"
+. "$FAKE_REF_SETTINGS"
+FAKE_REF_FA=$REF_FA
+FAKE_CHROMINFO=$CHROMINFO
+FAKE_ALUS_BED=$ALUS_BED
 
-# extra targets we don't care about (in fake coordinates)
-BAD_TARGETS="${BAD_TARGETS:-targets.bad.fake.bed}"
-
-# known alus (in real coordinates)
-KNOWN_ALUS_OTHERS="${KNOWN_ALUS_OTHERS:-calls-elsewhere.bed}"
-
-SAMPLE=${NGS_NAME%-*}
-export KNOWN_ALUS=${KNOWN_ALUS:-../results-others/calls.$SAMPLE.bed}
-
-# alus to compare against
-export STANDARD_ALUS="${STANDARD_ALUS:-calls-standard.bed}"
-
-# gen-file suffix
-GF="${GF:-pgen}"
-
-
-# step 1: clean up fake calls
-export FAKE_CALLS=raw-calls.${NGS_NAME}.fake.clean.bed
-if [ ! -r $FAKE_CALLS.$GF ]; then
-  cat <<-EOF >$FAKE_CALLS.$GF
-	#!/usr/bin/env gen-file
-	##$ORIG_FAKE_CALLS $TARGETS $BAD_TARGETS $KNOWN_ALUS_OTHERS $DELETIONS
-	{ intersectBed -u -s -a "$ORIG_FAKE_CALLS" -b "$TARGETS";
-	  intersectBed -v -s -a "$ORIG_FAKE_CALLS" -b <(zc "$TARGETS" "$BAD_TARGETS" <(real-to-fake $DELETIONS $KNOWN_ALUS_OTHERS) | cut -f -6); } \
-	  | sort -s -k 1,1 -k 2,2n
-	EOF
-  chmod a+x $FAKE_CALLS.$GF
-fi
-./$FAKE_CALLS.$GF -g || exit 1
-
-# step 2: apply ref-alu-bp filter to clean fake calls
-export FAKE_CALLS_REF_ALU_BP=raw-calls.${NGS_NAME}.fake.clean.ref-alu-bp.bed
-if [ ! -r $FAKE_CALLS_REF_ALU_BP.$GF ]; then
-  cat <<-EOF >$FAKE_CALLS_REF_ALU_BP.$GF
-	#!/usr/bin/env gen-file
-	##$FAKE_CALLS $FAKE_REF_ALUS
-	filter-ref-alu-bp $FAKE_REF_ALUS $FAKE_CALLS
-	EOF
-  chmod a+x $FAKE_CALLS_REF_ALU_BP.$GF
-fi
-./$FAKE_CALLS_REF_ALU_BP.$GF -g || exit 1
-
-# step 3: clean fake calls near alus
-export FAKE_CALLS_NEAR_ALUS=raw-calls.${NGS_NAME}.fake.clean.near-alus.bed
-if [ ! -r $FAKE_CALLS_NEAR_ALUS.$GF ]; then
-  cat <<-EOF >$FAKE_CALLS_NEAR_ALUS.$GF
-	#!//usr/bin/env gen-file
-	##$FAKE_CALLS $CLEAR_FAKE_REF_ALUS $TARGETS $TARGETS_IN_ALUS
-
-	# in 2 steps:
-	# 1: pass through calls that detect targets near clear alus
-	{ intersectBed -u -s -a $FAKE_CALLS -b $TARGETS_IN_ALUS;
-	# 2: from the rest, remove calls (near clear alus) that detect other (nearby) targets
-	  intersectBed -v -s -a $FAKE_CALLS -b $TARGETS | intersectBed -u -a - -b <(extend-bed 100 $CLEAR_FAKE_REF_ALUS); } \
-	  | sort -s -k 1,1 -k 2,2n
-	EOF
-  chmod a+x $FAKE_CALLS_NEAR_ALUS.$GF
-fi
-./$FAKE_CALLS_NEAR_ALUS.$GF -g || exit 1
-
-# step 4: apply ref-alu-bp filter to clean fake calls near alus
-export FAKE_CALLS_NEAR_ALUS_REF_ALU_BP=raw-calls.${NGS_NAME}.fake.clean.near-alus.ref-alu-bp.bed
-if [ ! -r $FAKE_CALLS_NEAR_ALUS_REF_ALU_BP.$GF ]; then
-  cat <<-EOF >$FAKE_CALLS_NEAR_ALUS_REF_ALU_BP.$GF
-	#!//usr/bin/env gen-file
-	##$FAKE_CALLS_NEAR_ALUS $FAKE_REF_ALUS
-	filter-ref-alu-bp $FAKE_REF_ALUS $FAKE_CALLS_NEAR_ALUS
-	EOF
-  chmod a+x $FAKE_CALLS_NEAR_ALUS_REF_ALU_BP.$GF
-fi
-./$FAKE_CALLS_NEAR_ALUS_REF_ALU_BP.$GF -g || exit 1
-
-# step 5: apply ref-alu-bp filter to real calls
-export REAL_CALLS_REF_ALU_BP=raw-calls.${NGS_NAME}.real.ref-alu-bp.bed
-if [ ! -r $REAL_CALLS_REF_ALU_BP.$GF ]; then
-  cat <<-EOF >$REAL_CALLS_REF_ALU_BP.$GF
-	#!/usr/bin/env gen-file
-	##$REAL_CALLS $REAL_REF_ALUS
-	filter-ref-alu-bp $REAL_REF_ALUS $REAL_CALLS
-	EOF
-  chmod a+x $REAL_CALLS_REF_ALU_BP.$GF
-fi
-./$REAL_CALLS_REF_ALU_BP.$GF -g || exit 1
+# check for deletions, targets, and known alus
+DELETIONS=$BASE_DIR/data/deletions.$REAL_REF_NAME.to.$FAKE_REF_NAME.bed
+[ ! -r "$DELETIONS" ] && crash "could not find deletions file: $DELETIONS"
+TARGETS=$BASE_DIR/data/targets.$FAKE_REF_NAME.bed
+[ ! -r "$TARGETS" ] && crash "could not find targets file: $TARGETS"
+TARGETS_BAD=$BASE_DIR/data/targets.bad.$FAKE_REF_NAME.bed
+[ ! -r "$TARGETS_BAD" ] && TARGETS_BAD=
+KNOWN_NOVEL_ALUS=$BASE_DIR/data/known-novel-alus.$REAL_REF_NAME.bed
+[ ! -r "$KNOWN_NOVEL_ALUS" ] && KNOWN_NOVEL_ALUS=
 
 
-# step 6: try all filters, and adapt
-export TABLE_FILTERS=table.${NGS_NAME}.csv
+START_STAGE=${START_STAGE:-1}
+END_STAGE=${END_STAGE:-100}
+make_note "using START_STAGE=$START_STAGE and END_STAGE=$END_STAGE"
 
-if [ ! -r $TABLE_FILTERS ]; then
-    export WORK_DIR=table.${NGS_NAME}.dir/
+
+# step 1: apply ref-alu-bp to real calls
+STAGE_NUM=1
+STAGE_NAME="apply ref-alu-bp to real calls"
+FILTERED_REAL_CALLS=raw-calls.$NGS_NAME.$REAL_REF_NAME.ref-alu-bp.bed
+INPUT_FILES="$RAW_REAL_CALLS"
+OUTPUT_FILES="$FILTERED_REAL_CALLS"
+STATS_FILE=
+stage_command() {
+    filter-ref-alu-bp "$REAL_ALUS_BED" "$RAW_REAL_CALLS" \
+	| sort -s -k 1,1 -k 2,2n >"$FILTERED_REAL_CALLS"
+}
+run_stage
+
+
+# step 2: clean up fake calls, and apply ref-alu-bp to fake calls
+STAGE_NUM=2
+STAGE_NAME="clean up fake calls, and apply ref-alu-bp to fake calls"
+FILTERED_FAKE_CALLS=raw-calls.$NGS_NAME.$FAKE_REF_NAME.ref-alu-bp.bed
+INPUT_FILES="$RAW_FAKE_CALLS"
+OUTPUT_FILES="$FILTERED_FAKE_CALLS"
+stage_command() {
+    {
+	intersectBed -u -s -a "$RAW_FAKE_CALLS" -b $TARGETS;
+	intersectBed -v -s -a "$RAW_FAKE_CALLS" -b \
+	    <(zc "$TARGETS" \
+		<([ "$TARGETS_BAD" ] && zc "$TARGETS_BAD") \
+		<([ "$KNOWN_NOVEL_ALUS" ] && real-to-fake "$DELETIONS" "$KNOWN_NOVEL_ALUS") \
+		| cut -f -6);
+    } \
+	| filter-ref-alu-bp "$FAKE_ALUS_BED" - \
+	| sort -s -k 1,1 -k 2,2n >"$FILTERED_FAKE_CALLS"
+}
+run_stage
+
+
+# step 3: try various filters, adapting
+STAGE_NUM=3
+STAGE_NAME="try various filters, adapting"
+TABLE_FILTERS=table.$NGS_NAME.csv
+INPUT_FILES="$FILTERED_FAKE_CALLS $FILTERED_REAL_CALLS"
+OUTPUT_FILES="$TABLE_FILTERS"
+stage_command() {
+    export WORK_DIR=table.$NGS_NAME.dir/
     mkdir -p $WORK_DIR
-    export NULL_VALS="${NULL_VALS:-$(seq -s " " 0 50 300)}"
-    export CI_LEN_VALS="${CI_LEN_VALS:-$(seq -s " " 300 200 1100)}"
+    export NULL_VALS=${NULL_VALS:-$(seq -s " " 0 50 300)}
+    export CI_LEN_VALS=${CI_LEN_VALS:-$(seq -s " " 300 200 1100)}
     export OUTPUT_FD=3
+    export CALLS_TRUTH_PAIRS="$FILTERED_FAKE_CALLS:$TARGETS;$FILTERED_REAL_CALLS:$KNOWN_NOVEL_ALUS"
     LEN_MIN=${LEN_MIN:-150}
     LEN_MAX=${LEN_MAX:-290}
     SUPP_MIN=${SUPP_MIN:-5}
@@ -122,8 +103,8 @@ if [ ! -r $TABLE_FILTERS ]; then
 
     while true; do
 	LOG_FILE=log.${NGS_NAME}.len${LEN_MIN}-${LEN_MAX}.supp${SUPP_MIN}-${SUPP_MAX}.txt
-	export LEN_VALS="$(seq -s " " $LEN_MIN 10 $LEN_MAX)"
-	export SUPP_VALS="$(seq -s " " $SUPP_MIN $SUPP_MAX)"
+	export LEN_VALS=$(seq -s " " $LEN_MIN 10 $LEN_MAX)
+	export SUPP_VALS=$(seq -s " " $SUPP_MIN $SUPP_MAX)
 	make_note "trying len${LEN_MIN}-${LEN_MAX} supp${SUPP_MIN}-${SUPP_MAX}"
 
 	run-filters.parallel "$NCPU" 3>>$TABLE_FILTERS >${WORK_DIR}$LOG_FILE 2>&1 || exit 1
@@ -157,34 +138,29 @@ if [ ! -r $TABLE_FILTERS ]; then
 	SUPP_MIN=$((${top_filter[1]} - $SUPP_SAFETY))
 	[ $SUPP_MIN -lt 5 ] && SUPP_MIN=5
     done
-fi
+}
+run_stage
 
-# step 7: filter real calls based on top filter
-FILTERED_REAL_CALLS=../results-us/calls.${NGS_NAME}.real.bed
-if [ ! -r $FILTERED_REAL_CALLS.$GF ]; then
-    cat <<-EOF >$FILTERED_REAL_CALLS.$GF
-	#!/usr/bin/env gen-file
-	##$(rel_path $REAL_CALLS ../results-us) ../simulation/$TABLE_FILTERS
-	top_filter=(\$(get-top-filter ../simulation/$TABLE_FILTERS | cut -f -5))
-	COMMAND="apply-filter \${top_filter[@]}"
-	[ "\${top_filter[4]}" != /dev/null ] && COMMAND="\${COMMAND} | filter-ref-alu-bp $(rel_path $REAL_REF_ALUS ../results-us) -"
-	eval \$COMMAND <$(rel_path $REAL_CALLS ../results-us) | sort -s -k 1,1 -k 2,2n
-	EOF
-    chmod a+x $FILTERED_REAL_CALLS.$GF
-fi
-./$FILTERED_REAL_CALLS.$GF -g
 
-# step 8: filter fake calls based on top filter
-FILTERED_FAKE_CALLS=../results-us/calls.${NGS_NAME}.fake.bed
-if [ ! -r $FILTERED_FAKE_CALLS.$GF ]; then
-    cat <<-EOF >$FILTERED_FAKE_CALLS.$GF
-	#!/usr/bin/env gen-file
-	##$(rel_path $FAKE_CALLS ../results-us) ../simulation/$TABLE_FILTERS
-	top_filter=(\$(get-top-filter ../simulation/$TABLE_FILTERS | cut -f -5))
-	COMMAND="apply-filter \${top_filter[@]}"
-	[ "\${top_filter[4]}" != /dev/null ] && COMMAND="\${COMMAND} | filter-ref-alu-bp $(rel_path $REAL_REF_ALUS ../results-us) -"
-	eval \$COMMAND <$(rel_path $FAKE_CALLS ../results-us) | sort -s -k 1,1 -k 2,2n
-	EOF
-    chmod a+x $FILTERED_FAKE_CALLS.$GF
-fi
-./$FILTERED_FAKE_CALLS.$GF -g
+# step 4: filter real calls based on top filter
+STAGE_NUM=4
+STAGE_NAME="filter real calls based on top filter"
+REAL_CALLS=calls.$NGS_NAME.$REAL_REF_NAME.bed
+INPUT_FILES="$FILTERED_REAL_CALLS $TABLE_FILTERS"
+OUTPUT_FILES="$REAL_CALLS"
+stage_command() {
+    apply-filter $(get-top-filter "$TABLE_FILTERS") <"$FILTERED_REAL_CALLS" >"$REAL_CALLS"
+}
+run_stage
+
+
+# step 5: filter fake calls based on top filter
+STAGE_NUM=5
+STAGE_NAME="filter fake calls based on top filter"
+FAKE_CALLS=calls.$NGS_NAME.$FAKE_REF_NAME.bed
+INPUT_FILES="$FILTERED_FAKE_CALLS $TABLE_FILTERS"
+OUTPUT_FILES="$FAKE_CALLS"
+stage_command() {
+    apply-filter $(get-top-filter "$TABLE_FILTERS") <"$FILTERED_FAKE_CALLS" >"$FAKE_CALLS"
+}
+run_stage
