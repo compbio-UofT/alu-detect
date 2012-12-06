@@ -1,59 +1,42 @@
 #!/bin/bash
 . $(which lib.alu-detect.sh)
+set -e
 #set -x
 
-#LEN_VALS=${LEN_VALS:-"$(seq 150 10 290)"}
-#SUPP_VALS=${SUPP_VALS:-"6 8 10 12 14 16"}
-#NULL_VALS=${NULL_VALS:-"000 200 250 300"}
-#CI_LEN_VALS=${CI_LEN_VALS:-"100 780 1200"}
-#REF_ALU_VALS=${REF_ALU_VALS:-"/dev/null"}
+calls_truth_pairs=($(echo "$CALLS_TRUTH_PAIRS" | tr ';' ' '))
+calls=()
+truth=()
+truth_len=()
+for pair in ${calls_truth_pairs[@]}; do
+    tmp=($(echo "$pair" | tr ':' ' '))
+    [ ${#tmp[@]} -ne 2 ] && crash "invalid <calls_bed>:<truth_bed> pair: $pair"
+    calls+=(${tmp[0]})
+    truth+=(${tmp[1]})
+    truth_len+=($(wc -l <${tmp[1]}))
+done
 
-#TARGETS=${TARGETS:-alu.targets.fake_hg18.bed}
-#TARGETS_IN_ALUS=${TARGETS_IN_ALUS:-alu.targets.in-alus.fake_hg18.bed}
-#STANDARD_ALUS=${STANDARD_ALUS:-StewartdbRIP.bed}
-
-if [ "$(head "$KNOWN_ALUS")" ]; then
-    have_known_alus=1
-else
-    have_known_alus=
-fi
+#echo "calls: ${calls[@]}" >&2
+#echo "truth: ${truth[@]}" >&2
+#echo "truth_len: ${truth_len[@]}" >&2
 
 for len in $LEN_VALS ; do
 for supp in $SUPP_VALS ; do
 for null in $NULL_VALS ; do
 for ci_len in $CI_LEN_VALS ; do
-  print_tab -n -- $len $supp $null $ci_len /dev/null ""
+    print_tab -n -- $len $supp $null $ci_len ref-alus
 
-  # calls on fake reference
-  exec 3< <(<"$1" filter-length $len | filter-support $supp | filter-weak-null $null | filter-ci-length $ci_len)
-  <&3 run_cmds "TRUTH=$TARGETS get-prec-recall" \
-               "filter-ci-length 100 | TRUTH=$TARGETS get-prec-recall" \
-               "filter-bp 2 | TRUTH=$TARGETS get-prec-recall" 2>/dev/null
-  exec 3<&-
-  print_tab -n -- "${CMD_OUTPUT[@]}" ""
+    i=0
+    while [ $i -lt ${#calls[@]} ]; do
+	exec 3< <(<${calls[$i]} apply-filter $len $supp $null $ci_len)
+	<&3 run_cmds "TRUTH=${truth[$i]} TRUTH_LEN=${truth_len[$i]} get-prec-recall" \
+	    "filter-ci-length 100 | TRUTH=${truth[$i]} TRUTH_LEN=${truth_len[$i]} get-prec-recall" \
+	    "filter-bp 2 | TRUTH=${truth[$i]} TRUTH_LEN=${truth_len[$i]} get-prec-recall" 2>/dev/null
+	exec 3<&-
+	print_tab -n -- '' "${CMD_OUTPUT[@]}"
+	i=$(($i + 1))
+    done
 
-  # calls on fake ref, near alus
-  exec 3< <(<"$2" filter-length $len | filter-support $supp | filter-weak-null $null | filter-ci-length $ci_len)
-  <&3 run_cmds "TRUTH=$TARGETS_IN_ALUS get-prec-recall" \
-               "filter-ci-length 100 | TRUTH=$TARGETS_IN_ALUS get-prec-recall" \
-               "filter-bp 2 | TRUTH=$TARGETS_IN_ALUS get-prec-recall" 2>/dev/null
-  exec 3<&-
-  print_tab -n -- "${CMD_OUTPUT[@]}" ""
-
-  # calls on real reference
-  exec 3< <(<"$3" filter-length $len | filter-support $supp | filter-weak-null $null | filter-ci-length $ci_len)
-  <&3 run_cmds "TRUTH=$STANDARD_ALUS get-prec" \
-               "filter-ci-length 100 | TRUTH=$STANDARD_ALUS get-prec" \
-               "filter-bp 2 | TRUTH=$STANDARD_ALUS get-prec" 2>/dev/null
-  exec 3<&-
-  print_tab -n -- "${CMD_OUTPUT[@]}" ""
-
-  # relative recall
-  if [ $have_known_alus ]; then
-      <"$3" filter-length $len | filter-support $supp | filter-weak-null $null | filter-ci-length $ci_len | TRUTH=$KNOWN_ALUS get-prec-recall ; echo
-  else
-      print_tab -- "." "." "." "." "." "."
-  fi
+    echo
 done
 done
 done

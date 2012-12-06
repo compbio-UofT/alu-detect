@@ -11,13 +11,13 @@ fi
 
 find_my_name_and_dir "$1"
 INPUT_FILES=($(head -n 2 "$1" | tail -n 1 | grep '^##' | cut -c 3-))
-OUTPUT_FILE="${MY_NAME%.*}"
+OUTPUT_FILE=${MY_NAME%.*}
 eval "COMMAND () {
 $(cat "$1")
 }"
 
 shift
-PRINT_OUTPUT="${PRINT_OUTPUT-1}"
+PRINT_OUTPUT=${PRINT_OUTPUT-1}
 OPTIND=1
 while getopts "g" OPT "$@"; do
     case $OPT in
@@ -28,5 +28,5 @@ while getopts "g" OPT "$@"; do
 done
 shift $(($OPTIND - 1))
 
-cd $MY_DIR 
+cd "$MY_DIR"
 gen_file

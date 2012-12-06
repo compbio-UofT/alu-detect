@@ -1,7 +1,6 @@
 #!/bin/bash
 . $(which lib.alu-detect.sh)
 
-REF_FA=${REF_FA:-/filer/hg18/hg18.fa}
 echo "Using reference: $REF_FA" >&2
 
 zc "$@" | while read -a line ; do

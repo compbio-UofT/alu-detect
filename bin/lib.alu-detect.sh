@@ -200,8 +200,8 @@ run_cmds() {
     CMDS_RAW_OUTPUT=$( { eval $CMDS_STRING ; } 3>&1 )
     echo "CMDS_RAW_OUTPUT:$CMDS_RAW_OUTPUT" >&2
     CMD_OUTPUT=()
-    for i in $(seq 1 $CRT_CMD) ; do
-        CMD_OUTPUT[$i]=$(echo "$CMDS_RAW_OUTPUT" | grep "^$i " | cut -d " " -f 2-)
+    for _i in $(seq 1 $CRT_CMD) ; do
+        CMD_OUTPUT[$_i]=$(echo "$CMDS_RAW_OUTPUT" | grep "^$_i " | cut -d " " -f 2-)
     done
     echo "CMD_OUTPUT:${CMD_OUTPUT[@]}" >&2
 }
