@@ -80,20 +80,20 @@ fi
 if [ "$ORIG_MAPPINGS_SAM" ] ; then
     if [[ "$(file "$ORIG_MAPPINGS_SAM" | head -n 1)" =~ gzip ]] ; then
 	get_orig_mappings() {
-	    $PV "$ORIG_MAPPINGS_SAM" | $UNZIP
+	    $PV "$ORIG_MAPPINGS_SAM" | $UNZIP | add-dummy-pairs
 	}
     else
 	get_orig_mappings() {
-	    $PV "$ORIG_MAPPINGS_SAM"
+	    $PV "$ORIG_MAPPINGS_SAM" | add-dummy-pairs
 	}
     fi
 elif [ "$ORIG_MAPPINGS_BAM" ] ; then
     get_orig_mappings() {
-	$PV "$ORIG_MAPPINGS_BAM" | samtools view -h -
+	$PV "$ORIG_MAPPINGS_BAM" | samtools view -h - | add-dummy-pairs
     }
 elif [ "$ORIG_MAPPINGS_SORT_BAM" ] ; then
     get_orig_mappings() {
-	$PV "$ORIG_MAPPINGS_SORT_BAM" | samtools view -h - | sam-rsort
+	$PV "$ORIG_MAPPINGS_SORT_BAM" | samtools view -h - | sam-rsort | add-dummy-pairs
     }
 else
     get_orig_mappings() {
