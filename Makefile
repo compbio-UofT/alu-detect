@@ -1,8 +1,18 @@
 all:
 	BOOST=$(BOOST) make -C src
+
 distclean: clean
 	rm -rf settings \
-	data/*fa data/*fa.gz data/*fai data/*bt2 \
+	data/*.fa data/*.fa.fai data/*.bt2 \
+	data/*.fa.cat data/*.fa.ref data/*.fa.out data/*.fa.tbl data/*.fa.masked \
 	data/alus.* data/deletions.* data/targets.*
+
 clean:
 	make -C src clean
+
+bin-package: all
+	rm -f bin/*.pyc bin/*~
+	./get_git_version >GIT_VERSION
+	tar cvzf alu-detect-$(shell cat VERSION).tar.gz \
+		Makefile README VERSION GIT_VERSION get_git_version \
+		bin data/known-novel-alus.*.bed
