@@ -16,4 +16,4 @@ bin-package: all
 	./get_git_version >GIT_VERSION
 	tar cvzf alu-detect-${VERSION}.lx26.x86_64.tar.gz --transform "s,^,alu-detect-${VERSION}/," \
 		Makefile README VERSION GIT_VERSION \
-		get_git_version bin data/known-novel-alus.*.bed
+		get_git_version bin/[a-zA-Z0-9]* data/known-novel-alus.*.bed
