@@ -1,4 +1,5 @@
 #!/bin/bash
 set -u
 shopt -s lastpipe 2>/dev/null
+[ $# -ge 4 ] || exit
 filter-length "$1" | filter-support "$2" | filter-weak-null "$3" | exec filter-ci-length "$4"

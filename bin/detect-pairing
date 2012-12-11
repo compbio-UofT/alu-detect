@@ -14,7 +14,8 @@ good_mapping_min_as_frac = .9
 good_mapping_min_mqv = 10
 default_stop_count = 10000
 drop_fraction = .001
-default_rg = '00'
+unmapped_count = 0
+unmapped_stop_count = 10*default_stop_count
 
 have_nm_field = -1
 have_as_field = -1
@@ -25,7 +26,7 @@ header_rg_dict = {}
 target_rg = ''
 
 def save_header_rg(line):
-    a = line.split('\t')
+    a = line.strip().split('\t')
     if (a[0][1:] != 'RG'):
         return
     i = 1
@@ -34,6 +35,7 @@ def save_header_rg(line):
     if (i >= len(a)):
         crash('header line did not contain ID: ' + line)
     header_rg_dict[a[i][3:]] = True
+    note('added RG: ' + a[i][3:], 1)
 
 
 def good_mapping(d):
@@ -102,6 +104,7 @@ parser.add_argument('-v', '--verbose', action='append_const', const=1, default=[
 parser.add_argument('-c', '--stop-count', action='store', type=int,
                     default=default_stop_count, dest='stop_count')
 parser.add_argument('-f', '--ignore-flags', action='store_true', default=False, dest='ignore_flags')
+parser.add_argument('-g', '--default-rg', action='store', default='00', dest='default_rg')
 parser.add_argument('--cid-parser', action='store', dest='cid_parser')
 parser.add_argument('--trust-rg-headers', action='store_true', default=False, dest='trust_rg_headers')
 parser.add_argument('input', action='store', default='-', nargs='?')
@@ -128,6 +131,10 @@ in_fd = gzopen(args.input)
 for ms in sam.get_mapping_set_gen(in_fd, mapping_parser=mapping_parser,
                                   header_line_hook=save_header_rg,
                                   ignore_duplicate=False, ignore_failed_qc=False):
+    if unmapped_count >= unmapped_stop_count:
+        note('reached stop count of unmapped fragments; exiting')
+        break
+
     # stop condition
     if target_rg != '':
         if (rg_dict[target_rg]['count_unpaired'] + rg_dict[target_rg]['count_paired']
@@ -171,11 +178,11 @@ for ms in sam.get_mapping_set_gen(in_fd, mapping_parser=mapping_parser,
     if 'RG' in ms[0]:
         rg_string = ms[0]['RG']
         if (len(header_rg_dict) > 0 and rg_string not in header_rg_dict):
-            crash(rg_string + ': RG missing from sam headers: ' + ms[0])
+            crash(rg_string + ': RG missing from sam headers: ' + str(ms[0]))
     else:
         if len(header_rg_dict) > 0:
-            crash('RG sam headers present, but RG sam field missing: ' + ms[0])
-        rg_string = default_rg
+            crash('RG sam headers present, but RG sam field missing: ' + str(ms[0]))
+        rg_string = args.default_rg
 
     if rg_string not in rg_dict:
         note(rg_string + ': new read group')
@@ -200,6 +207,7 @@ for ms in sam.get_mapping_set_gen(in_fd, mapping_parser=mapping_parser,
         rgd['detected_delta_mean'] = -1
         rgd['detected_delta_stddev'] = -1
         rg_dict[rg_string] = rgd
+        unmapped_stop_count += 10*default_stop_count
     rgd = rg_dict[rg_string]
 
     if (rgd['count_unpaired'] + rgd['count_paired'] >= args.stop_count):
@@ -228,6 +236,7 @@ for ms in sam.get_mapping_set_gen(in_fd, mapping_parser=mapping_parser,
                 rgd['min_r_len'] = ms[0]['len']
 
         if not ms[0]['mapped']:
+            unmapped_count += 1
             continue
 
         rgd['count_unpaired'] += 1
@@ -255,6 +264,7 @@ for ms in sam.get_mapping_set_gen(in_fd, mapping_parser=mapping_parser,
         # count_paired, count_st_diff, and delta updated only if good mapping
         # if either is not mapped, ignore
         if not ms[0]['mapped'] or not ms[1]['mapped']:
+            unmapped_count += 1
             note('discarding unmapped clone: ' + str(ms), 2)
             continue
         if (not ignore_flags
@@ -338,15 +348,16 @@ for ms in sam.get_mapping_set_gen(in_fd, mapping_parser=mapping_parser,
              1)
 
 
+#gzclose(in_fd)
 
-gzclose(in_fd)
-
-fill = 2
+fill = 3
 while 2 * len(rg_dict) > 10**fill:
     fill += 1
 
 idx = 0
 for k in sorted(rg_dict):
+    if not rg_dict[k]['detected_paired'] and not rg_dict[k]['detected_unpaired']:
+        continue
     if not rg_dict[k]['detected_paired']:
         # use generous settings
         rg_dict[k]['detected_st_diff'] = 1

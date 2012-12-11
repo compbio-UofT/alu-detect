@@ -53,4 +53,4 @@ for line in in_fd:
         b += [a[i]]
     print '\t'.join(b)
 
-gzclose(fd)
+gzclose(in_fd)

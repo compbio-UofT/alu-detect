@@ -103,10 +103,10 @@ run_stage() {
     echo "--------------------" >&2
     make_note "Stage $STAGE_NUM: $STAGE_NAME"
 
-    if [ "$STAGE_NUM" -lt "$START_STAGE" ] ; then
+    if [ "${STAGE_NUM%%.*}" -lt "$START_STAGE" ] ; then
 	make_note "skipping"
 	return
-    elif [ "$STAGE_NUM" -gt "$END_STAGE" ] ; then
+    elif [ "${STAGE_NUM%%.*}" -gt "$END_STAGE" ] ; then
 	make_note "done because END_STAGE=$END_STAGE"
 	exit
     fi

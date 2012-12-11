@@ -1,105 +1,217 @@
 #!/bin/bash
 . $(which lib.alu-detect.sh)
 set -o errexit
-#set -o pipefail
+set -o pipefail
 set -o xtrace
 
+find_my_name_and_dir "${BASH_SOURCE[0]}"
+BASE_DIR=$(dirname $MY_DIR)
+make_note "$MY_NAME v$(cat $BASE_DIR/VERSION) (git:$($BASE_DIR/get_git_version)) installed in $MY_DIR"
 
-NCPU=${NCPU:-2}
+NGS_NAME=$1
+REF_NAME=$2
+PREFIX=$NGS_NAME.$REF_NAME
+
+GLOBAL_SETTINGS=$BASE_DIR/settings/global
+. "$GLOBAL_SETTINGS" || crash "missing global settings file: $GLOBAL_SETTINGS"
+REF_SETTINGS=$BASE_DIR/settings/ref.$REF_NAME
+. "$REF_SETTINGS" 2>/dev/null || crash "missing reference settings file: $REF_SETTINGS"
+
+
+export NCPU=${NCPU:-2}
 make_note "using NCPU=$NCPU"
 
-if pv --version >/dev/null 2>/dev/null ; then
+if which pv >/dev/null 2>&1; then
     PV="pv -f"
 else
     PV=cat
 fi
 
-if pigz --version >/dev/null 2>/dev/null ; then
+if which pigz >/dev/null 2>&1; then
     ZIP="pigz -9 -p $NCPU"
     UNZIP="pigz -d -p $NCPU"
 else
-    ZIP=gzip
+    ZIP="gzip -9"
     UNZIP=gunzip
 fi
 
-START_STAGE=${START_STAGE:-1}
+START_STAGE=${START_STAGE:-0}
 END_STAGE=${END_STAGE:-100}
 make_note "using START_STAGE=$START_STAGE and END_STAGE=$END_STAGE"
 
 
-#[ $# -ne 3 ] && crash "use: $(basename $0) <reads.fq> <mappings.sam> <mappings.sort.bam>"
-[ -z "$REF_FA" -o ! -r "$REF_FA" ] && crash "REF_FA undefined or incorrect"
-[ -z "$BOWTIE2_INDEX" -o ! -r "${BOWTIE2_INDEX}.1.bt2" ] && crash "BOWTIE2_INDEX undefined or incorrect"
-[ -z "$ALU_NO_POLYA_FA" ] && crash "ALU_NO_POLYA_FA undefined"
-[ -z "$ALU_ALL_FA" ] && crash "ALU_ALL_FA undefined"
-[ -z "$ALUS_BED" ] && crash "ALUS_BED undefined"
-[ -z "$AWKPATH" ] && crash "AWKPATH undefined"
-[ -z "$PYTHONPATH" ] && crash "PYTHONPATH undefined"
+if [ $START_STAGE -lt 3 ]; then
+    # need original mappings
+    ORIG_UNPAIRED_READS=${ORIG_UNPAIRED_READS:-}
+    ORIG_PAIRED_READS=${ORIG_PAIRED_READS:-}
+    ORIG_READS_1=${ORIG_READS_1:-}
+    ORIG_READS_2=${ORIG_READS_2:-}
+    ORIG_READ_GROUPS=${ORIG_READ_GROUPS:-}
+    ORIG_MAPPINGS=${ORIG_MAPPINGS:-}
+    make_note "using unpaired reads file(s): [$ORIG_UNPAIRED_READS]"
+    make_note "using paired reads file(s): [$ORIG_PAIRED_READS]"
+    make_note "using reads_1 file(s): [$ORIG_READS_1]"
+    make_note "using reads_2 file(s): [$ORIG_READS_2]"
+    make_note "using reads group(s): [$ORIG_READ_GROUPS]"
+    make_note "using mapping file(s): [$ORIG_MAPPINGS]"
 
-find_my_name_and_dir "${BASH_SOURCE[0]}"
-PATH=$PATH:$MY_DIR
+    orig_unpaired_reads=($(echo $ORIG_UNPAIRED_READS))
+    orig_paired_reads=($(echo $ORIG_PAIRED_READS))
+    orig_reads_1=($(echo $ORIG_READS_1))
+    orig_reads_2=($(echo $ORIG_READS_2))
+    orig_read_groups=($(echo $ORIG_READ_GROUPS))
+    orig_mappings=($(echo $ORIG_MAPPINGS))
 
-for p in bowtie2 gmapper-ls samtools intersectBed ; do
-  [ -z "$(which $p 2>/dev/null)" ] && crash "$p not found"
-done
-
-INPUT_PHRED=${INPUT_PHRED:-0}
-make_note "using input phred: [$INPUT_PHRED]"
-
-export RGID=${RGID:-00}
-if [ -n "$(echo "$RGID" | grep -vP "^\d+$")" ] ; then
-    crash "RGID must be an integer"
-fi
-
-ORIG_READS_1=${ORIG_READS_1:-}
-ORIG_READS_2=${ORIG_READS_2:-}
-ORIG_MAPPINGS_SAM=${ORIG_MAPPINGS_SAM:-}
-ORIG_MAPPINGS_BAM=${ORIG_MAPPINGS_BAM:-}
-ORIG_MAPPINGS_SORT_BAM=${ORIG_MAPPINGS_SORT_BAM:-}
-make_note "using read group: [$RGID]"
-make_note "using reads file: [$ORIG_READS_1]"
-make_note "using reads file: [$ORIG_READS_2]"
-make_note "using mappings sam file: [$ORIG_MAPPINGS_SAM]"
-make_note "using mappings bam file: [$ORIG_MAPPINGS_BAM]"
-make_note "using sorted mappings file: [$ORIG_MAPPINGS_SORT_BAM]"
-
-# If given only original reads, map them
-if [ "$ORIG_READS_1" -a "$ORIG_READS_2" \
-    -a -z "$ORIG_MAPPINGS_SAM$ORIG_MAPPINGS_BAM$ORIG_MAPPINGS_SORT_BAM" \
-    -a $START_STAGE -lt 3 ] ; then
-    make_note "given reads only; need to map them"
-
-    fq-detect-pairing <(zc $(echo $ORIG_READS_1)) <(zc $(echo $ORIG_READS_2)) >$RGID.initial.pairing
-    $PV $(echo $ORIG_READS_1) | zc \
-	| bowtie2 -x $BOWTIE2_INDEX -1 - -2 <(zc $(echo $ORIG_READS_2)) \
-	  $(get-bowtie-pairing -p $(cat $RGID.initial.pairing)) \
-	  --phred${INPUT_PHRED} -p $NCPU 2>$RGID.map.log | $ZIP >$RGID.map.sam.gz
-    ORIG_MAPPINGS_SAM=$RGID.map.sam.gz
-fi
-
-if [ "$ORIG_MAPPINGS_SAM" ] ; then
-    if [[ "$(file "$ORIG_MAPPINGS_SAM" | head -n 1)" =~ gzip ]] ; then
-	get_orig_mappings() {
-	    $PV "$ORIG_MAPPINGS_SAM" | $UNZIP
-	}
-    else
-	get_orig_mappings() {
-	    $PV "$ORIG_MAPPINGS_SAM"
-	}
+    have_unpaired_reads=0
+    if [[ ${#orig_unpaired_reads[@]} -ne 0 &&
+	${#orig_unpaired_reads[@]} -eq ${#orig_read_groups[@]} ]]; then
+	have_unpaired_reads=1
+	make_note "found unpaired reads"
     fi
-elif [ "$ORIG_MAPPINGS_BAM" ] ; then
-    get_orig_mappings() {
-	$PV "$ORIG_MAPPINGS_BAM" | samtools view -h -
-    }
-elif [ "$ORIG_MAPPINGS_SORT_BAM" ] ; then
-    get_orig_mappings() {
-	$PV "$ORIG_MAPPINGS_SORT_BAM" | samtools view -h - | sam-rsort
-    }
+
+    have_paired_reads_single=0
+    if [[ ${#orig_paired_reads[@]} -ne 0 &&
+	${#orig_paired_reads[@]} -eq ${#orig_read_groups[@]} ]]; then
+	have_paired_reads_single=1
+	make_note "found paired reads in single file(s)"
+    fi
+
+    have_paired_reads_double=0
+    if [[ ${#orig_reads_1[@]} -ne 0 &&
+	${#orig_reads_1[@]} -eq ${#orig_read_groups[@]} &&
+	${#orig_reads_2[@]} -eq ${#orig_read_groups[@]} ]]; then
+	have_paired_reads_double=1
+	make_note "found paired reads in double file(s)"
+    fi
+
+    have_mappings=0
+    if [ ${#orig_mappings[@]} -ne 0 ]; then
+	have_mappings=1
+	make_note "found mappings"
+    fi
+
+    let n_inputs=$have_unpaired_reads+$have_paired_reads_single+$have_paired_reads_double+$have_mappings 1
+    [ $n_inputs -ge 1 ] || crash "No inputs specified"
+    [ $n_inputs -le 1 ] || crash "Too many inputs specified"
+
+    if [ $have_mappings = 0 ]; then
+	make_note "given reads only; need to map them"
+	make_note "using input phred: [$INPUT_PHRED]"
+	rm -f $PREFIX.initial.pairing
+
+	i=0
+	while [ $i -lt ${#orig_read_groups[@]} ]; do
+	    export RGID=${orig_read_groups[$i]}
+	    rg_pairing=$PREFIX.pairing.$RGID
+	    rg_mapping=$PREFIX.map.$RGID
+
+	    if [ $have_unpaired_reads = 1 ]; then
+
+		STAGE_NUM=0.$i
+		STAGE_NAME="original mappings for unpaired read group: $RGID"
+		INPUT_FILES="${orig_unpaired_reads[$i]}"
+		OUTPUT_FILES="$rg_mapping.sam.gz"
+		STATS_FILE=
+		stage_command() {
+		    pv ${orig_unpaired_reads[$i]} | zc \
+			| bowtie2 -x $BOWTIE2_INDEX \
+			  -U - \
+			  --phred$INPUT_PHRED -p $NCPU --rg-id $RGID 2>$rg_mapping.log \
+			| $ZIP >$rg_mapping.sam.gz
+		}
+		run_stage
+
+	    elif [ $have_paired_reads_single = 1 ]; then
+
+		STAGE_NUM=0.$i.1
+		STAGE_NAME="detect pairing for paired read group: $RGID"
+		INPUT_FILES="${orig_paired_reads[$i]}"
+		OUTPUT_FILES="$rg_pairing"
+		STATS_FILE=
+		stage_command() {
+		    fq-detect-pairing ${orig_paired_reads[$i]} | cut -f 3 >$rg_pairing
+		}
+		run_stage
+
+		STAGE_NUM=0.$i.2
+		STAGE_NAME="mapping for paired read group: $RGID"
+		INPUT_FILES="${orig_paired_reads[$i]} $rg_pairing"
+		OUTPUT_FILES="$rg_mapping.sam.gz"
+		STATS_FILE=$rg_mapping.stats
+		stage_command() {
+		    $PV ${orig_paired_reads[$i]} | zc | split-file 4:- 4:/dev/null \
+			| bowtie2 -x $BOWTIE2_INDEX \
+			  -1 - -2 <(zc ${orig_paired_reads[$i]} | split-file 4:/dev/null 4:-) \
+			  $(get-bowtie-pairing -p $(cat $rg_pairing)) \
+			  --phred$INPUT_PHRED -p $NCPU --rg-id $RGID 2>$rg_mapping.log \
+			| $ZIP >$rg_mapping.sam.gz
+		}
+		stage_stats_command() {
+		    $PV $rg_mapping.sam.gz | samtools view -Su - | samtools flagstat -
+		}
+		run_stage
+
+	    else
+
+		STAGE_NUM=0.$i.1
+		STAGE_NAME="detect pairing for paired read group: $RGID"
+		INPUT_FILES="${orig_reads_1[$i]} ${orig_reads_2[$i]}"
+		OUTPUT_FILES="$rg_pairing"
+		STATS_FILE=
+		stage_command() {
+		    fq-detect-pairing ${orig_reads_1[$i]} ${orig_reads_2[$i]} | cut -f 3 >$rg_pairing
+		}
+		run_stage
+
+		STAGE_NUM=0.$i.2
+		STAGE_NAME="mapping for paired read group: $RGID"
+		INPUT_FILES="${orig_reads_1[$i]} ${orig_reads_2[$i]} $rg_pairing"
+		OUTPUT_FILES="$rg_mapping.sam.gz"
+		STATS_FILE=$rg_mapping.stats
+		stage_command() {
+		    $PV ${orig_reads_1[$i]} | zc \
+			| bowtie2 -x $BOWTIE2_INDEX \
+			  -1 - -2 <(zc ${orig_reads_2[$i]}) \
+			  $(get-bowtie-pairing -p $(cat $rg_pairing)) \
+			  --phred$INPUT_PHRED -p $NCPU --rg-id $RGID 2>$rg_mapping.log \
+			| $ZIP >$rg_mapping.sam.gz
+		}
+		stage_stats_command() {
+		    $PV $rg_mapping.sam.gz | samtools view -Su - | samtools flagstat -
+		}
+		run_stage
+
+	    fi
+
+	    ORIG_MAPPINGS="$ORIG_MAPPINGS $rg_mapping.sam.gz"
+	    let i+=1
+	done
+	orig_mappings=($(echo $ORIG_MAPPINGS))
+	orig_read_groups=()
+    fi
 else
-    get_orig_mappings() {
-	crash "original mappings not available!"
-    }
+    ORIG_MAPPINGS=
 fi
+
+
+get_orig_mappings() {
+    file=${orig_mappings[$1]}
+    rg=${orig_read_groups[$1]:-}
+    command="$PV $file"
+    if (set +o pipefail; zc $file | head -n 1 | cut -c -3 | grep -q "BAM"); then
+	command="$command | samtools view -h -"
+    elif file $file | grep -q gzip; then
+	command="$command | $UNZIP"
+    fi
+    if [ ${add_dummy_pairs:-} ]; then
+	command="$command | add-dummy-pairs"
+    fi
+    if (set +o pipefail; zc $file | head -n 1 | grep -q "coordinate") || [ "${RSORT:-}" ]; then
+	command="$command | sam-rsort"
+    fi
+    make_note "command to get mappings: $command"
+    eval $command | add-default-rg $rg
+}
 
 
 #
@@ -107,21 +219,25 @@ fi
 #
 STAGE_NUM=1
 STAGE_NAME="detect pairing information"
-PAIRING_FILE=$RGID.pairing
-INPUT_FILES="$ORIG_MAPPINGS_SAM $ORIG_MAPPINGS_BAM"
+PAIRING_FILE=$PREFIX.pairing
+INPUT_FILES="$ORIG_MAPPINGS"
 OUTPUT_FILES="$PAIRING_FILE"
 STATS_FILE=
 stage_command() {
-    get_orig_mappings | detect-pairing >"$PAIRING_FILE"
+    rm -f $PAIRING_FILE.tmp
+    i=0
+    while [ $i -lt ${#orig_mappings[@]} ]; do
+	( set +o pipefail; get_orig_mappings $i | detect-pairing -f >>$PAIRING_FILE.tmp )
+	let i+=1
+    done
+    sort -s -k 1,1 $PAIRING_FILE.tmp | tawk '{if ($1!=last) print; last=$1}' >$PAIRING_FILE.tmp.uniq
+    tawk -v n=$(wc -l <$PAIRING_FILE.tmp.uniq) \
+	'{$2=NR-1; while (length($2)<length(n-1)) $2="0" $2; print}' \
+	<$PAIRING_FILE.tmp.uniq >$PAIRING_FILE
 }
 run_stage
 
-export PAIRING="$(cat $PAIRING_FILE)"
-export PAIRING_FILE=$RGID.pairing
-if [[ ! "$PAIRING" =~ "paired=" ]] ; then
-    crash "could not determine pairing information"
-fi
-make_note "using PAIRING=\"$PAIRING\""
+grep -q "paired=" $PAIRING_FILE || crash "could not determine pairing information"
 
 
 #
@@ -132,49 +248,39 @@ make_note "using PAIRING=\"$PAIRING\""
 #
 STAGE_NUM=2
 STAGE_NAME="extract discordant reads"
-READS_DISCORDANT=$RGID.reads.discordant
-INPUT_FILES="$ORIG_MAPPINGS_SAM $ORIG_MAPPINGS_BAM"
-#INPUT_FILES="$ORIG_READS $ORIG_MAPPINGS"
+READS_DISCORDANT=$PREFIX.reads.discordant
+INPUT_FILES="$ORIG_MAPPINGS"
 OUTPUT_FILES="$READS_DISCORDANT.fq.gz"
 STATS_FILE="$READS_DISCORDANT.stats"
 stage_command () {
-    get_orig_mappings \
-	| add-extra-sam-flags -N 4 -l $PAIRING_FILE 2>/dev/null \
-	| {
-#	      if [[ "$PAIRING" =~ "paired=1" ]] ; then
-		  filter-mappings -N 4 -l $PAIRING_FILE 2>/dev/null \
-		      -f 0/0x8000,0:\&1 \
-			  -f 0x2000,0:\&1 \
-		      -f 0x4000,0:\&1 \
-		      -f 0,0x2000:\&1 \
-		      -f 0,0x4000:\&1 \
-			  -f 0/0x6000,0x10000:\&3
-#		      -f 0x2000,0x10000:\&1 \
-#              -f 0x4000,0x10000:\&1 \
-#			  -f 0/0x6001,0x10000:\&3 \
-#	      else
-#		  filter-mappings -N 4 -p $PAIRING 2>/dev/null \
-#		      -f 0x4:\&1 \
-#		      -f 0x2000:\&1 \
-#		      -f 0x4000:\&1
-#	      fi
-          } \
-	| sam-to-fq -l $PAIRING_FILE \
-	| $ZIP >$READS_DISCORDANT.fq.gz
+    rm -f $READS_DISCORDANT.fq.gz
+    i=0
+    while [ $i -lt ${#orig_mappings[@]} ]; do
+	add_dummy_pairs=1 get_orig_mappings $i \
+	    | add-extra-sam-flags -N 4 -l $PAIRING_FILE 2>/dev/null \
+	    | filter-mappings -N 4 -l $PAIRING_FILE 2>/dev/null \
+		-f 0x10000,0x10000:\&2 \
+		\
+		-f 0x10000,0/0x6004:\&2 \
+		-f 0x10000,0:\&1 \
+		-f 0/0x6004,0x10000:\&2 \
+		-f 0,0x10000:\&1 \
+		\
+		-f 0x4,0:\&1 \
+		-f 0,0x4:\&1 \
+		-f 0/0x8000,0:\&1 \
+		-f 0/0x6000,/0x6000:\&2 \
+		-f 0,0:\&1 \
+	    | sam-to-fq -s -l $PAIRING_FILE \
+	    | $ZIP >>$READS_DISCORDANT.fq.gz
+	let i+=1
+    done
 }
 stage_stats_command() {
     $PV $READS_DISCORDANT.fq.gz | fq-stats
 }
 run_stage
 
-# Iterate over all read groups
-#cat $PAIRING |
-#while read F; do
-
-#RG=$(echo "$F" | cut -f 1)	# uncomment this if the actual read group name is required
-#RGID=$(echo "$F" | cut -f 2)
-#PAIRING=$(echo "$F" | cut -f 3)
-#PAIRING="$(cat $PAIRING_FILE)"
 
 #
 # Stage 3: Trim & rename reads
@@ -184,23 +290,15 @@ run_stage
 #
 STAGE_NUM=3
 STAGE_NAME="read renaming"
-READS_TO_REMAP=$RGID.reads.to_remap
-MAP_DISCORDANT=$RGID.reads.discordant
-INPUT_FILES="$MAP_DISCORDANT.fq.gz"
+READS_TO_REMAP=$PREFIX.reads.to_remap
+INPUT_FILES="$READS_DISCORDANT.fq.gz"
 OUTPUT_FILES="$READS_TO_REMAP.fq.gz"
 STATS_FILE="$READS_TO_REMAP.stats"
 stage_command() {
-    $PV $INPUT_FILES \
-	| fq-trim-illumina-reads -v input_phred="$INPUT_PHRED" \
-	| {
-	      if [[ "$PAIRING" =~ "paired=1" ]] ; then
-		  fq-remove-short-paired-reads 2>/dev/null \
-		      | fq-rename-paired-reads-with-len -v g="$RGID"
-	      else
-		  fq-remove-short-reads 2>/dev/null \
-		      | fq-rename-unpaired-reads-with-len -v g="$RGID"
-	      fi
-	  } \
+    $PV $READS_DISCORDANT.fq.gz | $UNZIP \
+	| fq-trim-illumina-reads -v input_phred=33 \
+	| fq-remove-short-paired-reads 2>/dev/null \
+	| fq-rename-paired-reads-with-len \
 	| $ZIP >$READS_TO_REMAP.fq.gz
 }
 stage_stats_command() {
@@ -217,7 +315,7 @@ run_stage
 #
 STAGE_NUM=4
 STAGE_NAME="progressive mapping to reference"
-MAPPINGS_TO_REFERENCE=$RGID.map.to_reference
+MAPPINGS_TO_REFERENCE=$PREFIX.map.to_reference
 INPUT_FILES="$READS_TO_REMAP.fq.gz"
 OUTPUT_FILES="$MAPPINGS_TO_REFERENCE.sam.gz"
 STATS_FILE="$MAPPINGS_TO_REFERENCE.stats"
@@ -238,13 +336,31 @@ run_stage
 #
 STAGE_NUM=5
 STAGE_NAME="clean up reference mappings: remove unpaired and paired well; add orig reads and quals"
-MAPPINGS_CLEAN_TO_REFERENCE=$RGID.map.clean_to_reference
+MAPPINGS_CLEAN_TO_REFERENCE=$PREFIX.map.clean_to_reference
 INPUT_FILES="$MAPPINGS_TO_REFERENCE.sam.gz"
 OUTPUT_FILES="$MAPPINGS_CLEAN_TO_REFERENCE.sam.gz"
 STATS_FILE="$MAPPINGS_CLEAN_TO_REFERENCE.stats"
 stage_command() {
     $PV $MAPPINGS_TO_REFERENCE.sam.gz \
-	| clean-mappings 3>/dev/null \
+	| add-extra-sam-flags -N 4 -l $PAIRING_FILE -P 2>/dev/null \
+	| filter-mappings -N 4 -l $PAIRING_FILE -P 2>/dev/null 3>/dev/null \
+	    -f 0x10000,0x10000:\&3 \
+	    -f 0x10000,0x3000/0x4:\&1 \
+	    -f 0x10000,0x5000/0x4:\&1 \
+	    -f 0x10000,0:\&3 \
+	    -f 0x3000/0x4,0x10000:\&1 \
+	    -f 0x5000/0x4,0x10000:\&1 \
+	    -f 0,0x10000:\&3 \
+	    \
+	    -f 0x4,0x4:\&3 \
+	    -f 0x4,0/0x1000:\&3 \
+	    -f 0x4,0:\&1 \
+	    -f 0/0x1000,0x4:\&3 \
+	    -f 0,0x4:\&1 \
+	    \
+	    -f 0/0x1000,0/0x1000:\&3 \
+	    -f 0x8000/0x6000,0x8000/0x6000:\&3 \
+	    -f 0,0:\&1 \
 	| zc <(sam-header $MAPPINGS_TO_REFERENCE.sam.gz) - \
 	| $ZIP >$MAPPINGS_CLEAN_TO_REFERENCE.sam.gz
 }
@@ -262,13 +378,15 @@ run_stage
 #
 STAGE_NUM=6
 STAGE_NAME="extract reads for alu mapping"
-READS_FOR_ALU_MAPPING=$RGID.reads.for_alu_mapping
+READS_FOR_ALU_MAPPING=$PREFIX.reads.for_alu_mapping
 INPUT_FILES="$MAPPINGS_CLEAN_TO_REFERENCE.sam.gz"
 OUTPUT_FILES="$READS_FOR_ALU_MAPPING.fq.gz"
 STATS_FILE="$READS_FOR_ALU_MAPPING.stats"
 stage_command() {
     $PV $MAPPINGS_CLEAN_TO_REFERENCE.sam.gz \
-	| extract-reads-for-alu-mapping \
+	| sam-body \
+	| reset-mqv-when-discordant 2>/dev/null \
+	| sam-to-fq-trimmed \
 	| fq-remove-short-reads 2>/dev/null \
 	| $ZIP >$READS_FOR_ALU_MAPPING.fq.gz
 }
@@ -286,7 +404,7 @@ run_stage
 #
 STAGE_NUM=7
 STAGE_NAME="mapping to alus"
-MAPPINGS_TO_ALUS=$RGID.map.to_alus
+MAPPINGS_TO_ALUS=$PREFIX.map.to_alus
 GMAPPER_EXEC="gmapper-ls"
 GMAPPER_OPTIONS="-N $NCPU -n 1 --progress 10000 --qv-offset 33 -o 100 --local --no-mapping-qualities -r 180"
 INPUT_FILES="$READS_FOR_ALU_MAPPING.fq.gz"
@@ -314,69 +432,37 @@ run_stage
 #
 STAGE_NUM=8
 STAGE_NAME="find potential insertions"
-REGIONS=$RGID.regions
+RAW_CALLS=$PREFIX.calls.raw
 INPUT_FILES="$MAPPINGS_CLEAN_TO_REFERENCE.sam.gz $MAPPINGS_TO_ALUS.sam.gz"
-OUTPUT_FILES="$REGIONS.bed"
+OUTPUT_FILES="$RAW_CALLS.bed"
 STATS_FILE=
 stage_command() {
-    get-regions -p $PAIRING -N $NCPU \
+    get-regions -l $PAIRING_FILE -N $NCPU \
 	$REF_FA $MAPPINGS_CLEAN_TO_REFERENCE.sam.gz \
 	$ALU_ALL_FA $MAPPINGS_TO_ALUS.sam.gz \
-	2> >($ZIP >$REGIONS.log.gz) >$REGIONS.bed
+	2> >($ZIP >$RAW_CALLS.log.gz) >$RAW_CALLS.bed
 }
 run_stage
 
 
 #
-# Stage 9: Check reference allele
-#
-# Input: regions
-# Output: regions with ref allele count
-#
-STAGE_NUM=9
-STAGE_NAME="compute reference count"
-REGIONS_REFCNT=$RGID.regions.refcnt
-INPUT_FILES="$ORIG_MAPPINGS_SORT_BAM $REGIONS.bed"
-OUTPUT_FILES="$REGIONS_REFCNT.bed"
-STATS_FILE=
-stage_command() {
-    if [ -z "$ORIG_MAPPINGS_SORT_BAM" ] ; then
-	sed 's/$/	./' <$REGIONS.bed >$REGIONS_REFCNT.bed
-    else
-	cat $REGIONS.bed | while read -r -a line ; do
-	    RANGE="${line[0]}:$((${line[1]} + 1))-${line[2]}"
-	    TSD_LEN=$((${line[11]} + 5))
-	    if [ $TSD_LEN -lt 15 ] ; then
-		TSD_LEN=15
-	    fi
-	    REF_ALLELE="$(samtools view "$ORIG_MAPPINGS_SORT_BAM" $RANGE \
-		| check-reference-allele $RANGE -t $TSD_LEN 2>/dev/null)"
-	    print_with_delim -d "\t" "${line[@]}" "$REF_ALLELE"
-	done >$REGIONS_REFCNT.bed
-    fi
-}
-run_stage
-
-
-#
-# Stage 10: Find novel insertions
+# Stage 9: Find novel insertions
 #
 # Input: detected insertions, known insertions
 # Output: novel insertions
 #
-STAGE_NUM=10
+STAGE_NUM=9
 STAGE_NAME="get novel insertions"
-NOVEL=$RGID.novel
-INPUT_FILES="$REGIONS_REFCNT.bed"
+NOVEL=$PREFIX.calls.basic-filters
+INPUT_FILES="$RAW_CALLS.bed"
 OUTPUT_FILES="$NOVEL.bed"
 STATS_FILE=
 stage_command() {
-# awk 'BEGIN{OFS="\t"} {if($10=="0"){$2-=100};if($11=="0"){$3+=100};print}' <$REGIONS_REFCNT.bed
-    filter-length 150 <$REGIONS_REFCNT.bed \
-	| filter-support 5 \
-	| filter-weak-null 200 >$NOVEL.bed
-#    intersectBed -s -wa -v -a $REGIONS_REFCNT.bed \
-#	-b <(extend-bed 0 $ALUS_BED) >$NOVEL.bed
-#	| awk 'BEGIN{OFS="\t"} {if($10=="0"){$2+=100};if($11=="0"){$3-=100};print}'
+    filter-ref-alu-bp $ALUS_BED $RAW_CALLS.bed \
+	| filter-length 150 \
+	| filter-support 10 \
+	| filter-weak-null 200 \
+	| filter-ci-length 1100 \
+	>$NOVEL.bed
 }
 run_stage

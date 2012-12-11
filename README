@@ -1,0 +1,644 @@
+README for alu-detect
+http://compbio.cs.toronto.edu/alu-detect
+
+This document describes alu-detect, a software package for detecting
+alu insertions directly from Illumina HTS reads.
+
+alu-detect was developed by:
+	   Matei David
+	   Harun Mustafa
+	   Michael Brudno
+
+The authors may be contacted at: alu-detect cs toronto edu.
+
+
+--------------------------------------------------------------------------------
+Table of Contents
+--------------------------------------------------------------------------------
+
+  1. Overview
+
+  2. Prerequisties
+
+  3. Installing alu-detect
+
+     3.1. Compile, if necessary
+     3.2. Setup the global settings
+     3.3. Setup a reference
+     3.4. Setup a fake reference (optional)
+     3.5. Setup list of known novel alus (optional)
+
+  4. Input Specification
+
+     4.1 Reads in fastq format
+     4.2 Mappings in sam/bam format
+
+  5. Running alu-detect
+
+  6. Output Specification
+
+     6.1. Bed file fields
+     6.2. Confidence intervals
+
+  7. Output Filtering
+
+     7.1. Default filtering
+     7.2. Using a fake reference
+
+  8. Notes
+
+
+--------------------------------------------------------------------------------
+1. Overview
+--------------------------------------------------------------------------------
+
+alu-detect is a software package for detecting alu insertions directly from
+Illumina HTS reads.
+
+Briefly, alu-detect selects "interesting" reads that might contain evidence of
+novel insertions in the reference, e.g.: reads that map with insertions or
+mismatches towards either end, read pairs where only one read maps, read pairs
+mapped with with a discordant insert size. alu-detect then remaps these
+interesting reads to the reference and to the set of alu consensus
+sequences. Then, it builds clusters of reads with Alu evidence along the
+reference, using read pair information when available. Each cluster is
+investigated using a "split mapping" algorithm. Every Alu insertion call is
+detected with 0, 1, or 2 breakpoints.
+
+alu-detect takes as input either reads in fastq format, or mappings in sam/bam
+format. If the input consists of fastq files, these are first mapped to the
+reference, increasing the total running time and overall space requirements.
+
+
+--------------------------------------------------------------------------------
+2. Prerequisites
+--------------------------------------------------------------------------------
+
+A large part of alu-detect consists of bash scripts using tools commonly
+available in a UNIX/Linux development environment.
+
+If the package you downloaded does not contain binaries (e.g. bin/get-regions),
+it is necessary to compile the some parts of alu-detect. For this, you need:
+
+- gcc
+
+- Boost C++ libraries
+  http://www.boost.org/
+
+
+Additional prerequisites include:
+
+- python 2.6+, including modules: argparse, atexit, bisect, functools, itertools,
+    math, operator, scipy, subprocess
+
+- SAMtools
+  http://samtools.sourceforge.net/
+
+- BEDTools
+  http://code.google.com/p/bedtools/
+
+- RepeatMasker
+  http://www.repeatmasker.org/
+
+- RepBase for RepeatMasker
+  http://www.girinst.org/
+
+- Bowtie2
+  http://bowtie-bio.sourceforge.net/bowtie2/index.shtml
+
+- SHRiMP
+  http://compbio.cs.toronto.edu/shrimp/
+
+- Reference Genome(s)
+  http://genome.ucsc.edu/
+
+- Bowtie2 indexes of the reference genome(s)
+  http://bowtie-bio.sourceforge.net/bowtie2/index.shtml
+  Note: These can be regenerated locally using bowtie2.
+
+- Repeat annotations of the reference genome(s)
+  http://genome.ucsc.edu/
+  Note: These can be regenerated locally using RepeatMasker.
+
+
+--------------------------------------------------------------------------------
+3. Installing alu-detect
+--------------------------------------------------------------------------------
+
+Here are the steps needed to setup alu-detect after you download and unpack the
+alu-detect package.
+
+
+3.1. Compile, if necessary
+--------------------------
+
+If the package does not contain binaries (e.g. bin/get-regions), it is necessary
+to compile them. For this you need gcc and boost:
+
+$ cd alu-detect
+$ BOOST=<path-to-boost-headers> make
+
+If boost is already installed in a standard location on your system, you may
+omit setting the BOOST variable.
+
+
+3.2. Setup the global settings
+------------------------------
+
+For this step you need the paths to all prerequisites listed in Section 2,
+including the RepBase libraries for RepeatMasker. Run:
+
+$ ./setup
+
+This will create the file settings/global which can be sourced to set
+appropriate paths and shell variables.
+
+
+3.3. Setup a reference
+----------------------
+
+For this step you need: the reference fasta file, bowtie2 indexes for that
+reference, and repeat annotations for that reference. Run, e.g.:
+
+$ ./setup hg18
+
+This will ask for: the reference fasta file, the prefix of the bowtie2 index
+files (full path minus the .1.bt2 suffix), and a bash regexp describing the path
+to the relevant .out files output by RepeatMasker.
+
+To avoid having to enter some of these by hand, set REF_FA, BOWTIE2_INDEX and
+CHROM_FA_OUT variable prior to running setup. E.g. (see NOTE on bash in Section
+8):
+
+$ REF_FA=/data/hg18.fa BOWTIE2_INDEX=/data/bowtie2-index/hg18 \
+CHROM_FA_OUT=/tmp/RepeatMasker-hg18/chr*out ./setup
+
+This will create the file settings/ref.hg18, which can be sourced to set shell
+variables apropriately.
+
+
+3.4. Setup a fake reference (optional)
+--------------------------------------
+
+This step is optional! Please read the Output Filtering Section to understand
+what this could be used for.
+
+To add a fake reference, run, e.g.:
+
+$ bin/make-fake-ref hg18 fake_hg18
+
+For this to work, the reference hg18 must have been previously setup as in step
+3 above. make-fake-ref consists of a number of stages which are run one after
+the other. To avoid the "continue?" prompts, set CONF=a prior to running it. The
+most time-consuming task is running RepeatMasker on the fake reference fasta
+file. To use multiple threads, set the variable NCPU to the desired number of
+threads (it defaults to 4). E.g.:
+
+$ NCPU=30 CONF=a bin/make-fake-ref hg18 fake_hg18
+
+This program will eventually invoke step 3 automatically, adding fake_hg18 as a
+reference to the alu-detect settings/ folder. Additionally, it also creates
+several files in the data/ folder which are used as "ground truth" when
+computing precision and recall during filtering.
+
+
+3.5. Setup list of known novel alus (optional)
+----------------------------------------------
+
+This step is optional! This list is useful only if you decide to filter calls
+using a fake reference, as described in the Output Filtering Section.
+
+If you decide to do this, once you remove Alus from the reference and run
+detection using a donor HTS dataset, truly novel Alus in the donor with respect
+to the reference will appear as false positives of the simulation. To alleviate
+this, we can filter out every Alu insertion call that matches a known novel Alu
+in any other individual.
+
+For a reference named, e.g., hg15, the list of known novel Alus should be put in
+the file data/known-novel-alus.hg15.bed
+
+alu-detect is distributed with such lists for hg18 and hg19, using novel Alu
+insertion calls from: dbRIP [Wang et al, 2006], [Hormozdiari et al., 2011],
+[Stewart et al., 2011] and [Lee et al., 2012]. For other references, you can
+attempt to lift those annotations over.
+
+If you do not build such a list, and still use filtering using a fake reference,
+the simulation might still work, but the observed precision will be reduced. By
+default, alu-detect looks for filters that achieve precision at least .96 (and
+maximizes recall). Without a list of known novel Alus, you should edit the file
+bin/get-top-filter and reduce the target minimum precision, or else the
+simulation will output no viable filters.
+
+To get an idea of what precision might be suitable, after running alu-detect on
+the fake reference, try filtering with some reasonable parameters and see what
+you get, e.g.:
+
+$ . <alu-detect-path>/settings/ref.fake_hg15
+$ filter-ref-alu-bp $ALUS_BED <raw-calls-on-fake_hg15> \
+ | apply-filter 200 10 200 1100 \
+ | TRUTH=<alu-detect-path>/targets.fake_hg15.bed get-prec
+
+
+--------------------------------------------------------------------------------
+4. Input Specification
+--------------------------------------------------------------------------------
+
+alu-detect accepts these types of input:
+
+4.1. Reads in fastq format
+
+     4.1.a. Unpaired reads
+     4.1.b. Paired reads in single files
+     4.1.c. Paired reads in separate files
+
+4.2. Mappings in sam/bam format
+
+All input files may optionally be gzipped.
+
+In every run, there can be only 1 type of input: 1.a or 1.b or 1.c or 2. Several
+files of the same input type can be given. To combine several types, you must
+first bring them to a common type "by hand" (usually as sam/bam).
+
+Also see NOTE on bash in Section 8.
+
+
+4.1. Reads in fastq format
+--------------------------
+
+Whenever input consists of several sets of reads in fastq format, alu-detect
+will first map all reads to the reference using bowtie2. It will then proceed
+with the workflow as if the input was of type 2.
+
+The read group of each set of reads must be specifed. (Read groups may be
+identical, but there must be as many read groups given as there are fastq
+files.) Also, a common INPUT_PHRED value must be given. There are several types
+of fastq inputs.
+
+
+4.1.a. Unpaired reads:
+
+$ ORIG_UNPAIRED_READS="file1.fq file2.fq" ORIG_READ_GROUPS="rg1 rg2" \
+INPUT_PHRED=33 [...] alu-detect [...]
+
+
+4.1.b. Paired reads in single files:
+
+$ ORIG_PAIRED_READS="file1.fq file2.fq" ORIG_READ_GROUPS="rg1 rg2" \
+INPUT_PHRED=33 [...] alu-detect [...]
+
+Here, file1.fq contains consecutive reads from each pair:
+
+@read1/1
+AAAA
++
+####
+@read1/2
+AAAA
++
+####
+@read2/1
+AAAA
++
+####
+@read2/2
+AAAA
++
+####
+
+
+4.1.c. Paired reads in separate files:
+
+$ ORIG_READS_1="file1.1.fq file2.1.fq" ORIG_READS_1="file1.2.fq file2.2.fq" \
+ORIG_READ_GROUPS="rg1 rg2" INPUT_PHRED=33 [...] alu-detect [...]
+
+Here, file1.1.fq contains:
+
+@read1/1
+AAAA
++
+####
+@read2/1
+AAAA
++
+####
+
+and file1.2.fq contains:
+
+@read1/2
+AAAA
++
+####
+@read2/2
+AAAA
++
+####
+
+
+4.2. Mappings in sam/bam format
+-------------------------------
+
+$ ORIG_MAPPINGS="file1.bam file2.sam.gz" [...] alu-detect [...]
+
+
+Read groups: Downstream processing steps need information about what read group
+each read belongs to. For every read found in a SAM record, its read group is
+determined from the RG:Z:<read_group> tag. If that is missing, a default value
+of "00" is used. This is ok if and only if the pairing information is very
+similar for all reads missing their RG tag.
+
+To specify a default read group for some of the sam/bam files, you can
+also set the variable ORIG_READ_GROUPS. Unlike the case of fastq input, there
+may be fewer read groups specifed than there are input sam/bam files. In
+that case, read group 1 is used as the default for sam/bam file 1, read
+group 2 for file 2, and so on. Files with no corresponding read group will use
+"00" as the default read group. E.g.:
+
+$ ORIG_MAPPINGS="file1.bam file2.sam.gz" ORIG_READ_GROUPS="rg1" \
+[...] alu-detect [...]
+
+All reads missing the RG tag from file1.bam will be assigned to the read group
+"rg1", and all reads the RG tag from file2.sam.gz will be assigned the read
+group "00".
+
+
+Ordering: When dealing with paired reads, downstream processing steps require
+that mappings for both reads in each read pair be found in consecutive SAM
+records. A common situation when this is not the case is when a sam/bam
+file is sorted by coordinate. This is usually (but not always) specified by the
+"SO:coordiante" tag on the first line of the file (see SAM spec). If that is the
+case, alu-detect will re-sort the file appropriately.
+
+Unfortunately, some programs do not honour this tag, notably samtools. So,
+samtools may produce bam files sorted by coordinate, but without the
+"SO:coordinate" tag. This breaks alu-detect. To fix it, set the additional RSORT
+variable to a non-empty value. This will cause alu-detect to sort all input
+files by read name, regardless of the contents of the SO tag:
+
+$ ORIG_MAPPINGS="file1.bam file2.sam.gz" RSORT=1 [...] alu-detect [...]
+
+
+--------------------------------------------------------------------------------
+5. Running alu-detect
+--------------------------------------------------------------------------------
+
+alu-detect is a large bash script manipulating the input reads in a series of
+consecutive stages.
+
+Stage 0: Obtain a sam file of the reads mapped to the reference with read pairs
+appearing in consecutive records.
+
+Stage 1: Detect pairing information
+
+Stage 2: Extract "interesting" reads or read pairs
+
+Stage 3: Prepare the reads using an internal naming format
+
+Stage 4: Map the reads to the reference using bowtie2
+
+Stage 5: Clean up the reference mappings
+
+Stage 6: Extract reads for Alu mapping
+
+Stage 7: Map the reads to the set of Alu consensus sequences
+
+Stage 8: Aggregate mappings to reference and mappings to Alus, perform split
+mapping, produce raw Alu insertion calls.
+
+Stage 9: Apply basic filters to the raw calls
+
+Stages 4 and 8 are the most time-consuming, and they are fully parallelizable
+(see NCPU below). Stage 4 requires most hard disk space, and Stage 8 requires
+most RAM.
+
+
+The syntax for running alu-detect is (also see NOTE on bash in Section 8):
+
+$ [variable assingments] alu-detect <ngs_name> <reference_name>
+
+
+<reference_name> should be previously set up as in Section 3.3. The files
+created by this run will be prefixed by <ngs_name>.<reference_name>. Most
+importantly:
+
+<ngs_name>.<reference_name>.calls.raw contains the raw calls
+
+<ngs_name>.<reference_name>.calls.basic-filters contains raw with basic filters
+
+
+Variables which affect alu-detect are:
+
+- NCPU : the number of threads alu-detect can use
+
+- CONF : when set to "a", always answer yes to "continue?" prompts
+
+- START_STAGE : skip stages less than this number
+
+- END_STAGE : stop at the end of this stage
+
+- ORIG_UNPAIRED_READS, ORIG_PAIRED_READS, ORIG_READS_1 ORIG_READS_2,
+  ORIG_READ_GROUPS, ORIG_MAPPINGS : Described in section 4. When the start stage
+  is 3 or more, these are unnecessary
+
+
+Sample command lines include:
+
+$ ORIG_MAPPINGS=map.sam.gz NCPU=30 CONF=a alu-detect NA18507 hg18
+
+$ ORIG_READS_1=fastq/*.1.fq.gz ORIG_READS_2=fastq/*.2.fq.gz \
+ORIG_READ_GROUPS=$(for f in fastq/*.1.fq.gz; do basename $f .1.fq.gz; done) \
+INPUT_PHRED=33 NCPU=30 CONF=a alu-detect NA18507 hg18
+
+$ export NCPU=30; CONF=a START_STAGE=3 END_STAGE=8 alu-detect NA18507 hg18
+
+
+--------------------------------------------------------------------------------
+6. Output Specification
+--------------------------------------------------------------------------------
+
+6.1. Bed file fields
+--------------------
+
+Alu insertion calls are reported in a bed file. Each call is reported as a
+confidence interval. The 1-based closed interval [a, b] is reported in bed
+format as the 0-based half-open interval [a-1, b). The various columns contain:
+
+$1: Chromosome name
+
+$2: Start of interval in bed format (a-1, if 1-based closed interval is [a, b])
+
+$3: End of interval in bed format (b, if 1-based closed interval is [a, b])
+
+$4: Alu subfamily (comma separated, if ambiguous)
+
+$5: Total alignment score, out of 1000.
+
+$6: Strand
+
+$7: Alu consensus sequence index of the left endpoint of the insertion.
+
+$8: Alu consensus sequence index of the right endpoint of the insertion.
+
+Note: $7<$8 iff positive strand insertion.
+
+$9: Number of reads+readpairs supporting insertion.
+
+$10: Number of reads+readpairs capturing the left end of the insertion.
+
+$11: Number of reads+readpairs capturing the right end of the insertion.
+
+$12: If both $10 and $11 are non-zero, the length of the TSD.
+
+Note: If $12>0, the insertion follows the canonical format, where the right
+breakpoint ($3) captures the left end of the insertion, and the left breakpoint
+captures its right end. If $12<0, this is a non-canonical insertion with a
+target site loss, rather than duplication.
+
+$13: Score achieved by aligning all reads to the reference only (we sometimes
+refer to this as "the null hypothesis").
+
+
+6.2. Confidence intervals
+-------------------------
+
+If $10 == 0 and $11 == 0, then neither breakpoint is detected, and the
+confidence interval is estimated using the pairing information and the location
+of the mapped portions of the reads on the reference.
+
+If $10 > 0 and $11 == 0, only the breakpoint capturing the left end of the
+insertion is detected. If this is between reference positions x and x+1, then
+the 1-based confidence interval is [x-50,x+1], which in bed format becomes the
+0-based [x-51,x+1) (**)
+
+If $10 == 0 and $11 > 0, only the breakpoint capturing the right end of the
+insertion is detected. If this is between reference positions x and x+1, then
+the 1-based confidence interval is [x,x+51], which in bed format becomes the
+0-based [x-1,x+51) (**)
+
+(**): Unintuitively at first sight, the breakpoint capturing the left end of the
+insertion is near the right end of the confidence interval, and the breakpoint
+capturing the right end of the insertion is near the left end of the confidence
+interval. The reason for this convention is that this is the normal case for Alu
+insertions exhibiting a TSD.
+
+If $10 > 0 and $11 > 0 and $12 == 0, then the call was made with evidence for
+both breakpoints, but at least one of them was ambiguous. E.g., this would
+happen if an equal number of reads supported 2 different breakpoints for the
+left end of the Alu insertion.
+
+If $10 > 0 and $11 > 0 and $12 > 0, then both breakpoints were reliably detected
+and the Alu insertion has the standard form, described in (**).
+
+If $10 > 0 and $11 > 0 and $12 < 0, then both breakpoints were reliably
+detected, but the Alu insertion exhibits a target site loss instead of a
+duplication. In other words, contrary to (**), in this case the left end of the
+insertions attaches to the left end of the confidence interval, the right end of
+the insertion attaches to the right end of the confidence interval, and the
+contents of the confidence interval are presumably lost. This shouldn't be taken
+a priori as evidence of a deletion, only of a possible alignment.
+
+
+--------------------------------------------------------------------------------
+7. Output Filtering
+--------------------------------------------------------------------------------
+
+By default, alu-detect produces a list of raw Alu insertion calls. These should
+be filtered to reduce false positives.
+
+
+7.1. Available Filters
+----------------------
+
+filter-length x: inner length >= x. For positive strand insertions, inner length
+= $8-$7+1. For negative stranf insertions, inner length = $7 - $8 + 1. (See
+Section 6.1.)
+
+filter-support x: the number of reads/read pairs supporting the call is at least
+x.
+
+filter-weak-null x: the difference between the score of the insertion ($5) and
+the score of the null hypthesis ($12) is at least x. Note: maximum score is
+1000.
+
+filter-ci-length x: confidence interval length ($3-$2+1) <= x.
+
+filter-ref-alu-bp: remove Alu insertion calls with only one breakpoint detected,
+when this breakpoint is near an analogous breakpoint of a reference Alu.
+
+
+7.2. Default filtering
+----------------------
+
+By default, alu-detect produces (in addition to the list of raw calls), a list
+of calls filtered using some reasonable defaults:
+
+- filter-ref-alu-bp
+- filter-length 150
+- filter-support 10
+- filter-weak-null 200 (i.e, 20% of max)
+- filter-ci-length 1100
+
+
+7.3. Using a fake reference
+---------------------------
+
+While the filtering in 7.2 can be adequate, alu-detect incorporates a better
+filtering technique. This consists of several conceptual steps:
+
+- Identify novel-looking Alus in the reference
+
+- Remove them, contructing a "fake" reference
+
+- Run detection against both the real and the fake reference
+
+- Estimate precision and recall of various filters using the calls on the fake
+  reference
+
+- Apply those filters to the real calls
+
+
+These steps are mostly automated. To use them:
+
+- Create a fake reference using the instructions in Section 3.4 and 3.5. E.g.:
+
+$ make-fake-ref hg18 fake_hg18
+
+
+- Run detection against both the real and the fake reference. E.g.:
+
+$ NCPU=30 CONF=a ORIG_MAPPINGS=map.bam alu-detect NA18507 hg18
+$ NCPU=30 CONF=a ORIG_MAPPINGS=map.bam alu-detect NA18507 fake_hg18
+
+
+- Filter the calls on the 2 references together using the program
+  filter-calls. Its arguments are: <ngs_name> <real_ref_name> <fake_ref_name>
+  <raw_calls_real_ref> <raw_calls_fake_ref>. E.g.,
+
+$ NCPU=30 CONF=a filter-calls NA18507 hg18 fake_hg18 \
+  NA18507.hg18.calls.raw.bed NA18507.hg18.calls.raw.bed
+
+  The program will create several files and among them, 2 filtered call files:
+  NA18507.hg18.calls.filtered.bed and NA18507.fake_hg18.calls.filtered.bed.
+
+  If you cannot get a list of known novel insertions (as explained in 3.5), you
+  must determine a good minimum precision threshold "by hand". For this you need
+  to familiarize yourself with the various file formats used by
+  alu-detect. Notably, the file table.<ngs_name>.csv produced by filter-calls
+  contains precision in column $8. Once you determine a value using that file,
+  edit bin/get-top-filter and replace the minimum precision value there.
+
+
+--------------------------------------------------------------------------------
+8. Notes
+--------------------------------------------------------------------------------
+
+NOTE on bash: When using bash as a shell, assignments of the form X=Y which
+precede a command are treated as assigning Y to shell variable X. Assignments
+following a command are instead passed verbatim as parameters. Thus:
+
+$ NCPU=30 alu-detect
+
+is correct, whereas
+
+$ alu-detect NCPU=30
+
+is not.

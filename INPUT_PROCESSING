@@ -2,97 +2,133 @@ Types of Input
 --------------
 
 1. Reads in fastq format.
-2. Mappings in bam format, sorted by position.
-3. Mappings in sam/bam format, sorted by read name.
+1a. Unpaired reads
+1b. Paired reads in single files
+1c. Paired reads in separate files
+2. Mappings in sam/sam.gz/bam format.
+
+In every run, there can be only 1 type of input: 1a or 1b or 1c or 2. Several
+files of the same input type can be given. To combine several types, you must
+first bring them to a common type "by hand" (usually 2).
 
 
-Processing Steps
-----------------
-
-A. Obtain mappings sorted by read name.
-B. Detect pairing information, possibly different by read group.
-C. Extract discordant mappings, using pairing information.
-D. Map reads to reference and to alus, all in unpaired mode.
-E. Aggregate results, using pairing information.
-
-
-Implementation Details
-----------------------
+Details
+-------
 
 1. Reads in fastq format.
 
-Input is given in separate fastq files with, e.g.:
-$ ORIG_READS_1=file.1.fq ORIG_READS_2=file.2.fq.gz alu-detect
+Whenever input consists of several sets of reads in fastq format, alu-detect
+will first map all reads to the reference using bowtie2. It will then proceed
+with the workflow as if the input was of type 2.
 
-The program detects pairing info directly from the reads by first
-mapping them as unpaired, using fq-detect-pairing. It then maps the
-reads using bowtie (A). After mapping, the workflow proceeds as if the
-input was in sam/bam format sorted by read name (3 below).
-
-Current limitations:
-- Only paired reads.
-- Only 2 files, so it's not possible to specify multiple read groups.
-
-To bypass these limitation, map the reads in other ways "by hand",
-prior to starting alu-detect.
+The read group of each set of reads must be specifed. (Read groups may be
+identical, but there must be as many read groups given as there are fastq
+files.) Also, a common INPUT_PHRED value must be given. There are several types
+of fastq inputs.
 
 
-2. Mappings in bam format, sorted by position.
+1a. Unpaired reads:
 
-Input is given with, e.g.:
-$ ORIG_MAPPINGS_SORT_BAM=file.bam alu-detect
-
-The program first passes the mappings through sam-rsort and
-detect-pairing to achieve (A).
-
-sam-rsort sorts mappings by read name as follows:
-
-- unpaired mappings pass through
-
-- paired mappings are kept and printed with their mate
+$ ORIG_UNPAIRED_READS="file1.fq file2.fq" ORIG_READ_GROUPS="rg1 rg2" INPUT_PHRED=33 \
+[...] alu-detect [...]
 
 
-detect-pairing works as follows:
+1b. Paired reads in single files:
 
-- if RG headers are present and RG sam fields are absent, crash.
+$ ORIG_PAIRED_READS="file1.fq file2.fq" ORIG_READ_GROUPS="rg1 rg2" INPUT_PHRED=33 \
+[...] alu-detect [...]
 
-- each read (pair) is assigned a RG; if sam field RG is absent, this
-  is a default RG "00".
+Here, file1.fq contains consecutive reads from each pair:
 
-- for each RG, process up to stop_count *mapped* unpaired or paired
-  mappings.
-
-- if more than 10% are paired, detect pairing information. drop 0.1%
-  outliers then compute fragment min/max/mean/stddev.
-
-- stop when done with all RGs seen. if there are more RG header lines
-  than RGs seen at that point:
-
-  - crash (default). The idea is that detect-pairing doesn't know how
-    far to read into the mappings file. If the mappings are really
-    sorted by position, all read groups should have been seen when
-    using a large enough stop_count.
-
-  - continue until all RGs from header lines are seen (with option
-    "--trust-rg-headers")
-
-- all unpaired RGs are converted to paired with large fragment range
-  (min=0, max=1000)
+@read1/1
+AAAA
++
+####
+@read1/2
+AAAA
++
+####
+@read2/1
+AAAA
++
+####
+@read2/2
+AAAA
++
+####
 
 
-To achieve B, the program passes sorted bam input first through
-add-dummy-pairs, then sam-rsort, then pipes the result to part 3C
-(sam/bam sorted by read name).
+1c. Paired reads in separate files:
 
-add-dummy-pairs, works as follows:
+$ ORIG_READS_1="file1.1.fq file2.1.fq" ORIG_READS_1="file1.2.fq file2.2.fq" \
+ORIG_READ_GROUPS="rg1 rg2" INPUT_PHRED=33 [...] alu-detect [...]
 
-- paired mappings pass through
+Here, file1.1.fq contains:
 
-- unpaired mappings are printed along with a dummy pair, fixing flags
+@read1/1
+AAAA
++
+####
+@read2/1
+AAAA
++
+####
+
+and file1.2.fq contains:
+
+@read1/2
+AAAA
++
+####
+@read2/2
+AAAA
++
+####
 
 
-Issues:
-- Multiple bam files must be cat together. Careful about headers.
+2. Mappings in sam/sam.gz/bam format.
+
+$ ORIG_MAPPINGS="file1.bam file2.sam.gz" [...] alu-detect [...]
+
+
+Read groups: Downstream processing steps need information about what read group
+each read belongs to. For every read found in a SAM record, its read group is
+determined from the RG:Z:<read_group> tag. If that is missing, a default value
+of "00" is used. This is ok if and only if the pairing information is very
+similar for all reads missing their RG tag.
+
+To specify a default read group for some of the sam/sam.gz/bam files, you can
+also set the variable ORIG_READ_GROUPS. Unlike the case of fastq input, there
+may be fewer read groups specifed than there are input sam/sam.gz/bam files. In
+that case, read group 1 is used as the default for sam/sam.gz/bam file 1, read
+group 2 for file 2, and so on. Files with no corresponding read group will use
+"00" as the default read group. E.g.:
+
+$ ORIG_MAPPINGS="file1.bam file2.sam.gz" ORIG_READ_GROUPS="rg1" [...] alu-detect [...]
+
+All reads missing the RG tag from file1.bam will be assigned to the read group
+"rg1", and all reads the RG tag from file2.sam.gz will be assigned the read
+group "00".
+
+
+Ordering: When dealing with paired reads, downstream processing steps require
+that mappings for both reads in each read pair be found in consecutive SAM
+records. A common situation when this is not the case is when a sam/sam.gz/bam
+file is sorted by coordinate. This is usually (but not always) specified by the
+"SO:coordiante" tag on the first line of the file (see SAM spec). If that is the
+case, alu-detect will re-sort the file appropriately.
+
+Unfortunately, some programs do not honour this tag, notably samtools. So,
+samtools may produce bam files sorted by coordinate, but without the
+"SO:coordinate" tag. This breaks alu-detect. To fix it, set the additional RSORT
+variable to a non-empty value. This will cause alu-detect to sort all input
+files by read name, regardless of the contents of the SO tag:
+
+$ ORIG_MAPPINGS="file1.bam file2.sam.gz" RSORT=1 [...] alu-detect [...]
+
+
+
+
 
 
 3. Mappings in sam/bam format, sorted by read name.

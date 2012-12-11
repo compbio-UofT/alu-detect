@@ -31,7 +31,7 @@ namespace global {
   EXTERN(RGDict, rg_dict);
   EXTERN(RGDict, num_rg_dict);
   EXTERN_INIT(int, num_rg_len, 0);
-  EXTERN(string, default_rg);
+  EXTERN_INIT(string, default_rg, "00");
 
   EXTERN(CONCAT(vector<pair<Contig*,int> >), repeatListAll);
   EXTERN(CONCAT(vector<pair<Contig*,int> >), repeatListSt[2]);

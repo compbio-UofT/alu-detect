@@ -1,0 +1,12 @@
+#!/bin/bash
+. $(which lib.alu-detect.sh)
+find_my_name_and_dir "${BASH_SOURCE[0]}"
+
+version_file=$MY_DIR/GIT_VERSION
+if [ -r "$version_file" ]; then
+    version=$(cat "$version_file")
+else
+    version="missing_git_version"
+fi
+
+git describe --always 2>/dev/null || echo "$version"

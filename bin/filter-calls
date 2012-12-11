@@ -49,7 +49,7 @@ make_note "using START_STAGE=$START_STAGE and END_STAGE=$END_STAGE"
 # step 1: apply ref-alu-bp to real calls
 STAGE_NUM=1
 STAGE_NAME="apply ref-alu-bp to real calls"
-FILTERED_REAL_CALLS=raw-calls.$NGS_NAME.$REAL_REF_NAME.ref-alu-bp.bed
+FILTERED_REAL_CALLS=$NGS_NAME.$REAL_REF_NAME.calls.raw.ref-alu-bp.bed
 INPUT_FILES="$RAW_REAL_CALLS"
 OUTPUT_FILES="$FILTERED_REAL_CALLS"
 STATS_FILE=
@@ -63,7 +63,7 @@ run_stage
 # step 2: clean up fake calls, and apply ref-alu-bp to fake calls
 STAGE_NUM=2
 STAGE_NAME="clean up fake calls, and apply ref-alu-bp to fake calls"
-FILTERED_FAKE_CALLS=raw-calls.$NGS_NAME.$FAKE_REF_NAME.ref-alu-bp.bed
+FILTERED_FAKE_CALLS=$NGS_NAME.$FAKE_REF_NAME.calls.raw.ref-alu-bp.bed
 INPUT_FILES="$RAW_FAKE_CALLS"
 OUTPUT_FILES="$FILTERED_FAKE_CALLS"
 stage_command() {
@@ -117,7 +117,8 @@ stage_command() {
 		make_note "no suitable filters; increasing support"
 		continue
 	    else
-		crash "no suitable filters found!"
+		make_note "no suitable filters found!"
+		break
 	    fi
 	fi
 
@@ -145,7 +146,7 @@ run_stage
 # step 4: filter real calls based on top filter
 STAGE_NUM=4
 STAGE_NAME="filter real calls based on top filter"
-REAL_CALLS=calls.$NGS_NAME.$REAL_REF_NAME.bed
+REAL_CALLS=$NGS_NAME.$REAL_REF_NAME.calls.filtered.bed
 INPUT_FILES="$FILTERED_REAL_CALLS $TABLE_FILTERS"
 OUTPUT_FILES="$REAL_CALLS"
 stage_command() {
@@ -157,7 +158,7 @@ run_stage
 # step 5: filter fake calls based on top filter
 STAGE_NUM=5
 STAGE_NAME="filter fake calls based on top filter"
-FAKE_CALLS=calls.$NGS_NAME.$FAKE_REF_NAME.bed
+FAKE_CALLS=$NGS_NAME.$FAKE_REF_NAME.calls.filtered.bed
 INPUT_FILES="$FILTERED_FAKE_CALLS $TABLE_FILTERS"
 OUTPUT_FILES="$FAKE_CALLS"
 stage_command() {

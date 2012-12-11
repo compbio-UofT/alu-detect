@@ -37,8 +37,9 @@ else
     add_dependency "bowtie2" "which bowtie2 >/dev/null 2>&1"
     add_dependency "gmapper" "which gmapper-ls >/dev/null 2>&1"
 
-    echo "[[ ! \"\$PATH\" =~ $DIR/bin ]] && PATH=$DIR/bin:$new_path${new_path:+:}\$PATH" >"$GLOBAL_SETTINGS"
-#    echo "[[ ! \"\$AWKPATH\" =~ $DIR/bin ]] && AWKPATH=$DIR/bin:\$AWKPATH" >>"$GLOBAL_SETTINGS"
+    echo "[[ \"\$PATH\" =~ $DIR/bin ]] || PATH=$DIR/bin:$new_path${new_path:+:}\$PATH" >"$GLOBAL_SETTINGS"
+    echo 'export AWKPATH=${AWKPATH:-}' >>"$GLOBAL_SETTINGS"
+    echo "[[ \"\$AWKPATH\" =~ $DIR/bin ]] || AWKPATH=$DIR/bin\${AWKPATH:+:}\$AWKPATH" >>"$GLOBAL_SETTINGS"
 #    echo "[[ ! \"\$PYTHONPATH\" =~ $DIR/bin ]] && PYTHONPATH=$DIR/bin:\$PYTHONPATH" >>"$GLOBAL_SETTINGS"
 
     #

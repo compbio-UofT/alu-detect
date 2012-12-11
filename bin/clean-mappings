@@ -1,42 +1,25 @@
 #!/bin/bash
-
 . $(which lib.alu-detect.sh)
 
-if [ -z "${PAIRING:-}" ] ; then crash "PAIRING undefined" ; fi
-make_note "PAIRING=${PAIRING}"
-if [ ! -L /proc/$$/fd/3 ] ; then crash "fd 3 must be open" ; fi
+[ -L /proc/$$/fd/3 ] || crash "fd 3 must be open"
 
 zc "$@" \
-    | remove-chrM \
     | add-extra-sam-flags -N 4 -l $PAIRING_FILE -P 2>/dev/null \
-    |  {
-#    if [[ $PAIRING =~ "paired=1" ]] ; then
-	make_note "using paired filtering"
-	filter-mappings -N 4 -l $PAIRING_FILE -P 2>/dev/null \
-	    -f 0x10000,0x10000:\&3 \
-	    -f 0x10000,0x3000/0x4:\&1 \
-	    -f 0x10000,0x5000/0x4:\&1 \
-	    -f 0x10000,0:\&3 \
-	    -f 0x3000/0x4,0x10000:\&1 \
-	    -f 0x5000/0x4,0x10000:\&1 \
-	    -f 0,0x10000:\&3 \
-	    \
-	    -f 0x4,0x4:\&3 \
-	    -f 0x4,0/0x1000:\&3 \
-	    -f 0x4,0:\&1 \
-	    -f 0/0x1000,0x4:\&3 \
-	    -f 0,0x4:\&1 \
-	    \
-	    -f 0/0x1000,0/0x1000:\&3 \
-	    -f 0x8000/0x6000,0x8000/0x6000:\&3 \
-	    -f 0,0:\&1
-#    else
-#	make_note "using unpaired filtering"
-#	filter-mappings -N 4 -p $PAIRING -P 2>/dev/null \
-#	    -f 0x10000:\&3 \
-#	    -f 0x4:\&3 \
-#	    -f 0/0x1000:\&3 \
-#	    -f 0/0x6000:\&3 \
-#	    -f 0:\&1
-#    fi
-}
+    | filter-mappings -N 4 -l $PAIRING_FILE -P 2>/dev/null \
+	-f 0x10000,0x10000:\&3 \
+	-f 0x10000,0x3000/0x4:\&1 \
+	-f 0x10000,0x5000/0x4:\&1 \
+	-f 0x10000,0:\&3 \
+	-f 0x3000/0x4,0x10000:\&1 \
+	-f 0x5000/0x4,0x10000:\&1 \
+	-f 0,0x10000:\&3 \
+	\
+	-f 0x4,0x4:\&3 \
+	-f 0x4,0/0x1000:\&3 \
+	-f 0x4,0:\&1 \
+	-f 0/0x1000,0x4:\&3 \
+	-f 0,0x4:\&1 \
+	\
+	-f 0/0x1000,0/0x1000:\&3 \
+	-f 0x8000/0x6000,0x8000/0x6000:\&3 \
+	-f 0,0:\&1

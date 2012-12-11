@@ -14,6 +14,7 @@ make_note "using BOWTIE2_INDEX=$BOWTIE2_INDEX"
 make_note "using READ_COUNT=${READ_COUNT:=100000}"
 make_temp_dir "$MY_NAME"
 make_note "using TDIR=$TDIR"
+make_note "using RGID=${RGID:-00}"
 
 if [ $# -eq 1 ] ; then
     make_note "found single reads file; multiplexing"
@@ -23,10 +24,9 @@ else
 fi
 
 head -n $((8 * $READ_COUNT)) <&3 \
-    | fq-rename-paired-reads-with-len \
     | fq-convert -v ofq=tfq \
-    | awk 'BEGIN{FS="\t";OFS="\t"} {$3=""; print}' \
-    | fq-convert -v ofq=fq >"$TDIR"/reads.fq
+    | tawk '{$3="00"; print}' \
+    | fq-rename-paired-reads-with-len -v ofq=fq >"$TDIR"/reads.fq
 
 exec 3<&-
 
@@ -36,6 +36,6 @@ bowtie2 -x "$BOWTIE2_INDEX" -U "$TDIR"/reads.fq -S "$TDIR"/map.sam \
   --phred${INPUT_PHRED} -p $NCPU
 zc <(sam-header "$TDIR"/map.sam) <(sam-body "$TDIR"/map.sam | sort -s -t ":" -k 1,1n -k 2,2n) \
     >"$TDIR"/map.rsort.sam
-detect-pairing -f -v --cid-parser cid_parser "$TDIR"/map.rsort.sam
+detect-pairing -f -g $RGID -v --cid-parser cid_parser "$TDIR"/map.rsort.sam
 
 rm -rf "$TDIR"
