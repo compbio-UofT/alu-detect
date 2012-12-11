@@ -14,6 +14,6 @@ VERSION := $(shell cat VERSION)
 bin-package: all
 	rm -f bin/*.pyc bin/*~
 	./get_git_version >GIT_VERSION
-	tar cvzf alu-detect-${VERSION}.tar.gz --transform "s,^,alu-detect-${VERSION}/," \
+	tar cvzf alu-detect-${VERSION}.lx26.x86_64.tar.gz --transform "s,^,alu-detect-${VERSION}/," \
 		Makefile README VERSION GIT_VERSION \
 		get_git_version bin data/known-novel-alus.*.bed
