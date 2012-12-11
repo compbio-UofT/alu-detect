@@ -1623,6 +1623,8 @@ run(const Contig& refContig,
 	    << "] reads but disproved by [" << evidence_against_bp[ins_start]
 	    << "] reads" << endl;
     ins_start = -2;
+  }
+  if (ins_start < 0) {
     total_reads_spanning_insert_start[1 + rep_id] = 0;
   }
 
@@ -1637,6 +1639,8 @@ run(const Contig& refContig,
 	    << "] reads but disproved by [" << evidence_against_bp[ins_end]
 	    << "] reads" << endl;
     ins_end = -2;
+  }
+  if (ins_end < 0) {
     total_reads_spanning_insert_end[1 + rep_id] = 0;
   }
 
