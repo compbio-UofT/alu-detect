@@ -10,9 +10,10 @@ distclean: clean
 clean:
 	make -C src clean
 
+VERSION := $(shell cat VERSION)
 bin-package: all
 	rm -f bin/*.pyc bin/*~
 	./get_git_version >GIT_VERSION
-	tar cvzf alu-detect-$(shell cat VERSION).tar.gz \
-		Makefile README VERSION GIT_VERSION get_git_version \
-		bin data/known-novel-alus.*.bed
+	tar cvzf alu-detect-${VERSION}.tar.gz --transform "s,^,alu-detect-${VERSION}/," \
+		Makefile README VERSION GIT_VERSION \
+		get_git_version bin data/known-novel-alus.*.bed
