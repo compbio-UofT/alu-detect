@@ -36,6 +36,8 @@ namespace global {
   EXTERN(CONCAT(vector<pair<Contig*,int> >), repeatListAll);
   EXTERN(CONCAT(vector<pair<Contig*,int> >), repeatListSt[2]);
   EXTERN_INIT(bool, full_splitmap_log, false);
+
+  EXTERN(int, verbosity);
 };
 
 #define for_iterable(_class, _object, _iterator) for (_class::iterator _iterator = _object.begin(); _iterator != _object.end(); ++_iterator)

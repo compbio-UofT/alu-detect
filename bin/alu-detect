@@ -257,19 +257,19 @@ stage_command () {
     i=0
     while [ $i -lt ${#orig_mappings[@]} ]; do
 	add_dummy_pairs=1 get_orig_mappings $i \
-	    | add-extra-sam-flags -N 4 -l $PAIRING_FILE 2>/dev/null \
-	    | filter-mappings -N 4 -l $PAIRING_FILE 2>/dev/null \
-		-f 0x10000,0x10000:\&2 \
+	    | add-extra-sam-flags -N 4 -l $PAIRING_FILE \
+	    | filter-mappings -N 4 -l $PAIRING_FILE 3>/dev/null \
+		-f 0x10000,0x10000:\&3 \
 		\
-		-f 0x10000,0/0x6004:\&2 \
+		-f 0x10000,0/0x6004:\&3 \
 		-f 0x10000,0:\&1 \
-		-f 0/0x6004,0x10000:\&2 \
+		-f 0/0x6004,0x10000:\&3 \
 		-f 0,0x10000:\&1 \
 		\
 		-f 0x4,0:\&1 \
 		-f 0,0x4:\&1 \
 		-f 0/0x8000,0:\&1 \
-		-f 0/0x6000,/0x6000:\&2 \
+		-f 0/0x6000,/0x6000:\&3 \
 		-f 0,0:\&1 \
 	    | sam-to-fq -s -l $PAIRING_FILE \
 	    | $ZIP >>$READS_DISCORDANT.fq.gz
@@ -342,8 +342,8 @@ OUTPUT_FILES="$MAPPINGS_CLEAN_TO_REFERENCE.sam.gz"
 STATS_FILE="$MAPPINGS_CLEAN_TO_REFERENCE.stats"
 stage_command() {
     $PV $MAPPINGS_TO_REFERENCE.sam.gz \
-	| add-extra-sam-flags -N 4 -l $PAIRING_FILE -P 2>/dev/null \
-	| filter-mappings -N 4 -l $PAIRING_FILE -P 2>/dev/null 3>/dev/null \
+	| add-extra-sam-flags -N 4 -l $PAIRING_FILE -P \
+	| filter-mappings -N 4 -l $PAIRING_FILE -P 3>/dev/null \
 	    -f 0x10000,0x10000:\&3 \
 	    -f 0x10000,0x3000/0x4:\&1 \
 	    -f 0x10000,0x5000/0x4:\&1 \

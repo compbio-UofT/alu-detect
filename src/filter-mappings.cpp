@@ -81,7 +81,7 @@ addSQToRefDict(const string& line)
       contig->name = contig_name;
       contig->len = contig_len;
       contig->idx = global::refDict.size() - 1;
-      cerr << "added contig [" << contig->name << "] of length [" << contig->len << "]" << endl;
+      if (global::verbosity > 0) clog << "added contig [" << contig->name << "] of length [" << contig->len << "]" << endl;
     } else {
       cerr << "error: contig [" << contig->name << "] already exists!" << endl;
       exit(1);
@@ -249,10 +249,12 @@ add_filter(const string& s)
 
   filter_vector.push_back(f);
 
-  cerr << "added filter: " << "0x" << hex << f.must_have[0] << "/" << "0x" << hex << f.must_not_have[0];
-  if (global::rg_dict.size() > 0)
-    cerr << "," << "0x" << hex << f.must_have[1] << "/" << "0x" << hex << f.must_not_have[1];
-  cerr << "," << f.stop_on_hit << ":" << f.dest_file << endl;
+  if (global::verbosity > 0) {
+    clog << "added filter: " << "0x" << hex << f.must_have[0] << "/" << "0x" << hex << f.must_not_have[0];
+    if (global::rg_dict.size() > 0)
+      clog << "," << "0x" << hex << f.must_have[1] << "/" << "0x" << hex << f.must_not_have[1];
+    clog << "," << f.stop_on_hit << ":" << f.dest_file << endl;
+  }
 }
 
 
@@ -265,7 +267,7 @@ main(int argc, char* argv[])
   cnp = &default_cnp;
 
   char c;
-  while ((c = getopt(argc, argv, "l:N:Pf:g:")) != -1) {
+  while ((c = getopt(argc, argv, "l:N:Pf:g:v")) != -1) {
     switch (c) {
     case 'l':
       pairing_file = optarg;
@@ -284,6 +286,9 @@ main(int argc, char* argv[])
     case 'g':
       global::default_rg = optarg;
       break;
+    case 'v':
+      global::verbosity++;
+      break;
     default:
       cerr << "unrecognized option: " << c << endl;
       exit(1);
@@ -295,7 +300,7 @@ main(int argc, char* argv[])
     exit(1);
   }
 
-  cerr << "number of threads: " << num_threads << endl;
+  if (global::verbosity > 0) clog << "number of threads: " << num_threads << endl;
 
   if (pairing_file.size() > 0) {
     igzstream pairingIn(pairing_file.c_str());
@@ -400,10 +405,12 @@ main(int argc, char* argv[])
 	    delete it->second;
 	  }
 
-	  cerr << "chunk=" << chunk.chunk_id << " work_thread=" << chunk.thread_id
-	       << " print_thread=" << tid << endl;
-	  cerr << chunk.err_str->str();
-	  cerr.flush();
+	  if (global::verbosity > 0) {
+	    cerr << "chunk=" << chunk.chunk_id << " work_thread=" << chunk.thread_id
+		 << " print_thread=" << tid << endl;
+	    cerr << chunk.err_str->str();
+	    cerr.flush();
+	  }
 	  delete chunk.err_str;
 	  h.pop();
 	  ++next_chunk_out;

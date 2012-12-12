@@ -21,7 +21,6 @@ using namespace std;
 
 
 int num_threads = 1;
-bool verbose = false;
 
 int min_read_len = 20;
 int min_mqv = 5;
@@ -78,7 +77,7 @@ addSQToRefDict_then_print(const string& line)
       contig->name = contig_name;
       contig->len = contig_len;
       contig->idx = global::refDict.size() - 1;
-      cerr << "added contig [" << contig->name << "] of length [" << contig->len << "]" << endl;
+      if (global::verbosity > 0) cerr << "added contig [" << contig->name << "] of length [" << contig->len << "]" << endl;
     } else {
       cerr << "error: contig [" << contig->name << "] already exists!" << endl;
       exit(1);
@@ -143,10 +142,10 @@ process_mapping_set(const string& s, vector<SamMapping>& v,
     if (c.pairing->pair_concordant(c.read[0].mapping[0], 0, c.read[1].mapping[0], 0)) {
       v[0].flags[15] = 1;
       v[1].flags[15] = 1;
-      if (err_str != NULL)
+      if (err_str != NULL && global::verbosity > 0)
 	*err_str << "clone s=" << s << ": concordant" << endl;
     } else {
-      if (err_str != NULL)
+      if (err_str != NULL && global::verbosity > 0)
 	*err_str << "clone s=" << s << ": discordant" << endl;
     }
   }
@@ -205,7 +204,7 @@ main(int argc, char* argv[])
       min_tail_insert_size = atoi(optarg);
       break;
     case 'v':
-      verbose = true;
+      global::verbosity++;
       break;
     case 'g':
       global::default_rg = optarg;
@@ -221,7 +220,9 @@ main(int argc, char* argv[])
     exit(1);
   }
 
-  cerr << "number of threads: " << num_threads << endl;
+  if (global::verbosity) {
+    cerr << "number of threads: " << num_threads << endl;
+  }
 
   if (pairing_file.size() > 0) {
     igzstream pairingIn(pairing_file.c_str());
@@ -282,7 +283,7 @@ main(int argc, char* argv[])
 
       chunk.out_str = new stringstream();
       chunk.err_str = new stringstream();
-      if (verbose) {
+      if (global::verbosity) {
 	*chunk.err_str << "tid=" << tid << " chunk_id=" << chunk.chunk_id
 		       << " start:" << local_m_vector[0]->first
 		       << " end:" << local_m_vector[load - 1]->first
@@ -291,13 +292,7 @@ main(int argc, char* argv[])
 
       for (int i = 0; i < load; ++i) {
 	process_mapping_set(local_m_vector[i]->first, local_m_vector[i]->second,
-			    chunk.out_str,
-#ifdef NDEBUG
-			    NULL
-#else
-			    chunk.err_str
-#endif
-			    );
+			    chunk.out_str, chunk.err_str);
 	delete local_m_vector[i];
       }
 
@@ -312,10 +307,12 @@ main(int argc, char* argv[])
 	  }
 	  cout << chunk.out_str->str();
 	  cout.flush();
-	  cerr << "chunk=" << chunk.chunk_id << " work_thread=" << chunk.thread_id
-	       << " print_thread=" << tid << endl;
-	  cerr << chunk.err_str->str();
-	  cerr.flush();
+	  if (global::verbosity) {
+	    cerr << "chunk=" << chunk.chunk_id << " work_thread=" << chunk.thread_id
+		 << " print_thread=" << tid << endl;
+	    cerr << chunk.err_str->str();
+	    cerr.flush();
+	  }
 	  delete chunk.out_str;
 	  delete chunk.err_str;
 	  h.pop();
