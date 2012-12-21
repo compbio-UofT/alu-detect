@@ -322,109 +322,111 @@ main(int argc, char* argv[])
 
   SamMappingSetGen mapGen(&mapIn, cnp, addSQToRefDict, &global::refDict, false);
   pair<string,vector<SamMapping> >* m = mapGen.get_next();
-  map<string,stringstream*> out_str;
-  //process_mapping_set(m->first, m->second, out_str, &cerr);
-  process_mapping_set(m->first, m->second, out_str);
-  for (map<string,stringstream*>::iterator it = out_str.begin();
-       it != out_str.end(); ++it) {
-    fputs(it->second->str().c_str(), file_map[it->first]);
-    delete it->second;
-  }
+  if (m != NULL) {
+    map<string,stringstream*> out_str;
+    //process_mapping_set(m->first, m->second, out_str, &cerr);
+    process_mapping_set(m->first, m->second, out_str);
+    for (map<string,stringstream*>::iterator it = out_str.begin();
+	 it != out_str.end(); ++it) {
+      fputs(it->second->str().c_str(), file_map[it->first]);
+      delete it->second;
+    }
 
-  delete m;
+    delete m;
 
-  priority_queue<Chunk,vector<Chunk>,ChunkComparator> h;
-  long long next_chunk_in = 0;
-  long long next_chunk_out = 0;
-  int chunk_size = 1000;
+    priority_queue<Chunk,vector<Chunk>,ChunkComparator> h;
+    long long next_chunk_in = 0;
+    long long next_chunk_out = 0;
+    int chunk_size = 1000;
 
-  //omp_lock_t input_lock;
-  //omp_init_lock(&input_lock);
+    //omp_lock_t input_lock;
+    //omp_init_lock(&input_lock);
 #pragma omp parallel num_threads(num_threads)
-  {
-    int tid = omp_get_thread_num();
-    pair<string,vector<SamMapping> >* local_m;
-    vector<pair<string,vector<SamMapping> >* > local_m_vector(chunk_size);
-    int load;
-    while (true) {
-      Chunk chunk;
-      //chunk.chunk_id = i;
-      chunk.thread_id = tid;
+    {
+      int tid = omp_get_thread_num();
+      pair<string,vector<SamMapping> >* local_m;
+      vector<pair<string,vector<SamMapping> >* > local_m_vector(chunk_size);
+      int load;
+      while (true) {
+	Chunk chunk;
+	//chunk.chunk_id = i;
+	chunk.thread_id = tid;
 
 #pragma omp critical(input)
-      {
-        //omp_set_lock(&input_lock);
-	for (load = 0; load < chunk_size; ++load) {
-	  local_m = mapGen.get_next();
-	  if (local_m == NULL) {
-	    break;
+	{
+	  //omp_set_lock(&input_lock);
+	  for (load = 0; load < chunk_size; ++load) {
+	    local_m = mapGen.get_next();
+	    if (local_m == NULL) {
+	      break;
+	    }
+	    local_m_vector[load] = local_m;
 	  }
-	  local_m_vector[load] = local_m;
+
+	  chunk.chunk_id = next_chunk_in;
+	  if (load > 0)
+	    ++next_chunk_in;
+	  //omp_unset_lock(&input_lock);
 	}
 
-	chunk.chunk_id = next_chunk_in;
-	if (load > 0)
-	  ++next_chunk_in;
-        //omp_unset_lock(&input_lock);
-      }
+	if (load == 0)
+	  break;
 
-      if (load == 0)
-        break;
+	//chunk.out_str = new stringstream();
+	chunk.err_str = new stringstream();
+	*chunk.err_str << "tid=" << tid << " chunk_id=" << chunk.chunk_id
+		       << " start:" << local_m_vector[0]->first
+		       << " end:" << local_m_vector[load - 1]->first
+		       << '\n';
 
-      //chunk.out_str = new stringstream();
-      chunk.err_str = new stringstream();
-      *chunk.err_str << "tid=" << tid << " chunk_id=" << chunk.chunk_id
-		     << " start:" << local_m_vector[0]->first
-		     << " end:" << local_m_vector[load - 1]->first
-		     << '\n';
-
-      for (int i = 0; i < load; ++i) {
-	process_mapping_set(local_m_vector[i]->first, local_m_vector[i]->second,
-			    chunk.out_str);
-	//#ifdef NDEBUG
-	//		    NULL
-	//#else
-	//		    chunk.err_str
-	//#endif
-	//		    );
-	delete local_m_vector[i];
-      }
+	for (int i = 0; i < load; ++i) {
+	  process_mapping_set(local_m_vector[i]->first, local_m_vector[i]->second,
+			      chunk.out_str);
+	  //#ifdef NDEBUG
+	  //		    NULL
+	  //#else
+	  //		    chunk.err_str
+	  //#endif
+	  //		    );
+	  delete local_m_vector[i];
+	}
 
 #pragma omp critical(output)
-      {
-	h.push(chunk);
-	while (h.size() > 0) {
-	  chunk = h.top();
-	  assert(chunk.chunk_id >= next_chunk_out);
-	  if (chunk.chunk_id > next_chunk_out) {
-	    break;
-	  }
+	{
+	  h.push(chunk);
+	  while (h.size() > 0) {
+	    chunk = h.top();
+	    assert(chunk.chunk_id >= next_chunk_out);
+	    if (chunk.chunk_id > next_chunk_out) {
+	      break;
+	    }
 
-	  for (map<string,stringstream*>::iterator it = chunk.out_str.begin();
-	       it != chunk.out_str.end(); ++it) {
-	    fputs(it->second->str().c_str(), file_map[it->first]);
-	    delete it->second;
-	  }
+	    for (map<string,stringstream*>::iterator it = chunk.out_str.begin();
+		 it != chunk.out_str.end(); ++it) {
+	      fputs(it->second->str().c_str(), file_map[it->first]);
+	      delete it->second;
+	    }
 
-	  if (global::verbosity > 0) {
-	    cerr << "chunk=" << chunk.chunk_id << " work_thread=" << chunk.thread_id
-		 << " print_thread=" << tid << '\n';
-	    cerr << chunk.err_str->str();
-	    cerr.flush();
+	    if (global::verbosity > 0) {
+	      cerr << "chunk=" << chunk.chunk_id << " work_thread=" << chunk.thread_id
+		   << " print_thread=" << tid << '\n';
+	      cerr << chunk.err_str->str();
+	      cerr.flush();
+	    }
+	    delete chunk.err_str;
+	    h.pop();
+	    ++next_chunk_out;
 	  }
-	  delete chunk.err_str;
-	  h.pop();
-	  ++next_chunk_out;
 	}
       }
     }
-  }
-  //omp_destroy_lock(&input_lock);
+    //omp_destroy_lock(&input_lock);
 
-  mapIn.close();
-  for (map<string,FILE*>::iterator it = file_map.begin();
-       it != file_map.end(); ++it) {
-    fclose(it->second);
+    mapIn.close();
+    for (map<string,FILE*>::iterator it = file_map.begin();
+	 it != file_map.end(); ++it) {
+      fclose(it->second);
+    }
   }
 
   return 0;
