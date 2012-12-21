@@ -5,6 +5,7 @@ zc
 inalign
 add-extra-sam-flags
 filter-mappings
+sam-to-fq
 get-coverage
 get-bed-coverage
 tsd-search

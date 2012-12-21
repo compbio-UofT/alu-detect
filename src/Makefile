@@ -43,7 +43,7 @@ LN=ln
 CC=${CXX}
 CFLAGS=${CXXFLAGS}
 
-all: include-boost ../bin/get-regions ../bin/inalign ../bin/get-coverage ../bin/tsd-search ../bin/zc ../bin/add-extra-sam-flags ../bin/filter-mappings ../bin/print_tab ../bin/tee-p
+all: include-boost ../bin/get-regions ../bin/inalign ../bin/get-coverage ../bin/tsd-search ../bin/zc ../bin/add-extra-sam-flags ../bin/filter-mappings ../bin/sam-to-fq ../bin/print_tab ../bin/tee-p
 
 include-boost:
 	if [[ ! -e boost && -d "$(BOOST)" ]]; then ln -s "$(BOOST)" boost; fi
@@ -64,6 +64,11 @@ include-boost:
 	$(LD) $(CXXFLAGS) -o $@ $+ $(LDFLAGS)
 
 ../bin/filter-mappings: filter-mappings.o globals.o util.o deep_size.o Pairing.o \
+	DNASequence.o Read.o CloneGen.o SamMapping.o SamMappingSetGen.o common.o \
+	gzstream/gzstream.o Clone.o Mapping.o Cigar.o
+	$(LD) $(CXXFLAGS) -o $@ $+ $(LDFLAGS)
+
+../bin/sam-to-fq: sam-to-fq.o globals.o util.o deep_size.o Pairing.o \
 	DNASequence.o Read.o CloneGen.o SamMapping.o SamMappingSetGen.o common.o \
 	gzstream/gzstream.o Clone.o Mapping.o Cigar.o
 	$(LD) $(CXXFLAGS) -o $@ $+ $(LDFLAGS)
@@ -96,6 +101,11 @@ add-extra-sam-flags.o: add-extra-sam-flags.cpp globals.hpp \
 	$(CXX) $(CXXFLAGS) -c -o $@ $<
 
 filter-mappings.o: filter-mappings.cpp globals.hpp \
+	Read.hpp SamMapping.hpp SamMappingSetGen.hpp \
+	common.hpp
+	$(CXX) $(CXXFLAGS) -c -o $@ $<
+
+sam-to-fq.o: sam-to-fq.cpp globals.hpp \
 	Read.hpp SamMapping.hpp SamMappingSetGen.hpp \
 	common.hpp
 	$(CXX) $(CXXFLAGS) -c -o $@ $<
@@ -169,8 +179,5 @@ get-coverage.o: get-coverage.?pp Range.hpp
 ../bin/tee-p: tee-p.cpp
 	$(LD) $(CXXFLAGS) -o $@ $+ $(LDFLAGS)
 
-move-bins:
-	mv get-regions inalign get-coverage zc add-extra-sam-flags filter-mappings print_tab ../bin 
-
 clean:
-	rm -f *.o common/*.o gzstream/gzstream.o boost ../bin/get-regions ../bin/inalign ../bin/get-coverage ../bin/tsd-search.cpp ../bin/zc ../bin/add-extra-sam-flags ../bin/filter-mappings ../bin/tee-p
+	rm -f *.o common/*.o gzstream/gzstream.o boost ../bin/get-regions ../bin/inalign ../bin/get-coverage ../bin/tsd-search.cpp ../bin/zc ../bin/add-extra-sam-flags ../bin/filter-mappings ../bin/sam-to-fq ../bin/tee-p

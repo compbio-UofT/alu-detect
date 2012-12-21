@@ -142,7 +142,7 @@ run_stage() {
 	typeset -f stage_command >&2
 	if ask_confirmation ; then
 	    make_note "starting"
-	    stage_command || { rm $OUTPUT_FILES ; crash "failed" ; }
+	    force_errexit stage_command || { rm -f $OUTPUT_FILES ; crash "failed" ; }
 	    make_note "done"
 	else
 	    make_note "skipping"
@@ -171,7 +171,7 @@ run_stage() {
 	    typeset -f stage_stats_command >&2
 	    if ask_confirmation ; then
 	    make_note "starting"
-		stage_stats_command >$STATS_FILE || { rm $STATS_FILE ; crash "failed" ; }
+		force_errexit stage_stats_command >$STATS_FILE || { rm -f $STATS_FILE ; crash "failed" ; }
 		make_note "done"
 	    else
 		make_note "skipping"
@@ -271,7 +271,7 @@ gen_file() {
 		exec 3>/dev/null
 	    fi
 
-	    ( set -o pipefail ; COMMAND | tee-p "$OUTPUT_FILE" >&3 ; ) \
+	    ( set -o pipefail ; COMMAND 3>&- | tee-p "$OUTPUT_FILE" >&3 ; ) \
 		|| { rm "$OUTPUT_FILE" ; crash "failed" ; }
 
 	    exec 3>&-
@@ -317,4 +317,52 @@ rel_path() {
 	i=$(($i + 1))
     done
     echo "${res}$(basename "$1")"
+}
+
+#
+# execute a command and ignore a return code of 141 = SIGPIPE
+#
+no_sigpipe () {
+    exec 3>&1
+    local __ret_code=$({ force_errexit "$@" >&3 3>&-; echo $?; } || true)
+    exec 3>&-
+    if [ $__ret_code -eq 141 ]; then
+	return 0
+    else
+	return $__ret_code
+    fi
+}
+
+#
+# run in fresh bash, thus enabling -e
+#
+explicit_errtrap () {
+    trap 'echo $0: line $LINENO: exit code $?' ERR
+}
+
+quote () 
+{ 
+    echo \'${1//\'/\'\\\'\'}\'
+}
+
+force_errexit () {
+#    typeset | grep -vE "^(UID|EUID|PPID|BASH[A-Z_]*|SHELLOPTS)=" | grep -n '^' >&2
+    bash <(
+	typeset | grep -vE "^(UID|EUID|PPID|BASH[A-Z_]*|SHELLOPTS)="
+	echo "explicit_errtrap"
+	echo "BASH_XTRACEFD=\${BASH_XTRACEFD:-}"
+	echo "set -eEx -o pipefail"
+	for arg in "$@"; do
+	    echo -n "$(quote "$arg") ";
+	done
+    )
+}
+
+get_new_fd () {
+    local i=3
+    while [ $i -lt 256 ] && [ -e /proc/$BASHPID/fd/$i ]; do
+	let i+=1
+    done
+    [ $i -lt 256 ] || crash "no fd is available"
+    echo $i
 }

@@ -1,8 +1,16 @@
 #!/bin/bash
-. $(which lib.alu-detect.sh)
-set -o errexit
-set -o pipefail
-set -o xtrace
+. lib.alu-detect.sh
+set -eEu -o pipefail
+explicit_errtrap
+
+[ ! -e /proc/$$/fd/3 ] || crash "fd 3 needs to be closed"
+[ ! -e /proc/$$/fd/4 ] || crash "fd 4 needs to be closed"
+
+XTRACE=${XTRACE:-/dev/null}
+exec 4>$XTRACE
+export BASH_XTRACEFD=4
+set -x
+
 
 find_my_name_and_dir "${BASH_SOURCE[0]}"
 BASE_DIR=$(dirname $MY_DIR)
@@ -16,6 +24,27 @@ GLOBAL_SETTINGS=$BASE_DIR/settings/global
 . "$GLOBAL_SETTINGS" || crash "missing global settings file: $GLOBAL_SETTINGS"
 REF_SETTINGS=$BASE_DIR/settings/ref.$REF_NAME
 . "$REF_SETTINGS" 2>/dev/null || crash "missing reference settings file: $REF_SETTINGS"
+
+
+#
+# don't trust the user; check most settings
+#
+(which python >/dev/null 2>&1 && [ "$(python --version 2>&1 | cut -d '.' -f 2)" -ge 6 ]) \
+    || crash "python2.6+ not found"
+which samtools >/dev/null 2>&1 || crash "samtools not found"
+which intersectBed >/dev/null 2>&1 || crash "intersectBed not found"
+which bowtie2 >/dev/null 2>&1 || crash "bowtie2 not found"
+which gmapper-ls >/dev/null 2>&1 || crash "gmapper not found"
+[[ "$AWKPATH" =~ $BASE_DIR/bin ]] || crash "AWKPATH not set properly"
+[ -r "$ALU_ALL_FA" ] || crash "Alu consensus sequences missing from: $ALU_ALL_FA"
+[ -r "$ALU_NO_POLYA_FA" ] || crash "masked Alu consensus sequences missing from: $ALU_NO_POLYA_FA"
+
+[ -r "$REF_FA" ] || crash "reference fasta file missing: $REF_FA"
+[ -r "$CHROMINFO" ] || crash "chrominfo file missing: $CHROMINFO"
+for suffix in .1.bt2 .2.bt2 .3.bt2 .4.bt2 .rev.1.bt2 .rev.2.bt2; do
+    [ -r "$BOWTIE2_INDEX$suffix" ] || crash "bowtie2 index file missing: $BOWTIE2_INDEX$suffix"
+done
+[ -r "$ALUS_BED" ] || crash "reference alu annotations missing: $ALUS_BED"
 
 
 export NCPU=${NCPU:-2}
@@ -196,11 +225,12 @@ fi
 
 get_orig_mappings() {
     file=${orig_mappings[$1]}
+    [ -r $file ] || crash "$file: file not found"
     rg=${orig_read_groups[$1]:-}
     command="$PV $file"
-    if (set +o pipefail; zc $file | head -n 1 | cut -c -3 | grep -q "BAM"); then
+    if (set +o pipefail zc $file | head -n 1 | cut -c -3 | grep -q "BAM"); then
 	command="$command | samtools view -h -"
-    elif file $file | grep -q gzip; then
+    elif (set +o pipefail; file $file | grep -q gzip); then
 	command="$command | $UNZIP"
     fi
     if [ ${add_dummy_pairs:-} ]; then
@@ -210,6 +240,7 @@ get_orig_mappings() {
 	command="$command | sam-rsort"
     fi
     make_note "command to get mappings: $command"
+#    (set +e +o pipefail; eval $command | add-default-rg $rg || true)
     eval $command | add-default-rg $rg
 }
 
@@ -227,10 +258,11 @@ stage_command() {
     rm -f $PAIRING_FILE.tmp
     i=0
     while [ $i -lt ${#orig_mappings[@]} ]; do
-	( set +o pipefail; get_orig_mappings $i | detect-pairing -f >>$PAIRING_FILE.tmp )
+	no_sigpipe get_orig_mappings $i | detect-pairing -f >>$PAIRING_FILE.tmp
 	let i+=1
     done
-    sort -s -k 1,1 $PAIRING_FILE.tmp | tawk '{if ($1!=last) print; last=$1}' >$PAIRING_FILE.tmp.uniq
+    sort -s -k 1,1 $PAIRING_FILE.tmp \
+	| tawk 'BEGIN{last=""} {if ($1!=last) print; last=$1}' >$PAIRING_FILE.tmp.uniq
     tawk -v n=$(wc -l <$PAIRING_FILE.tmp.uniq) \
 	'{$2=NR-1; while (length($2)<length(n-1)) $2="0" $2; print}' \
 	<$PAIRING_FILE.tmp.uniq >$PAIRING_FILE
@@ -361,7 +393,7 @@ stage_command() {
 	    -f 0/0x1000,0/0x1000:\&3 \
 	    -f 0x8000/0x6000,0x8000/0x6000:\&3 \
 	    -f 0,0:\&1 \
-	| zc <(sam-header $MAPPINGS_TO_REFERENCE.sam.gz) - \
+	| { sam-header $MAPPINGS_TO_REFERENCE.sam.gz; cat; } \
 	| $ZIP >$MAPPINGS_CLEAN_TO_REFERENCE.sam.gz
 }
 stage_stats_command() {

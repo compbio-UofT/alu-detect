@@ -1,0 +1,28 @@
+#!/bin/bash
+. $(which lib.alu-detect.sh)
+
+[ $# -eq 0 ] && exec cat
+[ $# -eq 1 ] || crash "$0: too many arguments"
+rg=$1
+
+oldifs=$IFS
+IFS=$'\n'
+have_line=
+have_rg_line=
+while read -r line; do
+    have_line=1
+    [ "${line:0:1}" = "@" ] || break
+    if echo $line | grep -qE "^@RG.*	ID:$rg"; then
+	have_rg_line=1
+    fi
+    echo $line
+    have_line=
+done
+
+[ $have_rg_line ] || echo "@RG	ID:$rg"
+
+{
+    [ ! $have_line ] || echo $line
+    cat
+} \
+    | tawk -v rg=$rg '/\tRG:/ {print; next} {print $0, "RG:Z:" rg}'

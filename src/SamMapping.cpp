@@ -5,6 +5,7 @@
 #include <map>
 
 #include "strtk/strtk.hpp"
+#include "globals.hpp"
 
 
 ExtraSamField::ExtraSamField(const string& s)
@@ -26,7 +27,7 @@ operator <<(ostream& ostr, const ExtraSamField& extraSamField)
 }
 
 
-SamMapping::SamMapping(const string& s, SQDict* dict)
+SamMapping::SamMapping(const string& s, SQDict* dict, bool add_to_dict)
 {
   strtk::std_string::token_list_type token_list;
   strtk::split("\t", s, back_inserter(token_list));
@@ -47,12 +48,17 @@ SamMapping::SamMapping(const string& s, SQDict* dict)
     db = NULL;
   } else {
     db = &(*dict)[tmp];
-    //cerr << "got Contig holder: " << *db << endl;
     if (db->name.length() == 0) {
-      //db->name = tmp;
-      cerr << "error: missing sequence for contig [" << tmp
-	   << "] referred to in mapping [" << s << "]" << endl;
-      exit(1);
+      if (add_to_dict) {
+	if (global::verbosity > 0)
+	  clog << "adding contig [" << tmp << "]\n";
+	db->name = tmp;
+	db->idx = dict->size() - 1;
+      } else {
+	cerr << "error: missing sequence for contig [" << tmp
+	     << "] referred to in mapping [" << s << "]" << endl;
+	exit(1);
+      }
     }
     //cerr << "db now:" << *db << endl;
   }
@@ -79,10 +85,16 @@ SamMapping::SamMapping(const string& s, SQDict* dict)
   } else {
     mp_db = &(*dict)[tmp];
     if (mp_db->name.length() == 0) {
-      //mp_db->name = tmp;
-      cerr << "error: missing sequence for contig [" << tmp
-	   << "] referred to in mapping [" << s << "]" << endl;
-      exit(1);
+      if (add_to_dict) {
+	if (global::verbosity > 0)
+	  clog << "adding contig [" << tmp << "]\n";
+	mp_db->name = tmp;
+	mp_db->idx = dict->size() - 1;
+      } else {
+	cerr << "error: missing sequence for contig [" << tmp
+	     << "] referred to in mapping [" << s << "]" << endl;
+	exit(1);
+      }
     }
   }
   ++itr;

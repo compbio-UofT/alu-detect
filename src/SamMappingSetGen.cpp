@@ -6,7 +6,7 @@
 
 
 SamMapping*
-getMapping(istream& istr, void (*headerLineHook)(const string&), SQDict* dict)
+getMapping(istream& istr, void (*headerLineHook)(const string&), SQDict* dict, bool add_to_dict)
 {
   string line;
   while (true) {
@@ -18,7 +18,7 @@ getMapping(istream& istr, void (*headerLineHook)(const string&), SQDict* dict)
     if (istr.eof())
       return NULL;
     if (line[0] != '@')
-      return new SamMapping(line, dict);
+      return new SamMapping(line, dict, add_to_dict);
     if (headerLineHook != NULL)
       headerLineHook(line);
   }
@@ -38,7 +38,7 @@ SamMappingSetGen::get_next()
   }
   bool done = false;
   while (!done) {
-    SamMapping* m = getMapping(*istr_, headerLineHook_, dict_);
+    SamMapping* m = getMapping(*istr_, headerLineHook_, dict_, add_to_dict_);
     if (m == NULL)
       break;
     const string s = cloneNameParser_(m->name);

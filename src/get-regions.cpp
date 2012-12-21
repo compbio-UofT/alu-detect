@@ -90,7 +90,7 @@ collect_evidence(istream* refMapIn, istream* repMapIn,
 		 vector<pair<int,Clone*> >& l,
 		 const vector<Range>& range)
 {
-  cerr << "---------- collect_evidence start" << endl;
+  clog << "---------- collect_evidence start" << endl;
 
   CloneGen cloneGen(refMapIn, repMapIn, cloneNameParser, fullNameParser,
 		    ref_checkSQDict, rep_checkSQDict, &global::refDict, &global::repDict);
@@ -101,7 +101,7 @@ collect_evidence(istream* refMapIn, istream* repMapIn,
       break;
 
     if (c->ref == NULL or c->bp.size() == 0) {
-      cerr << "dropping clone [" << c->name << "]" << endl;
+      clog << "dropping clone [" << c->name << "]" << '\n';
       delete c;
       continue;
     }
@@ -122,7 +122,7 @@ collect_evidence(istream* refMapIn, istream* repMapIn,
 	}
       }
       if (not pass) {
-	cerr << "dropping clone [" << c->name << "]: not in range restriction" << endl;
+	clog << "dropping clone [" << c->name << "]: not in range restriction\n";
 	delete c;
 	continue;
       }
@@ -130,10 +130,10 @@ collect_evidence(istream* refMapIn, istream* repMapIn,
 
     l.push_back(pair<int,Clone*>(0, c));
     l.push_back(pair<int,Clone*>(1, c));
-    cerr << *c << endl;
+    clog << *c << '\n';
   }
 
-  cerr << "---------- collect_evidence end" << endl;
+  clog << "---------- collect_evidence end" << endl;
 }
 
 
@@ -152,25 +152,25 @@ compareCloneEndpoints(const pair<int,Clone*>& p1, const pair<int,Clone*>& p2)
 void
 sort_evidence(vector<pair<int,Clone*> >& l)
 {
-  cerr << "---------- sort_evidence start" << endl;
+  clog << "---------- sort_evidence start" << endl;
 
   sort(l.begin(), l.end(), compareCloneEndpoints);
 
-  cerr << "---------- sort_evidence end" << endl;
+  clog << "---------- sort_evidence end" << endl;
 }
 
 
 void
 print_evidence(ostream& ostr, const vector<pair<int,Clone*> >& l)
 {
-  cerr << "---------- print_evidence start" << endl;
+  clog << "---------- print_evidence start" << endl;
 
-  ostr << "len=" << l.size() << endl;
-  ostr << "sizeof(l[0]): " << sizeof(l[0]) << endl;
-  ostr << "sizeof(l[0].first): " << sizeof(l[0].first) << endl;
-  ostr << "sizeof(l[0].second): " << sizeof(l[0].second) << endl;
-  ostr << "sizeof(*(l[0].second)): " << sizeof(*(l[0].second)) << endl;
-  ostr << "deep size(l): " << sizeof(l) + size_below(l) << endl;
+  ostr << "len=" << l.size() << '\n';
+  ostr << "sizeof(l[0]): " << sizeof(l[0]) << '\n';
+  ostr << "sizeof(l[0].first): " << sizeof(l[0].first) << '\n';
+  ostr << "sizeof(l[0].second): " << sizeof(l[0].second) << '\n';
+  ostr << "sizeof(*(l[0].second)): " << sizeof(*(l[0].second)) << '\n';
+  ostr << "deep size(l): " << sizeof(l) + size_below(l) << '\n';
 
   size_t tmp = 0;
   for (vector<pair<int,Clone*> >::const_iterator it = l.begin(); it != l.end(); ++it) {
@@ -178,15 +178,15 @@ print_evidence(ostream& ostr, const vector<pair<int,Clone*> >& l)
 	 << it->second->bp[0].pos[it->first] << " " << it->second->bp[0].pos[1 - it->first] << " "
 	 << it->second->mappedToRepeatSt[0] << " "
 	 << it->second->mappedToRepeatSt[1] << " "
-	 << it->second->name << endl;
+	 << it->second->name << '\n';
     if (it->first == 0) {
       tmp += sizeof(*(it->second)) + size_below(*(it->second));
     }
   }
 
-  cerr << "in-mem size of clones: " << tmp << endl;
+  clog << "in-mem size of clones: " << tmp << '\n';
 
-  cerr << "---------- print_evidence end" << endl;
+  clog << "---------- print_evidence end" << endl;
 }
 
 
@@ -202,7 +202,7 @@ duplicate_clones(Clone* c1, Clone* c2)
 void
 filter_evidence(vector<pair<int,Clone*> >& l)
 {
-  cerr << "---------- filter_evidence start" << endl;
+  clog << "---------- filter_evidence start" << endl;
 
   vector<pair<int,Clone*> > new_l;
 
@@ -217,14 +217,14 @@ filter_evidence(vector<pair<int,Clone*> >& l)
 
   l = new_l;
 
-  cerr << "---------- filter_evidence end" << endl;
+  clog << "---------- filter_evidence end" << endl;
 }
 
 
 void
 remove_duplicate_evidence(vector<pair<int,Clone*> >& l)
 {
-  cerr << "---------- remove_duplicate_evidence start" << endl;
+  clog << "---------- remove_duplicate_evidence start" << endl;
 
   for (size_t i = 0; i < l.size(); ++i) {
     if (l[i].first == 0) {
@@ -234,20 +234,20 @@ remove_duplicate_evidence(vector<pair<int,Clone*> >& l)
     if (i > 0 and l[i].first == 0 and l[i - 1].first == 0
 	and duplicate_clones(l[i - 1].second, l[i].second)) {
       // remove this clone, it's a duplicate
-      cerr << "removing duplicate [" << l[i].second->name << "]" << endl;
+      clog << "removing duplicate [" << l[i].second->name << "]\n";
       l[i].second->use = false;
     }
   }
 
   filter_evidence(l);
 
-  cerr << "---------- remove_duplicate_evidence end" << endl;
+  clog << "---------- remove_duplicate_evidence end" << endl;
 }
 
 void
 remove_non_active(vector<pair<int,Clone*> >& l)
 {
-  cerr << "---------- remove_non_active start" << endl;
+  clog << "---------- remove_non_active start" << endl;
 
   set<Clone*> active;
   Contig* crt_contig = NULL;
@@ -265,18 +265,18 @@ remove_non_active(vector<pair<int,Clone*> >& l)
 	} else {
 	  last_pos = max(last_pos, clone->bp[0].pos[1]);
 	}
-	cerr << "setting crt_contig=[" << crt_contig->name << "] last_pos=[" << last_pos
-	     << "] because of [" << clone->name << "]" << endl;
+	clog << "setting crt_contig=[" << crt_contig->name << "] last_pos=[" << last_pos
+	     << "] because of [" << clone->name << "]\n";
 	for_iterable(set<Clone*>, active, it) {
 	  if (!(*it)->use) {
-	    cerr << "including [" << (*it)->name << "] because of [" << clone->name << "]" << endl;
+	    clog << "including [" << (*it)->name << "] because of [" << clone->name << "]\n";
 	    (*it)->use = true;
 	  }
 	}
       } else {
 	// no repeat evidence in this clone, but might be in active region
 	if (clone->ref == crt_contig and clone->bp[0].pos[0] <= last_pos) {
-	  cerr << "including [" << clone->name << "] because last_pos=[" << last_pos << "]" << endl;
+	  clog << "including [" << clone->name << "] because last_pos=[" << last_pos << "]\n";
 	  clone->use = true;
 	} else {
 	  clone->use = false;
@@ -289,13 +289,13 @@ remove_non_active(vector<pair<int,Clone*> >& l)
 
   filter_evidence(l);
 
-  cerr << "---------- remove_non_active end" << endl;
+  clog << "---------- remove_non_active end" << endl;
 }
 
 void
 remove_singletons(vector<pair<int,Clone*> >& l)
 {
-  cerr << "---------- remove_singletons start" << endl;
+  clog << "---------- remove_singletons start" << endl;
 
   set<Clone*> active;
  
@@ -305,7 +305,7 @@ remove_singletons(vector<pair<int,Clone*> >& l)
       active.insert(l[i].second);
     } else {
       if (l[i].second == l[i - 1].second and active.size() == 1) {
-	cerr << "removing singleton [" << l[i].second->name << "]" << endl;
+	clog << "removing singleton [" << l[i].second->name << "]\n";
 	l[i].second->use = false;
       }
       active.erase(l[i].second);
@@ -314,7 +314,7 @@ remove_singletons(vector<pair<int,Clone*> >& l)
 
   filter_evidence(l);
 
-  cerr << "---------- remove_singletons end" << endl;
+  clog << "---------- remove_singletons end" << endl;
 }
 
 void
@@ -334,7 +334,7 @@ split_map_clone(Clone* c, ostream& out_str, ostream& err_str)
 	1,
 	out_str, err_str);
   } else {
-    err_str << "warning: bad clone: " << *c << endl;
+    err_str << "warning: bad clone: " << *c << '\n';
     c->read[0].mapping.clear();
     c->read[1].mapping.clear();
   }
@@ -344,13 +344,13 @@ split_map_clone(Clone* c, ostream& out_str, ostream& err_str)
   c->use = (c->ref != NULL and c->fully_mapped() and c->bp.size() == 1
 	    and (c->mappedToRepeatSt[0] or c->mappedToRepeatSt[1]));
   if (c->ref == NULL) {
-    err_str << "removing clone [" << c->name << "]: not mapped to reference" << endl;
+    err_str << "removing clone [" << c->name << "]: not mapped to reference" << '\n';
   } else if (!c->fully_mapped()) {
-    err_str << "removing clone [" << c->name << "]: not fully mapped" << endl;
+    err_str << "removing clone [" << c->name << "]: not fully mapped" << '\n';
   } else if (c->bp.size() != 1) {
-    err_str << "removing clone [" << c->name << "]: more than 1 bp" << endl;
+    err_str << "removing clone [" << c->name << "]: more than 1 bp" << '\n';
   } else if (!(c->mappedToRepeatSt[0] or c->mappedToRepeatSt[1])) {
-    err_str << "removing clone [" << c->name << "]: not mapped to repeat" << endl;
+    err_str << "removing clone [" << c->name << "]: not mapped to repeat" << '\n';
   }
 }
 
@@ -358,7 +358,7 @@ split_map_clone(Clone* c, ostream& out_str, ostream& err_str)
 void
 split_mappings(vector<pair<int,Clone*> >& l)
 {
-  cerr << "---------- split_mappings start" << endl;
+  clog << "---------- split_mappings start" << endl;
 
   vector<Clone*> v;
   for (size_t i = 0; i < l.size(); ++i) {
@@ -376,7 +376,7 @@ split_mappings(vector<pair<int,Clone*> >& l)
     int tid = omp_get_thread_num();
 #pragma omp critical(output)
     {
-      cerr << "thread " << tid << ": started" << endl;
+      clog << "thread " << tid << ": started\n";
     }
 #pragma omp for schedule(dynamic)
     for (long long i = 0; i < (long long int)v.size(); ++i) {
@@ -392,9 +392,9 @@ split_mappings(vector<pair<int,Clone*> >& l)
 	string s;
 	getline(*chunk.err_str, s);
 	chunk.err_str->str("");
-	*chunk.err_str << s << endl;
+	*chunk.err_str << s << '\n';
       }
-      *chunk.err_str << *v[i] << endl;
+      *chunk.err_str << *v[i] << '\n';
 
 #pragma omp critical(output)
       {
@@ -407,10 +407,10 @@ split_mappings(vector<pair<int,Clone*> >& l)
 	  }
 	  cout << chunk.out_str->str();
 	  cout.flush();
-	  cerr << "chunk=" << chunk.chunk_id << " work_thread=" << chunk.thread_id
-	       << " print_thread=" << tid << endl;
-	  cerr << chunk.err_str->str();
-	  cerr.flush();
+	  clog << "chunk=" << chunk.chunk_id << " work_thread=" << chunk.thread_id
+	       << " print_thread=" << tid << '\n';
+	  clog << chunk.err_str->str();
+	  clog.flush();
 	  delete chunk.out_str;
 	  delete chunk.err_str;
 	  h.pop();
@@ -422,7 +422,7 @@ split_mappings(vector<pair<int,Clone*> >& l)
 
   filter_evidence(l);
 
-  cerr << "---------- split_mappings end" << endl;
+  clog << "---------- split_mappings end" << endl;
 }
 
 /*
@@ -490,7 +490,7 @@ process_chunk(vector<Clone*>& chunk, ostream& out_str, ostream& err_str)
     }
     err_str << chunk[i]->name;
   }
-  err_str << endl;
+  err_str << '\n';
 
   run(*c->ref,
       outter_start, outter_end, inner_start, inner_end,
@@ -540,7 +540,7 @@ partition_region_into_chunks(vector<pair<int,Clone*> >& v, size_t begin, size_t 
     
     ++n_chunks;
     vector<Clone*> active_vector = vector<Clone*>(active.begin(), active.end());
-    process_chunk(active_vector, cout, cerr);
+    process_chunk(active_vector, cout, clog);
 
     for (set<Clone*>::iterator it = active.begin(); it != active.end(); ++it) {
       if ((*it)->fully_mapped()) {
@@ -550,13 +550,13 @@ partition_region_into_chunks(vector<pair<int,Clone*> >& v, size_t begin, size_t 
   }
 
   if (n_chunks > 1) {
-    cerr << "warning: abnormal region with " << n_chunks << " chunks:" << endl;
+    clog << "warning: abnormal region with " << n_chunks << " chunks:\n";
     for (vector<pair<int,Clone*> >::iterator it = v.begin() + begin; it != v.begin() + end; ++it) {
-      cerr << it->second->ref->name << " "
+      clog << it->second->ref->name << " "
 	   << it->second->bp[0].pos[it->first] << " " << it->second->bp[0].pos[1 - it->first] << " "
 	   << it->second->mappedToRepeatSt[0] << " "
 	   << it->second->mappedToRepeatSt[1] << " "
-	   << it->second->name << endl;
+	   << it->second->name << '\n';
     }
   }
 }
@@ -565,7 +565,7 @@ partition_region_into_chunks(vector<pair<int,Clone*> >& v, size_t begin, size_t 
 void
 final_pass(vector<pair<int,Clone*> >& l)
 {
-  cerr << "---------- final_pass start" << endl;
+  clog << "---------- final_pass start" << endl;
 
   // first, split into 2 lists:
   vector<pair<int,Clone*> > v[2];
@@ -578,8 +578,8 @@ final_pass(vector<pair<int,Clone*> >& l)
       v[1].push_back(l[i]);
     } else {
       if (endpoint == 0) {
-	cerr << "warning: skipping clone mapped to neither or both repeat strands: "
-	     << *clone << endl;
+	clog << "warning: skipping clone mapped to neither or both repeat strands: "
+	     << *clone << '\n';
       }
     }
   }
@@ -620,7 +620,7 @@ final_pass(vector<pair<int,Clone*> >& l)
     int tid = omp_get_thread_num();
 #pragma omp critical(output)
     {
-      cerr << "thread " << tid << ": started" << endl;
+      clog << "thread " << tid << ": started\n";
     }
 #pragma omp for schedule(dynamic)
       for (long long i = 0; i < (long long int)chunk_list.size(); ++i) {
@@ -643,10 +643,10 @@ final_pass(vector<pair<int,Clone*> >& l)
 	  }
 	  cout << chunk.out_str->str();
 	  cout.flush();
-	  cerr << "chunk=" << chunk.chunk_id << " work_thread=" << chunk.thread_id
-	       << " print_thread=" << tid << endl;
-	  cerr << chunk.err_str->str();
-	  cerr.flush();
+	  clog << "chunk=" << chunk.chunk_id << " work_thread=" << chunk.thread_id
+	       << " print_thread=" << tid << '\n';
+	  clog << chunk.err_str->str();
+	  clog.flush();
 	  delete chunk.out_str;
 	  delete chunk.err_str;
 	  h.pop();
@@ -656,7 +656,7 @@ final_pass(vector<pair<int,Clone*> >& l)
     }
   }
 
-  cerr << "---------- final_pass end" << endl;
+  clog << "---------- final_pass end" << endl;
 }
 
 
@@ -701,12 +701,12 @@ main(int argc, char* argv[])
     exit(1);
   }
 
-  cerr << "number of threads: " << num_threads << endl;
+  clog << "number of threads: " << num_threads << '\n';
 
   if (pairing_file.size() > 0) {
     igzstream pairingIn(pairing_file.c_str());
     if (pairingIn.bad()) { cerr << "error opening pairing file: " << pairing_file << endl; exit(1); }
-    load_pairing(pairingIn, global::rg_dict, global::num_rg_dict);
+    load_pairing(pairingIn, global::rg_dict, global::num_rg_dict, global::rg_to_num_rg_dict);
     pairingIn.close();
   } else {
     cerr << "missing pairing file" << endl;
@@ -762,21 +762,21 @@ main(int argc, char* argv[])
   repMapIn.close();
 
   sort_evidence(l);
-  print_evidence(cerr, l);
+  print_evidence(clog, l);
 
   remove_duplicate_evidence(l);
-  print_evidence(cerr, l);
+  print_evidence(clog, l);
 
   remove_non_active(l);
   remove_singletons(l);
-  print_evidence(cerr, l);
+  print_evidence(clog, l);
 
   split_mappings(l);
 
   sort_evidence(l);
   remove_non_active(l);
   remove_singletons(l);
-  print_evidence(cerr, l);
+  print_evidence(clog, l);
 
   final_pass(l);
 
@@ -785,7 +785,7 @@ main(int argc, char* argv[])
     l[i].second->use = false;
   }
   filter_evidence(l);
-  print_evidence(cerr, l);
+  print_evidence(clog, l);
 
   return 0;
 }

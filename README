@@ -439,6 +439,9 @@ Variables which affect alu-detect are:
   ORIG_READ_GROUPS, ORIG_MAPPINGS : Described in section 4. When the start stage
   is 3 or more, these are unnecessary
 
+- XTRACE : save bash xtrace to the given file (use "XTRACE=/dev/fd/2" to save it
+  to stderr)
+
 
 Sample command lines include:
 
@@ -595,8 +598,14 @@ filtering technique. This consists of several conceptual steps:
 
 - Apply those filters to the real calls
 
+REQUIREMENT (*): To use this technique, you need to have the original reads in
+fastq format. Mappings to the reference are *not* enough. The reason is that
+many more reads will be mapped discrodantly to the fake reference than to the
+real reference. You *must* remap the read set to the fake reference for this
+filtering technique to be any useful.
 
-These steps are mostly automated. To use them:
+
+Otherwise, these steps are mostly automated. To use them:
 
 - Create a fake reference using the instructions in Section 3.4 and 3.5. E.g.:
 
@@ -605,8 +614,24 @@ $ make-fake-ref hg18 fake_hg18
 
 - Run detection against both the real and the fake reference. E.g.:
 
-$ NCPU=30 CONF=a ORIG_MAPPINGS=map.bam alu-detect NA18507 hg18
-$ NCPU=30 CONF=a ORIG_MAPPINGS=map.bam alu-detect NA18507 fake_hg18
+$ NCPU=30 CONF=a ORIG_MAPPINGS=map.hg18.bam alu-detect NA18507 hg18
+
+$ NCPU=30 CONF=a ORIG_READS_1=reads_1.fq.gz ORIG_READS_2=reads_2.fq.gz \
+  INPUT_PHRED=33 alu-detect NA18507 fake_hg18
+
+If you mapped the reads by hand to the fake reference, you can replace the
+second step by:
+
+$ NCPU=30 CONF=a ORIG_MAPPINGS=map.fake_hg18.bam alu-detect NA18507 fake_hg18
+
+
+NOTE: As explained above (*), the following is wrong:
+
+$ NCPU=30 CONF=a ORIG_MAPPINGS=map.hg18.bam alu-detect NA18507 fake_hg18
+
+alu-detect cannot detect the conceptual error of mixing up references, and will
+not complain. But the results of doing this are undefined. (Most likely no
+suitable filters will be found.)
 
 
 - Filter the calls on the 2 references together using the program

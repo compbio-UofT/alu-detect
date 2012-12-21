@@ -81,13 +81,14 @@ addSQToRefDict(const string& line)
       contig->name = contig_name;
       contig->len = contig_len;
       contig->idx = global::refDict.size() - 1;
-      if (global::verbosity > 0) clog << "added contig [" << contig->name << "] of length [" << contig->len << "]" << endl;
+      if (global::verbosity > 0)
+	clog << "added contig [" << contig->name << "] of length [" << contig->len << "]\n";
     } else {
       cerr << "error: contig [" << contig->name << "] already exists!" << endl;
       exit(1);
     }
   }
-  //cout << line << endl;
+  //cout << line << '\n';
 }
 
 void
@@ -108,7 +109,7 @@ print_sam_mapping(ostream& os, const SamMapping& m)
   for (size_t j = 0; j < m.rest.size(); ++j) {
     os << '\t' << m.rest[j].key << ':' << m.rest[j].type << ':' << m.rest[j].value;
   }
-  os << endl;
+  os << '\n';
 }
 
 void
@@ -253,7 +254,7 @@ add_filter(const string& s)
     clog << "added filter: " << "0x" << hex << f.must_have[0] << "/" << "0x" << hex << f.must_not_have[0];
     if (global::rg_dict.size() > 0)
       clog << "," << "0x" << hex << f.must_have[1] << "/" << "0x" << hex << f.must_not_have[1];
-    clog << "," << f.stop_on_hit << ":" << f.dest_file << endl;
+    clog << "," << f.stop_on_hit << ":" << f.dest_file << '\n';
   }
 }
 
@@ -300,12 +301,12 @@ main(int argc, char* argv[])
     exit(1);
   }
 
-  if (global::verbosity > 0) clog << "number of threads: " << num_threads << endl;
+  if (global::verbosity > 0) clog << "number of threads: " << num_threads << '\n';
 
   if (pairing_file.size() > 0) {
     igzstream pairingIn(pairing_file.c_str());
     if (pairingIn.bad()) { cerr << "error opening pairing file: " << pairing_file << endl; exit(1); }
-    load_pairing(pairingIn, global::rg_dict, global::num_rg_dict);
+    load_pairing(pairingIn, global::rg_dict, global::num_rg_dict, global::rg_to_num_rg_dict);
     pairingIn.close();
   }
 
@@ -319,7 +320,7 @@ main(int argc, char* argv[])
     exit(1);
   }
 
-  SamMappingSetGen mapGen(&mapIn, cnp, addSQToRefDict, &global::refDict);
+  SamMappingSetGen mapGen(&mapIn, cnp, addSQToRefDict, &global::refDict, false);
   pair<string,vector<SamMapping> >* m = mapGen.get_next();
   map<string,stringstream*> out_str;
   //process_mapping_set(m->first, m->second, out_str, &cerr);
@@ -375,7 +376,7 @@ main(int argc, char* argv[])
       *chunk.err_str << "tid=" << tid << " chunk_id=" << chunk.chunk_id
 		     << " start:" << local_m_vector[0]->first
 		     << " end:" << local_m_vector[load - 1]->first
-		     << endl;
+		     << '\n';
 
       for (int i = 0; i < load; ++i) {
 	process_mapping_set(local_m_vector[i]->first, local_m_vector[i]->second,
@@ -407,7 +408,7 @@ main(int argc, char* argv[])
 
 	  if (global::verbosity > 0) {
 	    cerr << "chunk=" << chunk.chunk_id << " work_thread=" << chunk.thread_id
-		 << " print_thread=" << tid << endl;
+		 << " print_thread=" << tid << '\n';
 	    cerr << chunk.err_str->str();
 	    cerr.flush();
 	  }

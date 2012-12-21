@@ -15,20 +15,12 @@ using namespace std;
 #include "SamMapping.hpp"
 #include "SamMappingSetGen.hpp"
 #include "common.hpp"
-#include "CloneGen.hpp"
-#include "Cigar.hpp"
 
 
-
-int num_threads = 1;
-
-int min_read_len = 20;
-int min_mqv = 5;
-int min_tail_insert_size = 15;
-int min_tail_match_len = 5;
-
+bool save_rgid = false;
 string (*cnp)(const string&);
 void (*fnp)(const string&, Clone&, int&);
+
 
 class Chunk
 {
@@ -47,7 +39,7 @@ public:
 
 
 void
-addSQToRefDict_then_print(const string& line)
+addSQToRefDict(const string& line)
 {
   strtk::std_string::token_list_type token_list;
   strtk::split("\t", line, back_inserter(token_list));
@@ -78,103 +70,91 @@ addSQToRefDict_then_print(const string& line)
       contig->len = contig_len;
       contig->idx = global::refDict.size() - 1;
       if (global::verbosity > 0)
-	clog << "added contig [" << contig->name << "] of length [" << contig->len << "]\n";
+	clog << "added contig [" << contig->name << "] of length [" << contig->len << "]" << '\n';
     } else {
       cerr << "error: contig [" << contig->name << "] already exists!" << endl;
       exit(1);
     }
   }
-  cout << line << '\n';
+  //cout << line << endl;
 }
 
 
 void
-process_mapping_set(const string& s, vector<SamMapping>& v,
-		    ostream* out_str, ostream* err_str)
+print_read_from_mapping(const string& s, const SamMapping& m, ostream* os)
 {
+  string tail;
+  if (((m.flags.to_ulong() & 0x1) != 0) and m.name == s) {
+    if ((m.flags.to_ulong() & 0x40) != 0) {
+      tail = "/1";
+    } else {
+      tail = "/2";
+    }
+  }
+  string seq;
+  string qual;
+  if (m.cigar.find('H') == string::npos and m.seq != "*" and m.seq.size() == m.qvString.size()) {
+    if ((m.flags.to_ulong() & 0x10) != 0) {
+      seq = reverseComplement(m.seq);
+      qual = reverse(m.qvString);
+    } else {
+      seq = m.seq;
+      qual = m.qvString;
+    }
+  } else {
+    seq = "*";
+    qual = "*";
+  }
+  string rgid;
+  if (save_rgid) {
+    size_t i = 0;
+    while (i < m.rest.size() and m.rest[i].key != "RG") ++i;
+    if (i < m.rest.size()) {
+      if (global::rg_to_num_rg_dict.count(m.rest[i].value) != 1) {
+	cerr << "RG " << m.rest[i].value << " found in dictionary "
+	     << global::rg_to_num_rg_dict.count(m.rest[i].value) << " times" << endl;
+	exit(1);
+      }
+      rgid = global::rg_to_num_rg_dict[m.rest[i].value];
+    } else {
+      if (global::rg_to_num_rg_dict.count(global::default_rg) != 1) {
+	cerr << "RG " << global::default_rg << " found in dictionary "
+	     << global::rg_to_num_rg_dict.count(global::default_rg) << " times" << endl;
+	exit(1);
+      }
+      rgid = global::rg_to_num_rg_dict[global::default_rg];
+    }
+  }
+  *os << '@' << m.name << tail << '\n'
+      << seq << '\n'
+      << '+' << rgid << '\n'
+      << qual << '\n';
+}
+
+
+void
+process_mapping_set(const string& s, vector<SamMapping>& v, ostream* out_str)
+{
+  /*
   if ((global::rg_dict.size() == 0 and v.size() != 1)
       or (global::rg_dict.size() > 0 and v.size() != 2)) {
     cerr << "incorrect number of mappings for clone [" << s << "]" << endl;
     exit(1);
   }
-
-  Clone c;
-
-  for (size_t i = 0; i < v.size(); ++i) {
-    int nip = v[i].flags[7];
-    if (fnp != NULL) {
-      fnp(v[i].name, c, nip); // including rg_dict
-    } else {
-      c.read[nip].len = (v[i].seq.compare("*")? v[i].seq.size() : 0);
-      if (global::rg_dict.size() > 0 and c.pairing == NULL) {
-	c.pairing = get_pairing_from_SamMapping(v[i]);
-      }
-    }
-
-    if (global::rg_dict.size() > 0 and v[0].flags[2] == 0 and v[1].flags[2] == 0) {
-      Mapping m = convert_SamMapping_to_Mapping(v[i]);
-      m.qr = &c.read[nip];
-      m.is_ref = true;
-      c.read[nip].mapping.push_back(m);
-    }
-
-    if (c.read[nip].len < min_read_len) {
-      v[i].flags[16] = 1;
-    }
-
-    if (v[i].flags[2] == 0) { // mapped
-      if (v[i].mqv >= min_mqv) {
-	v[i].flags[12] = 1;
-      }
-      if (min_tail_insert_size > 0) {
-	vector<int> tails(2);
-	get_tail_insert_size(v[i].cigar, min_tail_match_len, tails);
-	if (tails[0] >= min_tail_insert_size) {
-	  v[i].flags[13] = 1;
-	}
-	if (tails[1] >= min_tail_insert_size) {
-	  v[i].flags[14] = 1;
-	}
-      }
-    }
-  }
-
-  if (global::rg_dict.size() > 0 and v[0].flags[2] == 0 and v[1].flags[2] == 0) {
-    if (c.pairing->pair_concordant(c.read[0].mapping[0], 0, c.read[1].mapping[0], 0)) {
-      v[0].flags[15] = 1;
-      v[1].flags[15] = 1;
-      if (err_str != NULL && global::verbosity > 0)
-	*err_str << "clone s=" << s << ": concordant\n";
-    } else {
-      if (err_str != NULL && global::verbosity > 0)
-	*err_str << "clone s=" << s << ": discordant\n";
-    }
-  }
+  */
 
   for (size_t i = 0; i < v.size(); ++i) {
-    *out_str << v[i].name
-	     << '\t' << v[i].flags.to_ulong()
-	     << '\t' << (v[i].db != NULL? v[i].db->name : "*")
-	     << '\t' << v[i].dbPos
-	     << '\t' << v[i].mqv
-	     << '\t' << v[i].cigar
-	     << '\t' << (v[i].mp_db != NULL? (v[i].mp_db == v[i].db? "=" : v[i].mp_db->name) : "*")
-	     << '\t' << v[i].mp_dbPos
-	     << '\t' << v[i].tLen
-	     << '\t' << v[i].seq
-	     << '\t' << v[i].qvString;
-    for (size_t j = 0; j < v[i].rest.size(); ++j) {
-      *out_str << '\t' << v[i].rest[j].key << ':' << v[i].rest[j].type << ':' << v[i].rest[j].value;
-    }
-    *out_str << '\n';
+    print_read_from_mapping(s, v[i], out_str);
   }
 }
+
 
 string
 default_cnp(const string& s)
 {
   return string(s);
 }
+
 
 int
 main(int argc, char* argv[])
@@ -184,31 +164,26 @@ main(int argc, char* argv[])
   cnp = &default_cnp;
 
   char c;
-  while ((c = getopt(argc, argv, "l:N:Pq:i:vg:")) != -1) {
+  while ((c = getopt(argc, argv, "l:N:Pg:vs")) != -1) {
     switch (c) {
     case 'l':
       pairing_file = optarg;
-      //global::pairing = Pairing(string(optarg));
-      //cerr << "set pairing: " << global::pairing << endl;
       break;
     case 'N':
-      num_threads = atoi(optarg);
+      global::num_threads = atoi(optarg);
       break;
     case 'P':
       cnp = cloneNameParser;
       fnp = fullNameParser;
       break;
-    case 'q':
-      min_mqv = atoi(optarg);
-      break;
-    case 'i':
-      min_tail_insert_size = atoi(optarg);
+    case 'g':
+      global::default_rg = optarg;
       break;
     case 'v':
       global::verbosity++;
       break;
-    case 'g':
-      global::default_rg = optarg;
+    case 's':
+      save_rgid = true;
       break;
     default:
       cerr << "unrecognized option: " << c << endl;
@@ -221,9 +196,7 @@ main(int argc, char* argv[])
     exit(1);
   }
 
-  if (global::verbosity) {
-    clog << "number of threads: " << num_threads << '\n';
-  }
+  if (global::verbosity > 0) clog << "number of threads: " << global::num_threads << '\n';
 
   if (pairing_file.size() > 0) {
     igzstream pairingIn(pairing_file.c_str());
@@ -238,9 +211,9 @@ main(int argc, char* argv[])
     exit(1);
   }
 
-  SamMappingSetGen mapGen(&mapIn, cnp, addSQToRefDict_then_print, &global::refDict, false);
+  SamMappingSetGen mapGen(&mapIn, cnp, addSQToRefDict, &global::refDict, true);
   pair<string,vector<SamMapping> >* m = mapGen.get_next();
-  process_mapping_set(m->first, m->second, &cout, &cerr);
+  process_mapping_set(m->first, m->second, &cout);
   delete m;
 
   priority_queue<Chunk,vector<Chunk>,ChunkComparator> h;
@@ -250,7 +223,7 @@ main(int argc, char* argv[])
 
   //omp_lock_t input_lock;
   //omp_init_lock(&input_lock);
-#pragma omp parallel num_threads(num_threads)
+#pragma omp parallel num_threads(global::num_threads)
   {
     int tid = omp_get_thread_num();
     pair<string,vector<SamMapping> >* local_m;
@@ -260,7 +233,6 @@ main(int argc, char* argv[])
       Chunk chunk;
       //chunk.chunk_id = i;
       chunk.thread_id = tid;
-      
 
 #pragma omp critical(input)
       {
@@ -284,16 +256,14 @@ main(int argc, char* argv[])
 
       chunk.out_str = new stringstream();
       chunk.err_str = new stringstream();
-      if (global::verbosity) {
-	*chunk.err_str << "tid=" << tid << " chunk_id=" << chunk.chunk_id
-		       << " start:" << local_m_vector[0]->first
-		       << " end:" << local_m_vector[load - 1]->first
-		       << '\n';
-      }
+      *chunk.err_str << "tid=" << tid << " chunk_id=" << chunk.chunk_id
+		     << " start:" << local_m_vector[0]->first
+		     << " end:" << local_m_vector[load - 1]->first
+		     << '\n';
 
       for (int i = 0; i < load; ++i) {
 	process_mapping_set(local_m_vector[i]->first, local_m_vector[i]->second,
-			    chunk.out_str, chunk.err_str);
+			    chunk.out_str);
 	delete local_m_vector[i];
       }
 
@@ -306,9 +276,10 @@ main(int argc, char* argv[])
 	  if (chunk.chunk_id > next_chunk_out) {
 	    break;
 	  }
+
 	  cout << chunk.out_str->str();
-	  cout.flush();
-	  if (global::verbosity) {
+
+	  if (global::verbosity > 0) {
 	    cerr << "chunk=" << chunk.chunk_id << " work_thread=" << chunk.thread_id
 		 << " print_thread=" << tid << '\n';
 	    cerr << chunk.err_str->str();

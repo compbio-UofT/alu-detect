@@ -47,7 +47,7 @@ public:
   bool is_ref;
 
   SamMapping() {}
-  SamMapping(const string&, SQDict*);
+  SamMapping(const string&, SQDict*, bool);
 };
 
 ostream& operator <<(ostream&, const SamMapping&);

@@ -80,7 +80,7 @@ addSQDict(const string& line, SQDict& dict)
 void
 process_mapping(const string& line)
 {
-  SamMapping m(line, &refDict);
+  SamMapping m(line, &refDict, false);
   //cerr << "processing mapping for read: " << m.name << endl;
   if (m.flags[2])
     return;

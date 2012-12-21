@@ -33,9 +33,10 @@ public:
 };
 
 typedef map<string,Pairing> RGDict;
+typedef map<string,string> RGRGDict;
 
 ostream& operator <<(ostream&, const Pairing&);
-void load_pairing(istream&, RGDict&, RGDict&);
+void load_pairing(istream&, RGDict&, RGDict&, RGRGDict&);
 
 
 #endif

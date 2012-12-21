@@ -147,7 +147,7 @@ operator <<(ostream& ostr, const Pairing& pairing)
 }
 
 void
-load_pairing(istream& istr, RGDict& rg_dict, RGDict& num_rg_dict)
+load_pairing(istream& istr, RGDict& rg_dict, RGDict& num_rg_dict, RGRGDict& rg_to_num_rg_dict)
 {
   while (true) {
     string s;
@@ -191,6 +191,7 @@ load_pairing(istream& istr, RGDict& rg_dict, RGDict& num_rg_dict)
     string tmp(itr->first, itr->second);
     rg_dict.insert(pair<string,Pairing>(rg_name, Pairing(tmp)));
     num_rg_dict.insert(pair<string,Pairing>(num_rg, Pairing(tmp)));
+    rg_to_num_rg_dict.insert(pair<string,string>(rg_name, num_rg));
     if (global::verbosity > 0) clog << "added RG [" << rg_name << "] with pairing [" << rg_dict[rg_name] << "]" << endl;
   }
 }

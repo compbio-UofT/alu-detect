@@ -30,6 +30,7 @@ namespace global {
   //EXTERN(Pairing, pairing);
   EXTERN(RGDict, rg_dict);
   EXTERN(RGDict, num_rg_dict);
+  EXTERN(RGRGDict, rg_to_num_rg_dict);
   EXTERN_INIT(int, num_rg_len, 0);
   EXTERN_INIT(string, default_rg, "00");
 
@@ -38,6 +39,7 @@ namespace global {
   EXTERN_INIT(bool, full_splitmap_log, false);
 
   EXTERN(int, verbosity);
+  EXTERN_INIT(int, num_threads, 1);
 };
 
 #define for_iterable(_class, _object, _iterator) for (_class::iterator _iterator = _object.begin(); _iterator != _object.end(); ++_iterator)

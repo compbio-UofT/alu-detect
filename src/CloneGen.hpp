@@ -26,8 +26,8 @@ public:
 	   void (*rep_headerLineHook)(const string&),
 	   SQDict* refDict,
 	   SQDict* repDict)
-    : refGen_(ref_istr, cloneNameParser, ref_headerLineHook, refDict),
-      repGen_(rep_istr, cloneNameParser, rep_headerLineHook, repDict),
+    : refGen_(ref_istr, cloneNameParser, ref_headerLineHook, refDict, false),
+      repGen_(rep_istr, cloneNameParser, rep_headerLineHook, repDict, false),
       fullNameParser_(fullNameParser),
       next_rep_(NULL) {}
 

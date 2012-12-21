@@ -499,6 +499,7 @@ backtrace_from_se(const char * db, const char * qr, int db_len, int qr_len,
     }
     if (max_cnt < 1) {
       cerr << "warning: max_cnt<1: this is bad" << endl;
+      exit(1);
     }
     if (max_cnt == 1) {
       mqv = 10;
@@ -518,7 +519,8 @@ backtrace_from_se(const char * db, const char * qr, int db_len, int qr_len,
     }
     if (max_cnt < 1) {
       cerr << "warning: max_cnt<1: this is bad" << endl;
-    }
+      exit(1);
+   }
     if (max_cnt == 1) {
       mqv = 10;
     } else {
@@ -538,6 +540,7 @@ backtrace_from_se(const char * db, const char * qr, int db_len, int qr_len,
     }
     if (max_cnt < 1) {
       cerr << "warning: max_cnt<1: this is bad" << endl;
+      exit(1);
     }
     if (max_cnt == 1) {
       mqv = 10;
@@ -673,6 +676,7 @@ backtrace_from_nw(const char * db, const char * qr, int db_len, int qr_len,
   }
   if (max_cnt < 1) {
     cerr << "warning: max_cnt<1: this is bad" << endl;
+    exit(1);
   }
   if (max_cnt == 1) {
     mqv = 10;
@@ -875,15 +879,15 @@ fprint_reference_mapping(ostream& ostr,
 			 int qr_match_start, int qr_match_end,
 			 int score)
 {
-  ostr << "[" << *read_name << "] vs [" << reference_name << "]:" << endl;
+  ostr << "[" << *read_name << "] vs [" << reference_name << "]:" << '\n';
   ostr << db_align
        << " [" << base_offset + db_match_start - 1
        << "-" << base_offset + db_match_end - 1
        << "] (" << score
        << "(" << (int)((double)score /
 		       (double)((qr_match_end - qr_match_start + 1) * match_score_ref) * 100.0)
-       << "%))" << endl;
-  ostr << qr_align << endl;
+       << "%))" << '\n';
+  ostr << qr_align << '\n';
 }
 
 
@@ -899,7 +903,7 @@ fprint_split_mapping(ostream& ostr,
 		     int num_pieces, int start_in_base)
 {
   ostr << "[" << *read_name << "] vs [" << reference_name
-       << "+" << repeat_name << (repeat_rc? "-" : "+") << "]" << endl;
+       << "+" << repeat_name << (repeat_rc? "-" : "+") << "]" << '\n';
   if (!start_in_base) 
     {
       if (num_pieces == 1) {
@@ -908,8 +912,8 @@ fprint_split_mapping(ostream& ostr,
 	     << " (|" << score[0]
 	     << "(" << (int)((double)score[0] /
 			     (double)((qr_match_end[0] - qr_match_start[0] + 1) * match_score_rep) * 100.0)
-	     << "%)|)" << endl;
-	ostr << "|" << qr_align[0] << "|" << endl;
+	     << "%)|)" << '\n';
+	ostr << "|" << qr_align[0] << "|" << '\n';
       } else {
 	ostr << "|" << db_align[0] << "|" << db_align[1]
 	     << " [|" << db_match_start[0] << "-" << db_match_end[0] << "|"
@@ -919,8 +923,8 @@ fprint_split_mapping(ostream& ostr,
 			     (double)((qr_match_end[0] - qr_match_start[0] + 1) * match_score_rep) * 100.0)
 	     << "%)|" << score[1]
 	     << "(" << (int)((double)score[1]/(double)((qr_match_end[1] - qr_match_start[1] + 1) * match_score_ref) * 100.0)
-	     << "%))" << endl;
-	ostr << "|" << qr_align[0] << "|" << qr_align[1] << endl;
+	     << "%))" << '\n';
+	ostr << "|" << qr_align[0] << "|" << qr_align[1] << '\n';
       }
     } 
   else // starts in base
@@ -931,8 +935,8 @@ fprint_split_mapping(ostream& ostr,
 	     << "||] (" << score[0]
 	     << "(" << (int)((double)score[0] /
 			     (double)((qr_match_end[0] - qr_match_start[0] + 1) * match_score_ref) * 100.0)
-	     << "%)||)" << endl;
-	ostr << qr_align[0] << "||" << endl;
+	     << "%)||)" << '\n';
+	ostr << qr_align[0] << "||" << '\n';
       } else if (num_pieces == 2) {
 	ostr << db_align[0] << "|" << db_align[1] << "|"
 	     << " [" << base_offset + db_match_start[0] - 1
@@ -944,8 +948,8 @@ fprint_split_mapping(ostream& ostr,
 	     << "%)|" << score[1]
 	     << "(" << (int)((double)score[1] /
 			     (double)((qr_match_end[1] - qr_match_start[1] + 1) * match_score_rep) * 100.0)
-	     << "%)|)" << endl;
-	ostr << qr_align[0] << "|" << qr_align[1] << "|" << endl;
+	     << "%)|)" << '\n';
+	ostr << qr_align[0] << "|" << qr_align[1] << "|" << '\n';
       } else {
 	ostr << db_align[0] << "|" << db_align[1] << "|" << db_align[2]
 	     << " [" << base_offset + db_match_start[0] - 1
@@ -953,8 +957,8 @@ fprint_split_mapping(ostream& ostr,
 	     << "|" << db_match_start[1] << "-" << db_match_end[1]
 	     << "|" << base_offset + db_match_start[2] - 1
 	     << "-" << base_offset + db_match_end[2] - 1 << "]"
-	     << " (" << score[0] << "|" << score[1] << "|" << score[2] << ")" << endl;
-	ostr << qr_align[0] << "|" << qr_align[1] << "|" << qr_align[2] << endl;
+	     << " (" << score[0] << "|" << score[1] << "|" << score[2] << ")" << '\n';
+	ostr << qr_align[0] << "|" << qr_align[1] << "|" << qr_align[2] << '\n';
       }
     }
 }
@@ -980,11 +984,11 @@ run(const Contig& refContig,
 
   err_str << "region=" << refContig.name << ":" << refStart + 1 << "-" << refEnd + 1
 	  << ":" << overlapStart + 1 << "-" << overlapEnd + 1
-	  << " repeats=" << n_repeats << " clones=" << n_pairs << endl;
+	  << " repeats=" << n_repeats << " clones=" << n_pairs << '\n';
 
-  err_str << "using reference_len [" << reference_len << "]"  << endl;
-  err_str << "using overlap_start [" << overlap_start << "]"  << endl;
-  err_str << "using overlap_end [" << overlap_end << "]"  << endl;
+  err_str << "using reference_len [" << reference_len << "]"  << '\n';
+  err_str << "using overlap_start [" << overlap_start << "]"  << '\n';
+  err_str << "using overlap_end [" << overlap_end << "]"  << '\n';
 
   if (overlap_start >= overlap_end) {
     cerr << "warning: bad call to run(): " << *clone[0] << endl;
@@ -1031,7 +1035,7 @@ run(const Contig& refContig,
   // copy reads into old structures
   for (pair_id = 0; pair_id < n_pairs; pair_id++) {
     Clone& c = *clone[pair_id];
-    err_str << c << endl;
+    err_str << c << '\n';
     pe[pair_id].clone_name = &c.name;
     pe[pair_id].left_read = (c.read[0].st == 0? 0 : 1); // XXX: ASSUMES "opp-in"!!!
     for (nip = 0; nip < 2; nip++) {
@@ -1050,7 +1054,7 @@ run(const Contig& refContig,
     for (nip = 0; nip < 2; nip++) {
       read_entry * rep = &pe[pair_id].re[nip];
       if (rep->read_len < MIN_READ_LEN) {
-	err_str << "skipping read [" << *(rep->name) << "]: too short" << endl;
+	err_str << "skipping read [" << *(rep->name) << "]: too short" << '\n';
 	continue;
       }
 
@@ -1203,7 +1207,7 @@ run(const Contig& refContig,
 
 	  }
 	  if (!rep->mapped_to_repeat) {
-	    err_str << "read [" << *(rep->name) << "] not mapped to this region" << endl;
+	    err_str << "read [" << *(rep->name) << "] not mapped to this region" << '\n';
 	  }
 	}
     }
@@ -1332,12 +1336,12 @@ run(const Contig& refContig,
   }
 
   if (max_rep_id < 0) {
-    err_str << "no repeats supported by the reads" << endl;
+    err_str << "no repeats supported by the reads" << '\n';
   } else {
-    err_str << "repeats supported by the reads (with score):" << endl;
+    err_str << "repeats supported by the reads (with score):" << '\n';
     for (size_t i = 0; i < possible_repeat.size(); i++) {
       rep_id = possible_repeat[i];
-      err_str << repeat[rep_id].first->name << "\t" << total_repeat_score[rep_id] << endl;
+      err_str << repeat[rep_id].first->name << "\t" << total_repeat_score[rep_id] << '\n';
     }
   }
 
@@ -1370,14 +1374,14 @@ run(const Contig& refContig,
       if (rep->read_len < MIN_READ_LEN
 	  || (!rep->mapped_to_base && (rep_id < 0 || num_pieces == 0 || num_pieces > 2)))
 	{
-	  err_str << *(rep->name) << "\t*" << endl;
+	  err_str << *(rep->name) << "\t*" << '\n';
 	}
       else if (rep->mapped_to_base)
 	{
 	  err_str << *(rep->name) << '\t'
 		  << refContig.name << '\t'
 		  << base_offset - 1 + rep->db_match_start[0][0] << '\t'
-		  << base_offset - 1 + rep->db_match_end[0][0] << endl;
+		  << base_offset - 1 + rep->db_match_end[0][0] << '\n';
 	  m.db = (Contig*)&refContig;
 	  m.dbPos[0] = base_offset - 1 + rep->db_match_start[0][0] - 1;
 	  m.dbPos[1] = base_offset - 1 + rep->db_match_end[0][0] - 1;
@@ -1393,7 +1397,7 @@ run(const Contig& refContig,
 	  err_str << *(rep->name) << '\t'
 		  << repeat[rep_id].first->name << (repeat[rep_id].second ? "-" : "+") << '\t'
 		  << db_match_start[0] << '\t'
-		  << db_match_end[0] << endl;
+		  << db_match_end[0] << '\n';
 	  m.db = repeat[rep_id].first;
 	  m.dbPos[0] = db_match_start[0] - 1;
 	  m.dbPos[1] = db_match_end[0] - 1;
@@ -1414,7 +1418,7 @@ run(const Contig& refContig,
 		  << base_offset - 1 + db_match_end[0] << '\t'
 		  << repeat[rep_id].first->name << (repeat[rep_id].second ? "-" : "+") << '\t'
 		  << db_match_start[1] << '\t'
-		  << db_match_end[1] << endl;
+		  << db_match_end[1] << '\n';
 	  m.db = (Contig*)&refContig;
 	  m.dbPos[0] = base_offset - 1 + db_match_start[0] - 1;
 	  m.dbPos[1] = base_offset - 1 + db_match_end[0] - 1;
@@ -1445,7 +1449,7 @@ run(const Contig& refContig,
 		  << db_match_end[0] << '\t'
 		  << refContig.name << '\t'
 		  << base_offset - 1 + db_match_start[1] << '\t'
-		  << base_offset - 1 + db_match_end[1] << endl;
+		  << base_offset - 1 + db_match_end[1] << '\n';
 	  m.db = repeat[rep_id].first;
 	  m.dbPos[0] = db_match_start[0] - 1;
 	  m.dbPos[1] = db_match_end[0] - 1;
@@ -1499,7 +1503,7 @@ run(const Contig& refContig,
 	  if (k == 1) {
 	    if (rep_id < 0 || !pe[pair_id].repeat_support[1 + rep_id])
 	      err_str << " !";
-	    err_str << endl;
+	    err_str << '\n';
 	  }
 	}
       }
@@ -1522,7 +1526,7 @@ run(const Contig& refContig,
        and min_repeat_position[1 + rep_id] > repeat[rep_id].first->len - REPEAT_TAIL_LENGTH)
       or (repeat[rep_id].second == 1
 	  and max_repeat_position[1 + rep_id] < REPEAT_TAIL_LENGTH)) {
-    err_str << "only matched polyA tail; disregarding" << endl;
+    err_str << "only matched polyA tail; disregarding" << '\n';
     return;
   }
 
@@ -1613,15 +1617,15 @@ run(const Contig& refContig,
   }
 
   if (ins_start == -2) { // ambiguous ins_start
-    err_str << "warning: ambiguous evidence for insert start" << endl;
+    err_str << "warning: ambiguous evidence for insert start" << '\n';
   } else if (ins_start == -1) {
-    err_str << "no evidence for insert start" << endl;
+    err_str << "no evidence for insert start" << '\n';
   } else if (evidence_for_insert_start[1 + rep_id][ins_start] < min_reads_to_bypass_evidence_against_bp
 	     && evidence_against_bp[ins_start]) {
     err_str << "insert start at [" << base_offset + overlap_start - 1 + ins_start
 	    << "] supported by [" << evidence_for_insert_start[1 + rep_id][ins_start]
 	    << "] reads but disproved by [" << evidence_against_bp[ins_start]
-	    << "] reads" << endl;
+	    << "] reads" << '\n';
     ins_start = -2;
   }
   if (ins_start < 0) {
@@ -1629,15 +1633,15 @@ run(const Contig& refContig,
   }
 
   if (ins_end == -2) { // ambiguous ins_end
-    err_str << "warning: ambiguous evidence for insert end" << endl;
+    err_str << "warning: ambiguous evidence for insert end" << '\n';
   } else if (ins_end == -1) {
-    err_str << "no evidence for insert end" << endl;
+    err_str << "no evidence for insert end" << '\n';
   } else if (evidence_for_insert_end[1 + rep_id][ins_end] < min_reads_to_bypass_evidence_against_bp
 	     && evidence_against_bp[ins_end]) {
     err_str << "insert end at [" << base_offset + overlap_start - 1 + ins_end + 1
 	    << "] supported by [" << evidence_for_insert_end[1 + rep_id][ins_end]
 	    << "] reads but disproved by [" << evidence_against_bp[ins_end]
-	    << "] reads" << endl;
+	    << "] reads" << '\n';
     ins_end = -2;
   }
   if (ins_end < 0) {
@@ -1653,7 +1657,7 @@ run(const Contig& refContig,
 
     if (abs(tsd_len) > MAX_LEN_FLANKING_DUPLICATION) {
       err_str << "warning: tsd_len [" << tsd_len
-	      << "], possible evidence of 2 distinct insertions" << endl;
+	      << "], possible evidence of 2 distinct insertions" << '\n';
     }
   }
 
@@ -1706,5 +1710,5 @@ run(const Contig& refContig,
   } else {
     out_str << '.';
   }
-  out_str << endl;
+  out_str << '\n';
 }

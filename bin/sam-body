@@ -3,7 +3,7 @@ exec 0< <(zc "$@")
 IFS=$'\n'
 while read -r LINE ; do
     HAVE_LINE=1
-    [ ! "${LINE:0:1}" = "@" ] && break
+    [ "${LINE:0:1}" = "@" ] || break
     HAVE_LINE=
 done
 

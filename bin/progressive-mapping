@@ -1,7 +1,7 @@
 #!/bin/bash
-. $(which lib.alu-detect.sh)
-set -x
-set -o errexit
+. lib.alu-detect.sh
+set -eEx -o pipefail
+explicit_errtrap
 
 remove_tail() {
     sed "s/${TAIL_SED_REGEXP}//g"
@@ -11,7 +11,12 @@ id_to_unmapped_sam() {
     remove_tail | awk -v other="${1:-}" 'BEGIN{OFS="\t"} {if(match($1,"/[12]$"))$1=substr($1,1,length($1)-2); printf("%s\t4\t*\t0\t0\t*\t*\t0\t0\t*\t*", $1); if(other!="")printf("\t%s", other); printf("\n");}'
 }
 
-if [ -z "$BOWTIE2_INDEX" ] ; then crash "$MY_NAME: BOWTIE2_INDEX undefined" ; fi
+which samtools >/dev/null 2>&1 || crash "samtools not found"
+which bowtie2 >/dev/null 2>&1 || crash "bowtie2 not found"
+for suffix in .1.bt2 .2.bt2 .3.bt2 .4.bt2 .rev.1.bt2 .rev.2.bt2; do
+    [ -r "$BOWTIE2_INDEX$suffix" ] || crash "bowtie2 index file missing: $BOWTIE2_INDEX$suffix"
+done
+
 
 TRIM_STEP=5
 MIN_LEN=20
@@ -59,15 +64,18 @@ mkfifo "$TDIR"/pipe-5
 mkfifo "$TDIR"/pipe-6
 mkfifo "$TDIR"/pipe-7
 
-while [ 1 ] ; do
+while true ; do
+    pids=()
     if [ $CRT_TRIM -eq 0 ] ; then
 	make_note "preparing reads..."
 	$PV "$READS_FILE" | zc | add-seq-to-read-name >"$TDIR"/pipe-3 &
+	pids+=($!)
     elif [ $SWITCH_SIDES -eq 1 ] ; then
 	make_note "switching sides; extracting unmapped and badly mapped reads..."
 	$PV "$TDIR"/bad-3p_*.sam.gz "$TDIR"/short-3p_*.sam.gz \
 	    | zc | cut -f 1 | get-seq-from-read-name -v ofq=fq \
 	    | fq-trim-reads-relative -v trim_len_${CRT_TRIM_SIDE}=$TRIM_STEP >"$TDIR"/pipe-3 &
+	pids+=($!)
 	SWITCH_SIDES=0
     else
 	make_note "processing previous stage..."
@@ -80,18 +88,30 @@ while [ 1 ] ; do
 	      -f 0x4:\&1 \
 	    | sam-to-fq \
 	    | fq-trim-reads-relative -v trim_len_${CRT_TRIM_SIDE}=$TRIM_STEP >"$TDIR"/pipe-3 &
+	pids+=($!)
 	$ZIP <"$TDIR"/pipe-4 >>"$TDIR"/final-${CRT_TRIM_SIDE}_${PREV_STEP}.sam.gz &
+	pids+=($!)
 	$ZIP <"$TDIR"/pipe-5 >>"$TDIR"/bad-${CRT_TRIM_SIDE}_${PREV_STEP}.sam.gz &
+	pids+=($!)
     fi
 
     # remove short reads
     fq-remove-short-reads <"$TDIR"/pipe-3 -v min_len=$MIN_LEN \
 	2>"$TDIR"/pipe-6 | tee-p "$TDIR"/pipe-7 | $ZIP >"$TDIR"/reads_${CRT_STEP}.fq.gz &
+    pids+=($!)
     id_to_unmapped_sam <"$TDIR"/pipe-6 | $ZIP >"$TDIR"/short-${CRT_TRIM_SIDE}_${CRT_STEP}.sam.gz &
+    pids+=($!)
     fq-stats <"$TDIR"/pipe-7 >"$TDIR"/reads_${CRT_STEP}.stats &
+    pids+=($!)
 
+    #
     # sync at this point
-    wait
+    #
+    i=0
+    while [ $i -lt ${#pids[@]} ]; do
+	wait ${pids[$i]}
+	let i+=1
+    done
 
     if [ $(head -n 1 "$TDIR"/reads_${CRT_STEP}.stats | cut -d " " -f 1) -eq 0 ] ; then
 	if [ $CRT_TRIM_SIDE = 3p ] ; then
