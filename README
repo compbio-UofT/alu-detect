@@ -117,7 +117,8 @@ Additional prerequisites include:
   Note: These can be regenerated locally using bowtie2.
 
 - Repeat annotations of the reference genome(s) (i.e., RepeatMasker .out files)
-  http://genome.ucsc.edu/
+  E.g., for hg19 they are here:
+  http://hgdownload.soe.ucsc.edu/goldenPath/hg19/bigZips/chromOut.tar.gz
   Note: These can be regenerated locally using RepeatMasker.
 
 
@@ -163,8 +164,8 @@ reference, and repeat annotations for that reference. Run, e.g.:
 $ ./setup hg18
 
 This will ask for: the reference fasta file, the prefix of the bowtie2 index
-files (full path minus the .1.bt2 suffix), and a bash regexp describing the path
-to the relevant .out files output by RepeatMasker.
+files (full path minus the .1.bt2 suffix), and a bash regexp (can use wildcards)
+describing the path to the relevant .out files output by RepeatMasker.
 
 To avoid having to enter some of these by hand, set REF_FA, BOWTIE2_INDEX and
 CHROM_FA_OUT variable prior to running setup. E.g. (see NOTE on bash in Section

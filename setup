@@ -144,7 +144,7 @@ else
 	echo "Reference Alu annotations not found"
 	while [[ -z "$CHROM_FA_OUT" ]]; do
 	    echo "RepeatMasker output files not found"
-	    read -p "Enter bash regexp describing path to RepeatMasker output files: " -e CHROM_FA_OUT
+	    read -p "Enter path to RepeatMasker output file(s) (can use wildcards): " -e CHROM_FA_OUT
 	    CHROM_FA_OUT=$(eval echo "$CHROM_FA_OUT" | xargs -n 1 readlink -e)
 	done
 	echo -n "Generating list of reference alus in bed format... "
