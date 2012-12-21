@@ -1,14 +1,13 @@
 #!/bin/bash
-. $(which lib.alu-detect.sh)
-set -x
-set -e
+. lib.alu-detect.sh
+set -ex
+
 
 export NGS_NAME=$1
 REAL_REF_NAME=$2
 FAKE_REF_NAME=$3
 RAW_REAL_CALLS=$4
 RAW_FAKE_CALLS=$5
-NCPU=${NCPU:-4}
 
 # find install directory
 BASE_DIR=$(dirname $(readlink -e $(which alu-detect 2>/dev/null)) | sed 's/\/bin$//')

@@ -1,6 +1,5 @@
 #!/bin/bash
-
-. $(which lib.alu-detect.sh)
+. lib.alu-detect.sh
 set -ex
 
 find_my_name_and_dir "${BASH_SOURCE[0]}"
@@ -9,7 +8,7 @@ if [ $# -lt 1 -o $# -gt 2 ] ; then
     crash "use: $MY_NAME [ <reads.fq> | <reads.1.fq> <reads.2.fq> ]"
 fi
 
-make_note "using NCPU=${NCPU:=4}"
+make_note "using NCPU=$NCPU"
 make_note "using BOWTIE2_INDEX=$BOWTIE2_INDEX"
 make_note "using READ_COUNT=${READ_COUNT:=100000}"
 make_temp_dir "$MY_NAME"

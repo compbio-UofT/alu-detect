@@ -1,15 +1,8 @@
 #!/bin/bash
 . lib.alu-detect.sh
-set -eEu -o pipefail
-explicit_errtrap
+set -eEux -o pipefail
 
 [ ! -e /proc/$$/fd/3 ] || crash "fd 3 needs to be closed"
-[ ! -e /proc/$$/fd/4 ] || crash "fd 4 needs to be closed"
-
-XTRACE=${XTRACE:-/dev/null}
-exec 4>$XTRACE
-export BASH_XTRACEFD=4
-set -x
 
 
 find_my_name_and_dir "${BASH_SOURCE[0]}"
@@ -47,23 +40,7 @@ done
 [ -r "$ALUS_BED" ] || crash "reference alu annotations missing: $ALUS_BED"
 
 
-export NCPU=${NCPU:-2}
 make_note "using NCPU=$NCPU"
-
-if which pv >/dev/null 2>&1; then
-    PV="pv -f"
-else
-    PV=cat
-fi
-
-if which pigz >/dev/null 2>&1; then
-    ZIP="pigz -9 -p $NCPU"
-    UNZIP="pigz -d -p $NCPU"
-else
-    ZIP="gzip -9"
-    UNZIP=gunzip
-fi
-
 START_STAGE=${START_STAGE:-0}
 END_STAGE=${END_STAGE:-100}
 make_note "using START_STAGE=$START_STAGE and END_STAGE=$END_STAGE"
@@ -228,7 +205,7 @@ get_orig_mappings() {
     [ -r $file ] || crash "$file: file not found"
     rg=${orig_read_groups[$1]:-}
     command="$PV $file"
-    if (set +o pipefail zc $file | head -n 1 | cut -c -3 | grep -q "BAM"); then
+    if (set +o pipefail; zc $file | head -n 1 | cut -c -3 | grep -q "BAM"); then
 	command="$command | samtools view -h -"
     elif (set +o pipefail; file $file | grep -q gzip); then
 	command="$command | $UNZIP"
@@ -454,7 +431,6 @@ stage_stats_command() {
 }
 run_stage
 
-#done
 
 #
 # Stage 8: Get regions
@@ -472,7 +448,8 @@ stage_command() {
     get-regions -l $PAIRING_FILE -N $NCPU \
 	$REF_FA $MAPPINGS_CLEAN_TO_REFERENCE.sam.gz \
 	$ALU_ALL_FA $MAPPINGS_TO_ALUS.sam.gz \
-	2> >($ZIP >$RAW_CALLS.log.gz) >$RAW_CALLS.bed
+	2> >($ZIP >$RAW_CALLS.log.gz) \
+	| relabel-family | sed 's/Alu//g; s/Null://' >$RAW_CALLS.bed
 }
 run_stage
 

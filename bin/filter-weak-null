@@ -1,4 +1,4 @@
 #!/bin/bash
 set +x
 set -u
-exec awk -v min_diff="$1" 'substr($13,1,4)!="Null" || $5>=substr($13,6,3) + min_diff'
+exec awk -v min_diff="$1" '(!match(substr($13,1,1),/[0-9]/) && substr($13,1,4)!="Null") || (match(substr($13,1,1),/[0-9]/) && $5>=$13+min_diff) || (substr($13,1,4)=="Null" && $5>=substr($13,6,3)+min_diff)'

@@ -1,8 +1,20 @@
 #!/bin/bash
-#set -x
-set -o nounset
-#set -o errexit
-BASH_XTRACEFD="${BASH_XTRACEFD:-}"
+set -u
+
+NCPU=${NCPU:-4}
+if which pigz >/dev/null 2>&1 ; then
+    ZIP=${ZIP:-"pigz -9 -p $NCPU"}
+    UNZIP=${UNZIP:-"pigz -d -p $NCPU"}
+else
+    ZIP=${ZIP:-"gzip -9"}
+    UNZIP=${UNZIP:-gunzip}
+fi
+
+if which pv >/dev/null 2>&1; then
+    PV=${PV:-"pv -f"}
+else
+    PV=${PV:-cat}
+fi
 
 MY_LOG_LEVEL=0
 make_note() {
@@ -324,24 +336,23 @@ rel_path() {
 #
 no_sigpipe () {
     exec 3>&1
-    local __ret_code=$({ force_errexit "$@" >&3 3>&-; echo $?; } || true)
+    local exit_code=$({ force_errexit "$@" >&3 3>&-; echo $?; } || true)
     exec 3>&-
-    if [ $__ret_code -eq 141 ]; then
+    if [ $exit_code -eq 141 ]; then
 	return 0
     else
-	return $__ret_code
+	return $exit_code
     fi
 }
 
 #
 # run in fresh bash, thus enabling -e
 #
-explicit_errtrap () {
+set_explicit_errtrap () {
     trap 'echo $0: line $LINENO: exit code $?' ERR
 }
 
-quote () 
-{ 
+quote () { 
     echo \'${1//\'/\'\\\'\'}\'
 }
 
@@ -349,9 +360,9 @@ force_errexit () {
 #    typeset | grep -vE "^(UID|EUID|PPID|BASH[A-Z_]*|SHELLOPTS)=" | grep -n '^' >&2
     bash <(
 	typeset | grep -vE "^(UID|EUID|PPID|BASH[A-Z_]*|SHELLOPTS)="
-	echo "explicit_errtrap"
+	echo "set_explicit_errtrap"
 	echo "BASH_XTRACEFD=\${BASH_XTRACEFD:-}"
-	echo "set -eEx -o pipefail"
+	echo "set -eEux -o pipefail"
 	for arg in "$@"; do
 	    echo -n "$(quote "$arg") ";
 	done
@@ -366,3 +377,15 @@ get_new_fd () {
     [ $i -lt 256 ] || crash "no fd is available"
     echo $i
 }
+
+#
+# Actually executed
+#
+set_explicit_errtrap
+if [ "${BASH_XTRACEFD:-}" ]; then
+    export BASH_XTRACEFD=$BASH_XTRACEFD
+else
+    [ ! -e /proc/$$/fd/4 ] || crash "fd 4 needs to be closed"
+    exec 4>${XTRACE:-/dev/null}
+    export BASH_XTRACEFD=4
+fi

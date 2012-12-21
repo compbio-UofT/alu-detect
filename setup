@@ -58,12 +58,22 @@ else
 	sed 's/^\(.*\)RepbaseID:/\1/' | 
 	sed 's/^\(.*\)ALU/\1/' | 
 	awk '/^>/ {if (substr($2,1,3)=="Alu"&&$2!=substr($1,2)) $1=$1"/"substr($2,4); print $1} /^[^>]/' >$ALU_ALL_FA
-	echo "done"
+
+	if [ -z "$(head -n 1 $ALU_ALL_FA)" ]; then
+	    echo "oops"
+	    cat <<EOF
+Your RepeatMasker installation does not include the Repbase libraries,
+which are needed to derive the Alu consensus sequences. The libraries
+can be downloaded from http://www.girinst.org/server/RepBase/index.php
+EOF
+	    rm -f "$GLOBAL_SETTINGS"
+	    exit 1
+	else
+	    echo "done"
+	fi
 
 	echo "Building list with hidden poly-A streches"
-	pushd $DIR/bin >/dev/null
-	./hide-polya <$ALU_ALL_FA >$ALU_NO_POLYA_FA
-	popd >/dev/null
+	$DIR/bin/hide-polya <$ALU_ALL_FA >$ALU_NO_POLYA_FA
     fi
     echo "export ALU_ALL_FA=\"$ALU_ALL_FA\"" >>"$GLOBAL_SETTINGS"
     echo "export ALU_NO_POLYA_FA=\"$ALU_NO_POLYA_FA\"" >>"$GLOBAL_SETTINGS"
