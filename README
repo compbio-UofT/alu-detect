@@ -309,7 +309,7 @@ AAAA
 
 4.1.c. Paired reads in separate files:
 
-$ ORIG_READS_1="file1.1.fq file2.1.fq" ORIG_READS_1="file1.2.fq file2.2.fq" \
+$ ORIG_READS_1="file1.1.fq file2.1.fq" ORIG_READS_2="file1.2.fq file2.2.fq" \
 ORIG_READ_GROUPS="rg1 rg2" INPUT_PHRED=33 [...] alu-detect [...]
 
 Here, file1.1.fq contains:
