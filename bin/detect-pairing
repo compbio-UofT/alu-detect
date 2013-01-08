@@ -362,7 +362,7 @@ else:
 idx = 0
 for k in header_list:
     if k not in rg_dict:
-        note('no pairing info for read group [' + k ']; using defaults')
+        note('no pairing info for read group [' + k + ']; using defaults')
         rg_dict[k] = dict()
         rg_dict[k]['detected_paired'] = False
         rg_dict[k]['detected_unpaired'] = False
