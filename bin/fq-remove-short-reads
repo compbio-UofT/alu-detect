@@ -3,6 +3,7 @@
 
 BEGIN {
     if (min_len == 0) min_len = 20;
+    if (short_reads_fd) short_reads_file = "/dev/fd/" short_reads_fd;
 }
 
 {
@@ -10,7 +11,9 @@ BEGIN {
     split(s, r, "\t")
 
     if (length(r[2]) < min_len) {
-	print r[1] >"/dev/stderr"
+        if (short_reads_fd) {
+	    print r[1] >short_reads_file
+	}
 	next;
     }
 

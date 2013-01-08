@@ -308,7 +308,7 @@ STATS_FILE="$READS_TO_REMAP.stats"
 stage_command() {
     $PV $READS_DISCORDANT.fq.gz | $UNZIP \
 	| fq-trim-illumina-reads -v input_phred=33 \
-	| fq-remove-short-paired-reads 2>/dev/null \
+	| fq-remove-short-paired-reads \
 	| fq-rename-paired-reads-with-len \
 	| $ZIP >$READS_TO_REMAP.fq.gz
 }
@@ -398,7 +398,7 @@ stage_command() {
 	| sam-body \
 	| reset-mqv-when-discordant 2>/dev/null \
 	| sam-to-fq-trimmed \
-	| fq-remove-short-reads 2>/dev/null \
+	| fq-remove-short-reads \
 	| $ZIP >$READS_FOR_ALU_MAPPING.fq.gz
 }
 stage_stats_command() {

@@ -1,0 +1,13 @@
+1.0.2: Jan 8, 2013
+  - Fixed issue about detecting pairing when a read group mentioned in sam
+    headers does not have enough mapped reads to infer distribution. Before,
+    the read group wasn't mentioned in the output, possibly causing a crash.
+    Now, such read groups will use a sensible default pairing information.
+  - Improved pairing information aggregation. If the same read group appears
+    in several sam input files, the one detected with the smallest standard
+    deviation will be used.
+  - Fixed typos in README.
+  - Removed hard-coding of paths to awk and python. Before, we assumed they are
+    is /usr/bin. Now, we find them through the environment (first in PATH).
+  - Removed use of stderr inside a script, in favour of another variable file
+    descriptor. This could have caused crashes if other things used stderr.

@@ -86,8 +86,8 @@ while true ; do
     fi
 
     # remove short reads
-    fq-remove-short-reads <"$TDIR"/pipe-3 -v min_len=$MIN_LEN \
-	2>"$TDIR"/pipe-6 | tee-p "$TDIR"/pipe-7 | $ZIP >"$TDIR"/reads_${CRT_STEP}.fq.gz &
+    fq-remove-short-reads <"$TDIR"/pipe-3 -v min_len=$MIN_LEN -v short_reads_fd=3 \
+	3>"$TDIR"/pipe-6 | tee-p "$TDIR"/pipe-7 | $ZIP >"$TDIR"/reads_${CRT_STEP}.fq.gz &
     pids+=($!)
     id_to_unmapped_sam <"$TDIR"/pipe-6 | $ZIP >"$TDIR"/short-${CRT_TRIM_SIDE}_${CRT_STEP}.sam.gz &
     pids+=($!)
