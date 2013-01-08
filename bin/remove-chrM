@@ -1,4 +1,5 @@
-#!/usr/bin/python
+#!/bin/bash extend-hashbang
+#python
 
 import sys
 

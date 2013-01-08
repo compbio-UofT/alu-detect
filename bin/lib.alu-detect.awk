@@ -1,4 +1,5 @@
-#!/usr/bin/awk -f
+#!/bin/bash extend-hashbang
+#awk -f
 
 BEGIN {
     FS="\t"

@@ -1,4 +1,5 @@
-#!/usr/bin/make -f
+#!/bin/bash extend-hashbang
+#make -f
 
 prefix := ${WORK_DIR}table.${NGS_NAME}
 suffix := csv

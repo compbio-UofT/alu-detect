@@ -1,5 +1,5 @@
 #!/bin/bash extend-hashbang
-#/usr/bin/awk -f lib.alu-detect.awk -f
+#awk -f lib.alu-detect.awk -f
 
 BEGIN {
     if (trim_len != 0) trim_len_3p = trim_len;

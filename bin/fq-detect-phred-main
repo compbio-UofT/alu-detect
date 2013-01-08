@@ -1,5 +1,5 @@
 #!/bin/bash extend-hashbang
-#/usr/bin/awk -f lib.alu-detect.awk -f
+#awk -f lib.alu-detect.awk -f
 
 BEGIN {
     ord_init()

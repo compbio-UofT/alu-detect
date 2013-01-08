@@ -1,5 +1,5 @@
 #!/bin/bash extend-hashbang
-#/usr/bin/awk --re-interval -f
+#awk --re-interval -f
 
 function hide_tail_polya(name, seq) {
     n = match(seq, "[aA]{5,}$");
