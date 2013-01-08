@@ -106,7 +106,7 @@ parser.add_argument('-c', '--stop-count', action='store', type=int,
 parser.add_argument('-f', '--ignore-flags', action='store_true', default=False, dest='ignore_flags')
 parser.add_argument('-g', '--default-rg', action='store', default='00', dest='default_rg')
 parser.add_argument('--cid-parser', action='store', dest='cid_parser')
-parser.add_argument('--trust-rg-headers', action='store_true', default=False, dest='trust_rg_headers')
+parser.add_argument('--trust-rg-headers', action='store_true', default=True, dest='trust_rg_headers')
 parser.add_argument('input', action='store', default='-', nargs='?')
 args = parser.parse_args()
 set_log_level(len(args.verbose))
@@ -151,20 +151,20 @@ for ms in sam.get_mapping_set_gen(in_fd, mapping_parser=mapping_parser,
                 note('new target:' + target_rg, 1)
                 break
         if done:
-            if (len(header_rg_dict) > 0):
-                # check we found all RGs from headers
-                if (len(header_rg_dict) == len(rg_dict)):
-                    break
-                elif not args.trust_rg_headers:
-                    missing = []
-                    for x in header_rg_dict.keys():
-                        if x not in rg_dict:
-                            missing += [x]
-                    crash('did not find mappings for RGs: ' + str(missing))
-                # else, continue with current iteration
-            else:
-                # no RG headers, done.
+            if (len(header_rg_dict) == 0):
+                # no headers to check; done
                 break
+            if (len(header_rg_dict) == len(rg_dict)):
+                # found all read groups mentioned in headers; done
+                break
+            if not args.trust_rg_headers:
+                # do not trust headers: if we didn't find RG so far, it's missing; crash
+                missing = []
+                for x in header_rg_dict.keys():
+                    if x not in rg_dict:
+                        missing += [x]
+                crash('did not find mappings for RGs: ' + str(missing))
+            # trust headers; continue looking for missing RGs
 
     if len(ms) > 2:
         crash('found mapping set with more than 2 mappings: ' + str(ms))
@@ -354,10 +354,21 @@ fill = 3
 while 2 * len(rg_dict) > 10**fill:
     fill += 1
 
+if len(header_rg_dict) > 0:
+    header_list = sorted(header_rg_dict)
+else:
+    header_list = sorted(rg_dict)
+
 idx = 0
-for k in sorted(rg_dict):
-    if not rg_dict[k]['detected_paired'] and not rg_dict[k]['detected_unpaired']:
-        continue
+for k in header_list:
+    if k not in rg_dict:
+        note('no pairing info for read group [' + k ']; using defaults')
+        rg_dict[k] = dict()
+        rg_dict[k]['detected_paired'] = False
+        rg_dict[k]['detected_unpaired'] = False
+        rg_dict[k]['max_r_len'] = 100
+    #if not rg_dict[k]['detected_paired'] and not rg_dict[k]['detected_unpaired']:
+    #    continue
     if not rg_dict[k]['detected_paired']:
         # use generous settings
         rg_dict[k]['detected_st_diff'] = 1
