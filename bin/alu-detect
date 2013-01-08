@@ -238,7 +238,9 @@ stage_command() {
 	no_sigpipe get_orig_mappings $i | detect-pairing -f >>$PAIRING_FILE.tmp
 	let i+=1
     done
-    sort -s -k 1,1 $PAIRING_FILE.tmp \
+    sed 's/\(^.*stddev=\([0-9]*\),.*$\)/\1\t\2/' <$PAIRING_FILE.tmp \
+	| sort -s -k 1,1 -k 4,4n \
+	| cut -f 1-3 \
 	| tawk 'BEGIN{last=""} {if ($1!=last) print; last=$1}' >$PAIRING_FILE.tmp.uniq
     tawk -v n=$(wc -l <$PAIRING_FILE.tmp.uniq) \
 	'{$2=NR-1; while (length($2)<length(n-1)) $2="0" $2; print}' \

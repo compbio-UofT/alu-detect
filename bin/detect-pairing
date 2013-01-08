@@ -375,7 +375,7 @@ for k in header_list:
         rg_dict[k]['detected_delta_min'] = 0
         rg_dict[k]['detected_delta_max'] = 1000
         rg_dict[k]['detected_delta_mean'] = 300
-        rg_dict[k]['detected_delta_stddev'] = 50
+        rg_dict[k]['detected_delta_stddev'] = 100
         rg_dict[k]['max_r1_len'] = rg_dict[k]['max_r_len']
         rg_dict[k]['max_r2_len'] = rg_dict[k]['max_r_len']
 
