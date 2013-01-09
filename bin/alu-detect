@@ -102,7 +102,8 @@ if [ $START_STAGE -lt 3 ]; then
 
     if [ $have_mappings = 0 ]; then
 	make_note "given reads only; need to map them"
-	make_note "using input phred: [$INPUT_PHRED]"
+	INPUT_PHRED=${INPUT_PHRED:-}
+	[ ! $INPUT_PHRED ] || make_note "using global input PHRED: [$INPUT_PHRED]"
 	rm -f $PREFIX.initial.pairing
 
 	i=0
@@ -113,6 +114,13 @@ if [ $START_STAGE -lt 3 ]; then
 
 	    if [ $have_unpaired_reads = 1 ]; then
 
+		if [ $INPUT_PHRED ]; then
+		    input_phred_rg=$INPUT_PHRED
+		else
+		    input_phred_rg=$(fq-detect-phred ${orig_unpaired_reads[$i]})
+		    make_note "detected PHRED+$input_phred_rg for read group $RGID"
+		fi
+
 		STAGE_NUM=0.$i
 		STAGE_NAME="original mappings for unpaired read group: $RGID"
 		INPUT_FILES="${orig_unpaired_reads[$i]}"
@@ -122,12 +130,19 @@ if [ $START_STAGE -lt 3 ]; then
 		    pv ${orig_unpaired_reads[$i]} | zc \
 			| bowtie2 -x $BOWTIE2_INDEX \
 			  -U - \
-			  --phred$INPUT_PHRED -p $NCPU --rg-id $RGID 2>$rg_mapping.log \
+			  --phred$input_phred_rg -p $NCPU --rg-id $RGID 2>$rg_mapping.log \
 			| $ZIP >$rg_mapping.sam.gz
 		}
 		run_stage
 
 	    elif [ $have_paired_reads_single = 1 ]; then
+
+                if [ $INPUT_PHRED ]; then
+                    input_phred_rg=$INPUT_PHRED
+                else
+                    input_phred_rg=$(fq-detect-phred ${orig_paired_reads[$i]})
+		    make_note "detected PHRED+$input_phred_rg for read group $RGID"
+                fi
 
 		STAGE_NUM=0.$i.1
 		STAGE_NAME="detect pairing for paired read group: $RGID"
@@ -135,7 +150,7 @@ if [ $START_STAGE -lt 3 ]; then
 		OUTPUT_FILES="$rg_pairing"
 		STATS_FILE=
 		stage_command() {
-		    fq-detect-pairing ${orig_paired_reads[$i]} | cut -f 3 >$rg_pairing
+		    INPUT_PHRED=$input_phred_rg fq-detect-pairing ${orig_paired_reads[$i]} | cut -f 3 >$rg_pairing
 		}
 		run_stage
 
@@ -149,7 +164,7 @@ if [ $START_STAGE -lt 3 ]; then
 			| bowtie2 -x $BOWTIE2_INDEX \
 			  -1 - -2 <(zc ${orig_paired_reads[$i]} | split-file 4:/dev/null 4:-) \
 			  $(get-bowtie-pairing -p $(cat $rg_pairing)) \
-			  --phred$INPUT_PHRED -p $NCPU --rg-id $RGID 2>$rg_mapping.log \
+			  --phred$input_phred_rg -p $NCPU --rg-id $RGID 2>$rg_mapping.log \
 			| $ZIP >$rg_mapping.sam.gz
 		}
 		stage_stats_command() {
@@ -159,13 +174,20 @@ if [ $START_STAGE -lt 3 ]; then
 
 	    else
 
+                if [ $INPUT_PHRED ]; then
+                    input_phred_rg=$INPUT_PHRED
+                else
+                    input_phred_rg=$(fq-detect-phred ${orig_reads_1[$i]})
+		    make_note "detected PHRED+$input_phred_rg for read group $RGID"
+                fi
+
 		STAGE_NUM=0.$i.1
 		STAGE_NAME="detect pairing for paired read group: $RGID"
 		INPUT_FILES="${orig_reads_1[$i]} ${orig_reads_2[$i]}"
 		OUTPUT_FILES="$rg_pairing"
 		STATS_FILE=
 		stage_command() {
-		    fq-detect-pairing ${orig_reads_1[$i]} ${orig_reads_2[$i]} | cut -f 3 >$rg_pairing
+		    INPUT_PHRED=$input_phred_rg fq-detect-pairing ${orig_reads_1[$i]} ${orig_reads_2[$i]} | cut -f 3 >$rg_pairing
 		}
 		run_stage
 
@@ -179,7 +201,7 @@ if [ $START_STAGE -lt 3 ]; then
 			| bowtie2 -x $BOWTIE2_INDEX \
 			  -1 - -2 <(zc ${orig_reads_2[$i]}) \
 			  $(get-bowtie-pairing -p $(cat $rg_pairing)) \
-			  --phred$INPUT_PHRED -p $NCPU --rg-id $RGID 2>$rg_mapping.log \
+			  --phred$input_phred_rg -p $NCPU --rg-id $RGID 2>$rg_mapping.log \
 			| $ZIP >$rg_mapping.sam.gz
 		}
 		stage_stats_command() {

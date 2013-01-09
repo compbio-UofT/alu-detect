@@ -11,3 +11,5 @@
     is /usr/bin. Now, we find them through the environment (first in PATH).
   - Removed use of stderr inside a script, in favour of another variable file
     descriptor. This could have caused crashes if other things used stderr.
+  - Changed mechanism to autodetect PHRED if not given.
+  - Fixed read length detection when not enough reads. Before: -1, now: 100.

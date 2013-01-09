@@ -1,14 +1,37 @@
 #!/bin/bash
-FILES=()
-OPTS=()
-while [ $# -ge 1 ] ; do
-    CRT="$1"
-    if [ -r "$CRT" ] ; then
-	FILES=("${FILES[@]}" "$CRT")
-    else
-	OPTS=("${OPTS[@]}" "$CRT")
+. lib.alu-detect.sh
+[ $# -le 1 ] || crash "use: $0 [ <file.fq> ]"
+n_reads=1000
+min_n_qvs_for_default_64=30000
+vals=($(fq-convert -v ofq=tfq "$@" | head -n $n_reads | cut -f 4 | tr -d '\n' | od -v -t u1 --width=1 | awk 'NF==2 {print $2}' | sort -n | uniq -c))
+min_qv=-5
+max_qv=45
+found_33=
+found_64=
+n=0
+i=0
+while [ $i -lt ${#vals[@]} ]; do
+    count=${vals[$i]}
+    let i+=1
+    let n+=$count
+    val=${vals[$i]}
+    let i+=1
+    if [ $val -lt $((33 + $min_qv)) ] || [ $val -gt $((64 + $max_qv)) ]; then
+	crash "$0 ${1:-"-"}: found ASCII code $val, which is neither PHRED+33 nor PHRED+64"
+    elif [ $val -lt $((64 + $min_qv)) ]; then
+	found_33=1
+    elif [ $val -gt $((33 + $max_qv)) ]; then
+	found_64=1
     fi
-    shift
 done
-exec 0< <(zc "${FILES[@]}")
-fq-detect-phred-main "${OPTS[@]}"
+if [ $found_33 ] && [ $found_64 ]; then
+    crash "$0 ${1:-"-"}: found both PHRED+33 and PHRED+64"
+elif [ $found_33 ]; then
+    echo "33"
+elif [ $found_64 ]; then
+    echo "64"
+elif [ $n -ge $min_n_qvs_for_default_64 ]; then
+    echo "64"
+else
+    crash "$0 ${1:-"-"}: could not detect PHRED"
+fi

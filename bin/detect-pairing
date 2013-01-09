@@ -367,7 +367,6 @@ for k in header_list:
         rg_dict[k] = dict()
         rg_dict[k]['detected_paired'] = False
         rg_dict[k]['detected_unpaired'] = False
-        rg_dict[k]['max_r_len'] = 100
     #if not rg_dict[k]['detected_paired'] and not rg_dict[k]['detected_unpaired']:
     #    continue
     if not rg_dict[k]['detected_paired']:
@@ -377,6 +376,8 @@ for k in header_list:
         rg_dict[k]['detected_delta_max'] = 1000
         rg_dict[k]['detected_delta_mean'] = 300
         rg_dict[k]['detected_delta_stddev'] = 100
+	if rg_dict[k]['max_r_len'] < 0:
+            rg_dict[k]['max_r_len'] = 100
         rg_dict[k]['max_r1_len'] = rg_dict[k]['max_r_len']
         rg_dict[k]['max_r2_len'] = rg_dict[k]['max_r_len']
 

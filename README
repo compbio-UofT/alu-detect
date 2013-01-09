@@ -272,8 +272,13 @@ with the workflow as if the input was of type 2.
 
 The read group of each set of reads must be specifed. (Read groups may be
 identical, but there must be as many read groups given as there are fastq
-files.) Also, a common INPUT_PHRED value must be given. There are several types
-of fastq inputs.
+files.)
+
+If INPUT_PHRED is not empty, its value is used for all fastq files.
+If INPUT_PHRED is empty or not given, a value is detected for each set of fastq
+files.
+
+There are several types of fastq inputs:
 
 
 4.1.a. Unpaired reads:
