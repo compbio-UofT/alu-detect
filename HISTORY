@@ -13,3 +13,5 @@
     descriptor. This could have caused crashes if other things used stderr.
   - Changed mechanism to autodetect PHRED if not given.
   - Fixed read length detection when not enough reads. Before: -1, now: 100.
+  - Fixed issue involving several read sets with the same read group when some
+    mappings were lost due to a file naming conflict.

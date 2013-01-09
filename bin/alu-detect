@@ -109,8 +109,8 @@ if [ $START_STAGE -lt 3 ]; then
 	i=0
 	while [ $i -lt ${#orig_read_groups[@]} ]; do
 	    export RGID=${orig_read_groups[$i]}
-	    rg_pairing=$PREFIX.pairing.$RGID
-	    rg_mapping=$PREFIX.map.$RGID
+	    rg_pairing=$PREFIX.pairing.$RGID.$i
+	    rg_mapping=$PREFIX.map.$RGID.$i
 
 	    if [ $have_unpaired_reads = 1 ]; then
 
