@@ -1,6 +1,6 @@
 #!/bin/bash
 trap 'echo $0: line $LINENO: exit code $?' ERR
-set -ex
+set -e
 
 add_dependency() {
     label=$1
