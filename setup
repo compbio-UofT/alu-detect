@@ -1,6 +1,6 @@
 #!/bin/bash
-#set -x
-set -e
+trap 'echo $0: line $LINENO: exit code $?' ERR
+set -ex
 
 add_dependency() {
     label=$1
@@ -11,15 +11,15 @@ add_dependency() {
 	echo "$label not found"
 	extra_path=$(readlink -f "$(read -p "Enter $label path: " -e extra_path; eval echo "$extra_path")")
     done
-    [ "$extra_path" ] && new_path=$new_path${new_path:+:}$extra_path
+    [ ! "$extra_path" ] || new_path=$new_path${new_path:+:}$extra_path
 }
 
 
-DIR=$( cd -P "$( dirname "${BASH_SOURCE[0]}" )" && pwd )
+DIR=$( cd -P "$( dirname "${BASH_SOURCE[0]}" )"; pwd )
 REF_NAME=${1:-}
 
-[ ! -d "$DIR/settings" ] && mkdir settings
-[ ! -d "$DIR/data" ] && mkdir data
+[ -d "$DIR/settings" ] || mkdir settings
+[ -d "$DIR/data" ] || mkdir data
 
 GLOBAL_SETTINGS=$DIR/settings/global
 if [ -r "$GLOBAL_SETTINGS" ]; then
@@ -39,7 +39,7 @@ else
 
     echo "[[ \"\$PATH\" =~ $DIR/bin ]] || PATH=$DIR/bin:$new_path${new_path:+:}\$PATH" >"$GLOBAL_SETTINGS"
     echo "[[ \"\$AWKPATH\" =~ $DIR/bin ]] || export AWKPATH=$DIR/bin\${AWKPATH:+:}\$AWKPATH" >>"$GLOBAL_SETTINGS"
-#    echo "[[ ! \"\$PYTHONPATH\" =~ $DIR/bin ]] && PYTHONPATH=$DIR/bin:\$PYTHONPATH" >>"$GLOBAL_SETTINGS"
+#    echo "[[ \"\$PYTHONPATH\" =~ $DIR/bin ]] || PYTHONPATH=$DIR/bin:\$PYTHONPATH" >>"$GLOBAL_SETTINGS"
 
     #
     # next, alu consensus sequences
@@ -103,7 +103,7 @@ else
 
     # link if not already there
     REF_FA_LINK=$DIR/data/$REF_NAME.fa
-    [ ! -r "$REF_FA_LINK" ] && ln -s "$REF_FA" "$REF_FA_LINK"
+    [ -f "$REF_FA_LINK" -a ! -L "$REF_FA_LINK" ] || ln -sf "$REF_FA" "$REF_FA_LINK"
 
     #
     # fasta index
@@ -111,7 +111,7 @@ else
     CHROMINFO=$REF_FA.fai
     CHROMINFO_LINK="$REF_FA_LINK".fai
     if [ -r "$CHROMINFO" ]; then
-	[ ! -r "$CHROMINFO_LINK" ] && ln -s "$CHROMINFO" "$CHROMINFO_LINK"
+	[ -f "$CHROMINFO_LINK" -a ! -L "$CHROMINFO_LINK" ] || ln -sf "$CHROMINFO" "$CHROMINFO_LINK"
     else
 	CHROMINFO=$CHROMINFO_LINK
 	echo -n "Creating fasta index... "
@@ -130,10 +130,13 @@ else
 	    BOWTIE2_INDEX=
 	fi
     done
+    missing=$(diff <(cut -f 1 $CHROMINFO | sort) <(bowtie2-inspect -n $BOWTIE2_INDEX | sort) | grep '^>' | cut -c 3-)
+    [ ! "$missing" ] || { echo "Some chromosomes in the bowtie2 index [$BOWTIE2_INDEX] are missing from the fasta file [$REF_FA]:"; echo "$missing"; exit 1; }
+
     echo "export BOWTIE2_INDEX=\"$BOWTIE2_INDEX\"" >>"$REF_SETTINGS"
     BOWTIE2_INDEX_LINK=$DIR/data/$REF_NAME
     for suffix in .1.bt2 .2.bt2 .3.bt2 .4.bt2 .rev.1.bt2 .rev.2.bt2; do
-	[ ! -r "$BOWTIE2_INDEX_LINK$suffix" ] && ln -s "$BOWTIE2_INDEX$suffix" "$BOWTIE2_INDEX_LINK$suffix"
+	[ -f "$BOWTIE2_INDEX_LINK$suffix" -a ! -L "$BOWTIE2_INDEX_LINK$suffix" ] || ln -sf "$BOWTIE2_INDEX$suffix" "$BOWTIE2_INDEX_LINK$suffix"
     done
 
     #
