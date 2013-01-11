@@ -66,7 +66,6 @@ while true ; do
 	    | zc | cut -f 1 | get-seq-from-read-name -v ofq=fq \
 	    | fq-trim-reads-relative -v trim_len_${CRT_TRIM_SIDE}=$TRIM_STEP >"$TDIR"/pipe-3 &
 	pids+=($!)
-	SWITCH_SIDES=0
     else
 	make_note "processing previous stage..."
 	$PV "$TDIR"/map_body_${PREV_STEP}.sam.gz \
@@ -103,6 +102,16 @@ while true ; do
 	let i+=1
     done
 
+    # clean up to keep space reasonable
+    if [ $CRT_TRIM -ne 0 ]; then
+	if [ $SWITCH_SIDES -eq 1 ]; then
+	    rm "$TDIR"/bad-3p_*.sam.gz "$TDIR"/short-3p_*.sam.gz
+	    SWITCH_SIDES=0
+	else
+	    rm "$TDIR"/map_body_${PREV_STEP}.sam.gz
+	fi
+    fi
+
     if [ $(head -n 1 "$TDIR"/reads_${CRT_STEP}.stats | cut -d " " -f 1) -eq 0 ] ; then
 	if [ $CRT_TRIM_SIDE = 3p ] ; then
 	    PREV_STEP=$CRT_STEP
@@ -128,6 +137,7 @@ while true ; do
 	| sam-body \
 	| sort -S 4G -s -t ':' -k 1,1n -k 2,2n \
 	| $ZIP >"$TDIR"/map_body_${CRT_STEP}.sam.gz
+    rm "$TDIR"/reads_${CRT_STEP}.fq.gz
 
     PREV_STEP=$CRT_STEP
     CRT_STEP=$(($CRT_STEP + 1))
