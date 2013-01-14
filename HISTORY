@@ -15,3 +15,8 @@
   - Fixed read length detection when not enough reads. Before: -1, now: 100.
   - Fixed issue involving several read sets with the same read group when some
     mappings were lost due to a file naming conflict.
+
+1.0.3: Jan 14, 2013
+  - Compressed discordant read extraction + read renaming into one stage. This
+    saves time spent on compressing/decompressing reads, but increases CPU
+    load.
