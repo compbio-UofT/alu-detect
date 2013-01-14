@@ -282,11 +282,11 @@ grep -q "paired=" $PAIRING_FILE || crash "could not determine pairing informatio
 STAGE_NUM=2
 STAGE_NAME="extract discordant reads"
 READS_DISCORDANT=$PREFIX.reads.discordant
+READS_TO_REMAP=$PREFIX.reads.to_remap
 INPUT_FILES="$ORIG_MAPPINGS"
-OUTPUT_FILES="$READS_DISCORDANT.fq.gz"
-STATS_FILE="$READS_DISCORDANT.stats"
+OUTPUT_FILES="$READS_DISCORDANT.fq.gz $READS_DISCORDANT.stats $READS_TO_REMAP.fq.gz $READS_TO_REMAP.stats"
+STATS_FILE=
 stage_command () {
-    rm -f $READS_DISCORDANT.fq.gz
     i=0
     while [ $i -lt ${#orig_mappings[@]} ]; do
 	add_dummy_pairs=1 get_orig_mappings $i \
@@ -304,38 +304,14 @@ stage_command () {
 		-f 0/0x8000,0:\&1 \
 		-f 0/0x6000,/0x6000:\&3 \
 		-f 0,0:\&1 \
-	    | sam-to-fq -s -l $PAIRING_FILE \
-	    | $ZIP >>$READS_DISCORDANT.fq.gz
+	    | sam-to-fq -s -l $PAIRING_FILE
 	let i+=1
-    done
-}
-stage_stats_command() {
-    $PV $READS_DISCORDANT.fq.gz | fq-stats
-}
-run_stage
-
-
-#
-# Stage 3: Trim & rename reads
-#
-# Input: reads unmapped, reads mapped unpaired
-# Output: reads to remap
-#
-STAGE_NUM=3
-STAGE_NAME="read renaming"
-READS_TO_REMAP=$PREFIX.reads.to_remap
-INPUT_FILES="$READS_DISCORDANT.fq.gz"
-OUTPUT_FILES="$READS_TO_REMAP.fq.gz"
-STATS_FILE="$READS_TO_REMAP.stats"
-stage_command() {
-    $PV $READS_DISCORDANT.fq.gz | $UNZIP \
+    done \
+	| tee >(tee >($ZIP >$READS_DISCORDANT.fq.gz) | fq-stats >$READS_DISCORDANT.stats) \
 	| fq-trim-illumina-reads -v input_phred=33 \
-	| fq-remove-short-paired-reads \
-	| fq-rename-paired-reads-with-len \
-	| $ZIP >$READS_TO_REMAP.fq.gz
-}
-stage_stats_command() {
-    $PV $READS_TO_REMAP.fq.gz | fq-stats
+        | fq-remove-short-paired-reads \
+        | fq-rename-paired-reads-with-len \
+	| tee >($ZIP >$READS_TO_REMAP.fq.gz) | fq-stats >$READS_TO_REMAP.stats
 }
 run_stage
 
@@ -350,13 +326,11 @@ STAGE_NUM=4
 STAGE_NAME="progressive mapping to reference"
 MAPPINGS_TO_REFERENCE=$PREFIX.map.to_reference
 INPUT_FILES="$READS_TO_REMAP.fq.gz"
-OUTPUT_FILES="$MAPPINGS_TO_REFERENCE.sam.gz"
-STATS_FILE="$MAPPINGS_TO_REFERENCE.stats"
+OUTPUT_FILES="$MAPPINGS_TO_REFERENCE.sam.gz $MAPPINGS_TO_REFERENCE.stats"
+STATS_FILE=
 stage_command() {
-    progressive-mapping $READS_TO_REMAP.fq.gz | $ZIP >$MAPPINGS_TO_REFERENCE.sam.gz
-}
-stage_stats_command() {
-    $PV $MAPPINGS_TO_REFERENCE.sam.gz | samtools view -Su - | samtools flagstat -
+    progressive-mapping $READS_TO_REMAP.fq.gz \
+	| tee >($ZIP >$MAPPINGS_TO_REFERENCE.sam.gz) | samtools view -Su - | samtools flagstat - >$MAPPINGS_TO_REFERENCE.stats
 }
 run_stage
 
@@ -371,8 +345,8 @@ STAGE_NUM=5
 STAGE_NAME="clean up reference mappings: remove unpaired and paired well; add orig reads and quals"
 MAPPINGS_CLEAN_TO_REFERENCE=$PREFIX.map.clean_to_reference
 INPUT_FILES="$MAPPINGS_TO_REFERENCE.sam.gz"
-OUTPUT_FILES="$MAPPINGS_CLEAN_TO_REFERENCE.sam.gz"
-STATS_FILE="$MAPPINGS_CLEAN_TO_REFERENCE.stats"
+OUTPUT_FILES="$MAPPINGS_CLEAN_TO_REFERENCE.sam.gz $MAPPINGS_CLEAN_TO_REFERENCE.stats"
+STATS_FILE=
 stage_command() {
     $PV $MAPPINGS_TO_REFERENCE.sam.gz \
 	| add-extra-sam-flags -N 4 -l $PAIRING_FILE -P \
@@ -395,10 +369,7 @@ stage_command() {
 	    -f 0x8000/0x6000,0x8000/0x6000:\&3 \
 	    -f 0,0:\&1 \
 	| { sam-header $MAPPINGS_TO_REFERENCE.sam.gz; cat; } \
-	| $ZIP >$MAPPINGS_CLEAN_TO_REFERENCE.sam.gz
-}
-stage_stats_command() {
-    $PV $MAPPINGS_CLEAN_TO_REFERENCE.sam.gz | samtools view -Su - | samtools flagstat -
+	| tee >($ZIP >$MAPPINGS_CLEAN_TO_REFERENCE.sam.gz) | samtools view -Su - | samtools flagstat - >$MAPPINGS_CLEAN_TO_REFERENCE.stats
 }
 run_stage
 
@@ -413,18 +384,15 @@ STAGE_NUM=6
 STAGE_NAME="extract reads for alu mapping"
 READS_FOR_ALU_MAPPING=$PREFIX.reads.for_alu_mapping
 INPUT_FILES="$MAPPINGS_CLEAN_TO_REFERENCE.sam.gz"
-OUTPUT_FILES="$READS_FOR_ALU_MAPPING.fq.gz"
-STATS_FILE="$READS_FOR_ALU_MAPPING.stats"
+OUTPUT_FILES="$READS_FOR_ALU_MAPPING.fq.gz $READS_FOR_ALU_MAPPING.stats"
+STATS_FILE=
 stage_command() {
     $PV $MAPPINGS_CLEAN_TO_REFERENCE.sam.gz \
 	| sam-body \
 	| reset-mqv-when-discordant 2>/dev/null \
 	| sam-to-fq-trimmed \
 	| fq-remove-short-reads \
-	| $ZIP >$READS_FOR_ALU_MAPPING.fq.gz
-}
-stage_stats_command() {
-    $PV $READS_FOR_ALU_MAPPING.fq.gz | fq-stats
+	| tee >($ZIP >$READS_FOR_ALU_MAPPING.fq.gz) | fq-stats >$READS_FOR_ALU_MAPPING.stats
 }
 run_stage
 
