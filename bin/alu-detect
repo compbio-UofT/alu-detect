@@ -234,7 +234,7 @@ get_orig_mappings() {
 	command="$command | $UNZIP"
     fi
     if [ ${DROP_PAIRS_DIFF_CHR:-} ]; then
-	command="$command | tawk 'substr($1,1,1)==\"@\" || and($2,0x1)==0 || and($2,0x4)==1 || and($2,0x8)==1 || $7==\"=\"'"
+	command="$command | tawk 'substr($1,1,1)=="@" || and($2,0x1)==0 || and($2,0x4)==1 || and($2,0x8)==1 || $7=="=" '
     fi
     if [ ${add_dummy_pairs:-} ]; then
 	command="$command | add-dummy-pairs"
