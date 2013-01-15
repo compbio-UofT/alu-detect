@@ -40,7 +40,7 @@ for line in in_fd:
 if len(d) > 0:
     print >> sys.stderr, 'warning: some paired reads missed mate mappings: ' + str(d[d.keys()[0]])
 
-for k in d.keys():
-    print d[k]
+#for k in d.keys():
+#    print d[k]
 
 gzclose(in_fd)

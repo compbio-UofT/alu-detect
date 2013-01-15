@@ -60,6 +60,7 @@ if [ $START_STAGE -lt 3 ]; then
     make_note "using reads_2 file(s): [$ORIG_READS_2]"
     make_note "using reads group(s): [$ORIG_READ_GROUPS]"
     make_note "using mapping file(s): [$ORIG_MAPPINGS]"
+    make_note "dropping pairs mapped to different chromosomes: $(([ ${DROP_PAIRS_DIFF_CHR:-} ] && echo "yes") || echo "no")"
 
     orig_unpaired_reads=($(echo $ORIG_UNPAIRED_READS))
     orig_paired_reads=($(echo $ORIG_PAIRED_READS))
@@ -231,6 +232,9 @@ get_orig_mappings() {
 	command="$command | samtools view -h -"
     elif (set +o pipefail; file $file | grep -q gzip); then
 	command="$command | $UNZIP"
+    fi
+    if [ ${DROP_PAIRS_DIFF_CHR:-} ]; then
+	command="$command | tawk 'substr($1,1,1)==\"@\" || and($2,0x1)==0 || and($2,0x4)==1 || and($2,0x8)==1 || $7==\"=\"'"
     fi
     if [ ${add_dummy_pairs:-} ]; then
 	command="$command | add-dummy-pairs"

@@ -383,6 +383,13 @@ files by read name, regardless of the contents of the SO tag:
 $ ORIG_MAPPINGS="file1.bam file2.sam.gz" RSORT=1 [...] alu-detect [...]
 
 
+If DROP_PAIRS_DIFF_CHR is non-empty, paired reads which have the two mates
+mapped to different chromosomes will be dropped as soon as they are encountered.
+In the absence of this flag, alu-detect will keep those reads in memory until it
+finds the end of the file, at which time they are dropped. If there are many
+such reads, they might fill up the RAM.
+
+
 --------------------------------------------------------------------------------
 5. Running alu-detect
 --------------------------------------------------------------------------------
