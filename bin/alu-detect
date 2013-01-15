@@ -274,7 +274,7 @@ grep -q "paired=" $PAIRING_FILE || crash "could not determine pairing informatio
 
 
 #
-# Stage 2: Extract discordant reads
+# Stage 2: Extract discordant reads and rename them
 #
 # Input: mappings, reads
 # Output: reads unmapped and reads mapped unpaired
@@ -284,7 +284,7 @@ STAGE_NAME="extract discordant reads"
 READS_DISCORDANT=$PREFIX.reads.discordant
 READS_TO_REMAP=$PREFIX.reads.to_remap
 INPUT_FILES="$ORIG_MAPPINGS"
-OUTPUT_FILES="$READS_DISCORDANT.fq.gz $READS_DISCORDANT.stats $READS_TO_REMAP.fq.gz $READS_TO_REMAP.stats"
+OUTPUT_FILES="$READS_TO_REMAP.fq.gz $READS_TO_REMAP.stats"
 STATS_FILE=
 stage_command () {
     i=0
@@ -307,7 +307,6 @@ stage_command () {
 	    | sam-to-fq -s -l $PAIRING_FILE
 	let i+=1
     done \
-	| tee >(tee >($ZIP >$READS_DISCORDANT.fq.gz) | fq-stats >$READS_DISCORDANT.stats) \
 	| fq-trim-illumina-reads -v input_phred=33 \
         | fq-remove-short-paired-reads \
         | fq-rename-paired-reads-with-len \
