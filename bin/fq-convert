@@ -10,5 +10,4 @@ while [ $# -ge 1 ] ; do
     fi
     shift
 done
-exec 0< <(zc "${FILES[@]}")
-fq-convert-main "${OPTS[@]}"
+zc "${FILES[@]}" | fq-convert-main "${OPTS[@]}"
