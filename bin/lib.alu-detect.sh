@@ -378,6 +378,24 @@ get_new_fd () {
     echo $i
 }
 
+double_pipe () {
+#    make_note "double_pipe: using elements"
+#    typeset -f main_pipe alt_pipe splitter joiner >&2
+    (
+	coproc { alt_pipe | drain; }
+	exec 4>&${COPROC[1]}-
+	exec 3<&${COPROC[0]}-
+
+	splitter 3<&- \
+	    | { main_pipe | drain; } 3<&- 4>&- \
+	    | joiner 4>&- &
+
+	exec 4>&-
+	exec 3<&-
+	wait
+    ) 3<&- 4>&-
+}
+
 #
 # Actually executed
 #

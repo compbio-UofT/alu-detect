@@ -179,5 +179,11 @@ get-coverage.o: get-coverage.?pp Range.hpp
 ../bin/tee-p: tee-p.cpp
 	$(LD) $(CXXFLAGS) -o $@ $+ $(LDFLAGS)
 
+../bin/drain: drain.cpp
+	$(LD) $(CXXFLAGS) -o $@ $+ $(LDFLAGS) -lboost_thread -lboost_system
+
+../bin/sort-with-dict: sort-with-dict.cpp
+	$(LD) $(CXXFLAGS) -o $@ $+ $(LDFLAGS)
+
 clean:
-	rm -f *.o common/*.o gzstream/gzstream.o boost ../bin/get-regions ../bin/inalign ../bin/get-coverage ../bin/tsd-search.cpp ../bin/zc ../bin/add-extra-sam-flags ../bin/filter-mappings ../bin/sam-to-fq ../bin/tee-p
+	rm -f *.o common/*.o gzstream/gzstream.o boost ../bin/get-regions ../bin/inalign ../bin/get-coverage ../bin/tsd-search.cpp ../bin/zc ../bin/add-extra-sam-flags ../bin/filter-mappings ../bin/sam-to-fq ../bin/tee-p ../bin/drain ../bin/sort-with-dict
