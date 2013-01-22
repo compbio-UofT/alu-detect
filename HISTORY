@@ -20,3 +20,6 @@
   - Compressed discordant read extraction + read renaming into one stage. This
     saves time spent on compressing/decompressing reads, but increases CPU
     load.
+
+1.0.4: Jan 22, 2013
+  - Replaced sorting of bowtie2 output during prograssive mapping.
