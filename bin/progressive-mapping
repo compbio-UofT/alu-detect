@@ -25,7 +25,7 @@ TRIM_STEP=5
 MIN_LEN=20
 MIN_MQV=5
 
-MAPPER_CMD="bowtie2 -x $BOWTIE2_INDEX -M 10 -p $NCPU -U"
+MAPPER_CMD="bowtie2-sort -x $BOWTIE2_INDEX -M 10 -p $NCPU -U"
 TAIL_SED_REGEXP="${TAIL_SED_REGEXP:-\/[12]$}"
 make_note "using TAIL_SED_REGEXP=$TAIL_SED_REGEXP"
 
@@ -58,7 +58,9 @@ while true ; do
     pids=()
     if [ $CRT_TRIM -eq 0 ] ; then
 	make_note "preparing reads..."
-	$PV "$READS_FILE" | zc | add-seq-to-read-name >"$TDIR"/pipe-3 &
+	$PV "$READS_FILE" | zc | add-seq-to-read-name \
+	    | fq-convert -v ofq=tfq | sed 's/\/[12]\t/\t/' \
+	    | fq-convert -v ofq=fq >"$TDIR"/pipe-3 &
 	pids+=($!)
     elif [ $SWITCH_SIDES -eq 1 ] ; then
 	make_note "switching sides; extracting unmapped and badly mapped reads..."
@@ -132,11 +134,8 @@ while true ; do
     make_note "mapping current batch and sorting..."
     $PV "$TDIR"/reads_${CRT_STEP}.fq.gz | zc \
         | $MAPPER_CMD - \
-	| sam-fix-bowtie-read-names \
         | tee-p >(sam-header >"$TDIR"/map_header_${CRT_STEP}.sam) \
-	| sam-body \
-	| sort -S 4G -s -t ':' -k 1,1n -k 2,2n \
-	| $ZIP >"$TDIR"/map_body_${CRT_STEP}.sam.gz
+	| sam-body | $ZIP >"$TDIR"/map_body_${CRT_STEP}.sam.gz
     rm "$TDIR"/reads_${CRT_STEP}.fq.gz
 
     PREV_STEP=$CRT_STEP

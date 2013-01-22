@@ -224,7 +224,7 @@ full_sw(int lena, int lenb, int threshscore, int maxscore, int *iret, int *jret,
      */
     int x_min, x_max;
 
-    anchor_get_x_range(&rectangle, lena, lenb, i, &x_min, &x_max);
+    anchor_get_x_range(&rectangle, lena, i, &x_min, &x_max);
     if (!local_alignment) {
 	//init_cell((i + 1) * (lena + 1) + (x_min - 1) + 1, x_min == 0 ?  1 : 0);
 	init_cell((i + 1) * (lena + 1) + (x_min - 1) + 1, 0);
@@ -377,7 +377,7 @@ full_sw(int lena, int lenb, int threshscore, int maxscore, int *iret, int *jret,
    if (i+1 < lenb) {
       int next_x_min, next_x_max;
 
-      anchor_get_x_range(&rectangle, lena, lenb, i+1, &next_x_min, &next_x_max);
+      anchor_get_x_range(&rectangle, lena, i+1, &next_x_min, &next_x_max);
       for (j = x_max + 1; j <= next_x_max; j++) {
 	init_cell((i + 1) * (lena + 1) + (j + 1),local_alignment);
       }

@@ -63,7 +63,7 @@ void anchor_widen(struct anchor * anchor, int width) {
 }
 
 
-void anchor_get_x_range(struct anchor const * anchor, int x_len, int y_len, int y,
+void anchor_get_x_range(struct anchor const * anchor, int x_len, int y,
 			int * x_min, int * x_max) {
   assert(anchor != NULL && x_min != NULL && x_max != NULL);
 
@@ -93,7 +93,6 @@ void anchor_get_x_range(struct anchor const * anchor, int x_len, int y_len, int 
   if (*x_max >= x_len)
     *x_max = x_len - 1;
 }
-
 
 void
 anchor_uw_join(struct anchor * dest, struct anchor const * src)

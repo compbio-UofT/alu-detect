@@ -18,7 +18,7 @@ private:
   mutable boost::mutex the_mutex;
   boost::condition_variable the_condition_variable;
   bool done;
-  int capacity;
+  size_t capacity;
 
   class queue_not_empty_or_done
   {
@@ -34,8 +34,8 @@ private:
   {
   public:
     std::queue<Data>& queue;
-    int& capacity;
-    queue_not_full(std::queue<Data>& queue_, int& capacity_)
+    size_t& capacity;
+    queue_not_full(std::queue<Data>& queue_, size_t& capacity_)
       : queue(queue_), capacity(capacity_) {
     }
     bool operator()() const {

@@ -9,7 +9,7 @@
 
 void	anchor_join(struct anchor const *, int, struct anchor *);
 void	anchor_widen(struct anchor *, int);
-void	anchor_get_x_range(struct anchor const *, int, int, int, int *, int *);
+void	anchor_get_x_range(struct anchor const *, int, int, int *, int *);
 void	anchor_uw_join(struct anchor *, struct anchor const *);
 int	anchor_uw_cmp(void const *, void const *);
 

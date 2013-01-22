@@ -343,7 +343,7 @@ dp_from_nw_with_base(const char * db, const char * qr, int db_len, int qr_len,
 		     vector<vector<cell> >& m_base,
 		     int overlap_start, int overlap_end)
 {
-  int i, j, j_max;
+  int i, j;
 
   for (i = 0; i <= db_len; i++) {
     m[0][i].score[cell_nw] = 0;
@@ -353,7 +353,6 @@ dp_from_nw_with_base(const char * db, const char * qr, int db_len, int qr_len,
     m[0][i].score[cell_break] = INT_MIN/2;
   }
 
-  j_max = -1;
   for (j = 1; j <= qr_len; j++) {
     // choose point to split between reference and repeat mapping
     // j+1 first letter in qr mapped to repeat

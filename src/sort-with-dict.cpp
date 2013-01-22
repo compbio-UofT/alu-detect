@@ -97,7 +97,7 @@ main(int argc, char * argv[])
 	  cerr << "EOF reached while looking for dict_key: " << dict_key << "\n";
 	  exit(EXIT_FAILURE);
 	}
-	int k = 0;
+	size_t k = 0;
 	int i = 0;
 	while (k != string::npos and i < field_number - 1) {
 	  k = line.find_first_of(delimiter, k);
@@ -110,7 +110,7 @@ main(int argc, char * argv[])
 	  cerr << line << "\n";
 	  exit(EXIT_FAILURE);
 	}
-	int l = line.find_first_of(delimiter, k);
+	size_t l = line.find_first_of(delimiter, k);
 	string crt_key = line.substr(k, l != string::npos? l-k : string::npos);
 	if (verbosity >= 2) {
 	  clog << "found key: [" << crt_key << "]\n";

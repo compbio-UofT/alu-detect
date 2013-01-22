@@ -18,7 +18,7 @@ public:
   int load;
   int bid;
 
-  Block() : block(NULL), load(0) {}
+  Block() : block(NULL), load(0), bid(0) {}
 };
 
 concurrent_queue<Block> q;
