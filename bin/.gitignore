@@ -11,3 +11,5 @@ get-bed-coverage
 tsd-search
 print_tab
 tee-p
+drain
+sort-with-dict
