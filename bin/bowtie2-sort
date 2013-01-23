@@ -17,7 +17,7 @@ splitter () { tee >(cat >&4); }
 #joiner () { cat /proc/$BASHPID/fd/3 -; }
 #joiner () { cat; cat <&3; }
 #joiner () { merge-files 1:<(cat) 1:<(cat <&3); }
-joiner-sleep () {
+joiner () {
     {
 	{
 	    IFS=$'\n'
@@ -30,13 +30,12 @@ joiner-sleep () {
 	    [ ! $have_line ] || echo $line
 	    cat
 	} | {
-	    sleep 5
 	    sort-with-dict <(cat <&3) <(cat)
 	}
     } 4>&1
 }
 
-joiner () {
+joiner-extra () {
     splitter () {
 	IFS=$'\n'
 	have_line=
@@ -57,6 +56,4 @@ joiner () {
     double_pipe 4>&2
 }
 
-#make_note "starting double_pipe"
 double_pipe
-#make_note "done"

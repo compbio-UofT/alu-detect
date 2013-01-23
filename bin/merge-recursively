@@ -1,0 +1,19 @@
+#!/bin/bash
+batch_size=8
+if [ $# -eq 0 ]; then
+    echo "use: [ SORT_OPTIONS=... ] $0 <file> [ <file> ... ]" >&2
+    exit 1
+elif [ $# -eq 1 ]; then
+    exec cat "$1"
+elif [ $# -le $batch_size ]; then
+    sort -m --batch-size=$batch_size $SORT_OPTIONS "$@"
+else
+    let "n=($# - 1)/8 + 1"
+    command="sort -m --batch-size=$batch_size $SORT_OPTIONS"
+    let i=0
+    while [ $i -lt $n ]; do
+	command="$command <($0 ${@:$((8 * $i + 1)):8})"
+	let i+=1
+    done
+    eval $command
+fi

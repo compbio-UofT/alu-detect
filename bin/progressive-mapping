@@ -3,14 +3,6 @@
 set -eEux -o pipefail
 
 
-remove_tail() {
-    sed "s/${TAIL_SED_REGEXP}//g"
-}
-
-id_to_unmapped_sam() {
-    remove_tail | awk -v other="${1:-}" 'BEGIN{OFS="\t"} {if(match($1,"/[12]$"))$1=substr($1,1,length($1)-2); printf("%s\t4\t*\t0\t0\t*\t*\t0\t0\t*\t*", $1); if(other!="")printf("\t%s", other); printf("\n");}'
-}
-
 #
 # don't trust the user; check most settings
 #
@@ -25,9 +17,7 @@ TRIM_STEP=5
 MIN_LEN=20
 MIN_MQV=5
 
-MAPPER_CMD="bowtie2-sort -x $BOWTIE2_INDEX -M 10 -p $NCPU -U"
-TAIL_SED_REGEXP="${TAIL_SED_REGEXP:-\/[12]$}"
-make_note "using TAIL_SED_REGEXP=$TAIL_SED_REGEXP"
+MAPPER_CMD="bowtie2-sort -x $BOWTIE2_INDEX -p $NCPU -U"
 
 find_my_name_and_dir "${BASH_SOURCE[0]}"
 make_temp_dir "$MY_NAME"
@@ -64,8 +54,12 @@ while true ; do
 	pids+=($!)
     elif [ $SWITCH_SIDES -eq 1 ] ; then
 	make_note "switching sides; extracting unmapped and badly mapped reads..."
-	$PV "$TDIR"/bad-3p_*.sam.gz "$TDIR"/short-3p_*.sam.gz \
-	    | zc | cut -f 1 | get-seq-from-read-name -v ofq=fq \
+	command="SORT_OPTIONS=\"-S 10G -s -t : -k 1,1n -k 2,2n\" merge-recursively"
+	for f in "$TDIR"/bad-3p_*.sam.gz "$TDIR"/short-3p_*.sam.gz; do
+	    command="$command <(zc $f)"
+	done
+	eval $command \
+	    | cut -f 1 | get-seq-from-read-name -v ofq=fq \
 	    | fq-trim-reads-relative -v trim_len_${CRT_TRIM_SIDE}=$TRIM_STEP >"$TDIR"/pipe-3 &
 	pids+=($!)
     else
@@ -90,7 +84,7 @@ while true ; do
     fq-remove-short-reads <"$TDIR"/pipe-3 -v min_len=$MIN_LEN -v short_reads_fd=3 \
 	3>"$TDIR"/pipe-6 | tee-p "$TDIR"/pipe-7 | $ZIP >"$TDIR"/reads_${CRT_STEP}.fq.gz &
     pids+=($!)
-    id_to_unmapped_sam <"$TDIR"/pipe-6 | $ZIP >"$TDIR"/short-${CRT_TRIM_SIDE}_${CRT_STEP}.sam.gz &
+    id-to-unmapped-sam <"$TDIR"/pipe-6 | $ZIP >"$TDIR"/short-${CRT_TRIM_SIDE}_${CRT_STEP}.sam.gz &
     pids+=($!)
     fq-stats <"$TDIR"/pipe-7 >"$TDIR"/reads_${CRT_STEP}.stats &
     pids+=($!)
@@ -145,21 +139,24 @@ done
 
 cat "$TDIR"/map_header_1.sam
 
-{
-    make_note "gathering good 3p-trimmed mappings..."
-    $PV "$TDIR"/final-3p_*.sam.gz \
-	| zc \
-	| sam-add-trim-len-to-cigar -v trim_side=3p
-    make_note "gathering good 5p-trimmed mappings..."
-    $PV "$TDIR"/final-5p_*.sam.gz \
-	| zc \
-	| sam-add-trim-len-to-cigar -v trim_side=5p
-    make_note "gathering bad 5p-trimmed mappings..."
-    $PV "$TDIR"/bad-5p_*.sam.gz \
-	| zc | cut -f 1 | id_to_unmapped_sam
-    make_note "gathering short 5p-trimmed mappings..."
-    $PV "$TDIR"/short-5p_*.sam.gz \
-	| zc
-    make_note "sorting..."
-} | sort -S 4G -s -t ':' -k 1,1n -k 2,2n
-rm -rf "$TDIR"
+command="SORT_OPTIONS=\"-S 10G -s -t : -k 1,1n -k 2,2n\" merge-recursively"
+
+for f in "$TDIR"/final-3p_*.sam.gz; do
+    command="$command <(zc $f | sam-add-trim-len-to-cigar -v trim_side=3p)"
+done
+
+for f in "$TDIR"/final-5p_*.sam.gz; do
+    command="$command <(zc $f | sam-add-trim-len-to-cigar -v trim_side=5p)"
+done
+
+for f in "$TDIR"/bad-5p_*.sam.gz; do
+    command="$command <(zc $f | cut -f 1 | id-to-unmapped-sam)"
+done
+
+for f in "$TDIR"/short-5p_*.sam.gz; do
+    command="$command <(zc $f)"
+done
+
+eval $command
+
+#rm -rf "$TDIR"
