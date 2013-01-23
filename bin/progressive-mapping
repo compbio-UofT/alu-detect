@@ -159,4 +159,4 @@ done
 
 eval $command
 
-#rm -rf "$TDIR"
+rm -rf "$TDIR"
