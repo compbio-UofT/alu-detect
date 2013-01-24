@@ -128,7 +128,7 @@ if [ $START_STAGE -lt 3 ]; then
 		OUTPUT_FILES="$rg_mapping.sam.gz"
 		STATS_FILE=
 		stage_command() {
-		    pv ${orig_unpaired_reads[$i]} | zc \
+		    $PV ${orig_unpaired_reads[$i]} | zc \
 			| bowtie2 -x $BOWTIE2_INDEX \
 			  -U - \
 			  --phred$input_phred_rg -p $NCPU --rg-id $RGID 2>$rg_mapping.log \

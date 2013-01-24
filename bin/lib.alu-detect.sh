@@ -11,7 +11,7 @@ else
 fi
 
 if which pv >/dev/null 2>&1; then
-    PV=${PV:-"pv -f"}
+    PV=${PV:-"pv -f -i 60"}
 else
     PV=${PV:-cat}
 fi
