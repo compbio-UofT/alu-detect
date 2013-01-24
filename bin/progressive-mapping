@@ -48,9 +48,7 @@ while true ; do
     pids=()
     if [ $CRT_TRIM -eq 0 ] ; then
 	make_note "preparing reads..."
-	$PV "$READS_FILE" | zc | add-seq-to-read-name \
-	    | fq-convert -v ofq=tfq | sed 's/\/[12]\t/\t/' \
-	    | fq-convert -v ofq=fq >"$TDIR"/pipe-3 &
+	$PV "$READS_FILE" | zc | add-seq-to-read-name >"$TDIR"/pipe-3 &
 	pids+=($!)
     elif [ $SWITCH_SIDES -eq 1 ] ; then
 	make_note "switching sides; extracting unmapped and badly mapped reads..."
