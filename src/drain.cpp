@@ -55,6 +55,10 @@ in_flow()
   while (!cin.eof()) {
     Block b;
     b.block = new char[Block::size];
+    if (b.block == NULL) {
+      cerr << "prog_name: out of memory\n";
+      exit(1);
+    }	
 
     cin.read(b.block, Block::size);
     b.load = cin.gcount();
