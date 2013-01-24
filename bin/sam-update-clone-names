@@ -1,0 +1,18 @@
+#!/bin/bash extend-hashbang
+#awk -f lib.alu-detect.awk -f
+
+BEGIN {
+    FS="\t"
+    OFS="\t"
+}
+
+/^@/ {
+    print
+    next
+}
+
+{
+    n = index($1, ":")
+    $1 = substr($1, n - 9, 9) substr($1, 1, n - 10) substr($1, n)
+    print
+}
