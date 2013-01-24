@@ -20,7 +20,7 @@ fullNameParser(const string& name, Clone& clone, int& nip)
   int j = name.find(':');
   // this is the clone name
   if (global::num_rg_len > 0) {
-    string tmp = name.substr(i, global::num_rg_len);
+    string tmp = name.substr(j - global::num_rg_len, global::num_rg_len);
     RGDict::iterator it = global::num_rg_dict.find(tmp);
     if (it == global::num_rg_dict.end()) {
       cerr << "error: no pairing info for RG of " << name << endl;

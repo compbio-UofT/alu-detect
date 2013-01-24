@@ -8,12 +8,15 @@ elif [ $# -eq 1 ]; then
 elif [ $# -le $batch_size ]; then
     sort -m --batch-size=$batch_size $SORT_OPTIONS "$@"
 else
-    let "n=($# - 1)/8 + 1"
+    let "n=$#/8"
     command="sort -m --batch-size=$batch_size $SORT_OPTIONS"
-    let i=0
-    while [ $i -lt $n ]; do
-	command="$command <($0 ${@:$((8 * $i + 1)):8})"
-	let i+=1
-    done
+    if [ $n -eq 1 ]; then
+	command="$command ${@:1:7}"
+    else
+	for i in $(seq 0 6); do
+	    command="$command <($0 ${@:$(($n * $i + 1)):$n})"
+	done
+    fi
+    command="$command <($0 ${@:$(($n * 7 + 1))})"
     eval $command
 fi

@@ -178,7 +178,7 @@ def set_pairing(s):
                 note('invalid pairing keyword [%s]' % lhs)
             else:
                 pairing[lhs] = int(rhs)
-    note('set pairing mode: ' + str(pairing) + ' (\'' + get_pairing_string() + '\')', 1)
+    note('set pairing mode: ' + str(pairing) + ' ("' + get_pairing_string() + '")', 1)
 
 def get_pairing_string():
     if pairing['st_diff'] == 1:
