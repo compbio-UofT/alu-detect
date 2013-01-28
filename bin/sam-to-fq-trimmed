@@ -1,5 +1,4 @@
-#!/bin/bash extend-hashbang
-#python
+#!/usr/bin/env python
 
 import sys
 import argparse
@@ -42,9 +41,14 @@ for ms in sam.get_mapping_set_gen(in_fd,
         #d['name'] = (':'.join(d['name'].split(':')[0:5])
         #             + ':'
         #             + ':'.join(d['name'].split(':')[6:])[len(seq) + 1:])
-        seq = d['orig_seq']
-        qual = d['orig_qual']
-        d['name'] = remove_seq_from_name(d['name'])
+        #seq = d['orig_seq']
+        #qual = d['orig_qual']
+        seq = d['seq']
+        qual = d['qual']
+        if d['mapped'] and d['st'] == 1:
+            seq = sam.reverse_complement(seq)
+            qual = sam.reverse(qual)
+        #d['name'] = remove_seq_from_name(d['name'])
         note('seq before trimming:  ' + seq, 2)
         note('qual before trimming: ' + qual, 2)
         if d['mapped'] and d['mqv'] >= args.min_mqv:

@@ -27,7 +27,7 @@ for ci_len in $CI_LEN_VALS ; do
 
     i=0
     while [ $i -lt ${#calls[@]} ]; do
-	exec 3< <(<${calls[$i]} apply-filter $len $supp $null $ci_len)
+	exec 3< <(<${calls[$i]} exec apply-filter $len $supp $null $ci_len)
 	<&3 run_cmds "TRUTH=${truth[$i]} TRUTH_LEN=${truth_len[$i]} get-prec-recall" \
 	    "filter-ci-length 100 | TRUTH=${truth[$i]} TRUTH_LEN=${truth_len[$i]} get-prec-recall" \
 	    "filter-bp 2 | TRUTH=${truth[$i]} TRUTH_LEN=${truth_len[$i]} get-prec-recall" 2>/dev/null

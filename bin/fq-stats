@@ -10,6 +10,5 @@ while [ $# -ge 1 ] ; do
     fi
     shift
 done
-exec 0< <(zc "${FILES[@]}")
-fq-stats-main "${OPTS[@]}"
-
+exec 0< <(exec zc "${FILES[@]}")
+exec fq-stats-main "${OPTS[@]}"

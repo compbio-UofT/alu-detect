@@ -70,8 +70,8 @@ stage_command() {
 	intersectBed -u -s -a "$RAW_FAKE_CALLS" -b $TARGETS;
 	intersectBed -v -s -a "$RAW_FAKE_CALLS" -b \
 	    <(zc "$TARGETS" \
-		<([ "$TARGETS_BAD" ] && zc "$TARGETS_BAD") \
-		<([ "$KNOWN_NOVEL_ALUS" ] && real-to-fake "$DELETIONS" "$KNOWN_NOVEL_ALUS") \
+		<([ "$TARGETS_BAD" ] && exec zc "$TARGETS_BAD") \
+		<([ "$KNOWN_NOVEL_ALUS" ] && exec real-to-fake "$DELETIONS" "$KNOWN_NOVEL_ALUS") \
 		| cut -f -6);
     } \
 	| filter-ref-alu-bp "$FAKE_ALUS_BED" - \

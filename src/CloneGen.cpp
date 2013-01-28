@@ -46,6 +46,15 @@ CloneGen::get_next()
   for_iterable(vector<SamMapping>, next_ref->second, it) {
     int nip;
     fullNameParser_(it->name, *result, nip);
+    if (result->read[nip].seq.length() == 0) {
+      if (not it->mapped or it->st == 0) {
+	result->read[nip].seq = it->seq;
+	result->read[nip].qvString = it->qvString;
+      } else {
+	result->read[nip].seq = reverseComplement(it->seq);
+	result->read[nip].qvString = reverse(it->qvString);
+      }
+    }
     if (it->mapped) {
       Mapping m = convert_SamMapping_to_Mapping(*it);
       m.qr = &result->read[nip];

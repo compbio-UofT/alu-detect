@@ -12,12 +12,14 @@ for suffix in .1.bt2 .2.bt2 .3.bt2 .4.bt2 .rev.1.bt2 .rev.2.bt2; do
     [ -r "$BOWTIE2_INDEX$suffix" ] || crash "bowtie2 index file missing: $BOWTIE2_INDEX$suffix"
 done
 
+DEBUG=${DEBUG:-}
 
 TRIM_STEP=5
 MIN_LEN=20
 MIN_MQV=5
-
 MAPPER_CMD="bowtie2-sort -x $BOWTIE2_INDEX -p $NCPU -U"
+#export SORT_OPTIONS="-S 10G -s -t : -k 1,1n -k 2,2n"
+export SORT_OPTIONS="-S 10G"
 
 find_my_name_and_dir "${BASH_SOURCE[0]}"
 make_temp_dir "$MY_NAME"
@@ -48,16 +50,14 @@ while true ; do
     pids=()
     if [ $CRT_TRIM -eq 0 ] ; then
 	make_note "preparing reads..."
-	$PV "$READS_FILE" | zc | add-seq-to-read-name >"$TDIR"/pipe-3 &
+	$PV "$READS_FILE" | zc >"$TDIR"/pipe-3 &
 	pids+=($!)
     elif [ $SWITCH_SIDES -eq 1 ] ; then
 	make_note "switching sides; extracting unmapped and badly mapped reads..."
-	command="SORT_OPTIONS=\"-S 10G -s -t : -k 1,1n -k 2,2n\" merge-recursively"
-	for f in "$TDIR"/bad-3p_*.sam.gz "$TDIR"/short-3p_*.sam.gz; do
-	    command="$command <(zc $f)"
-	done
-	eval $command \
-	    | cut -f 1 | get-seq-from-read-name -v ofq=fq \
+	merge-recursively -z "$TDIR"/bad-3p_*.id.gz "$TDIR"/short-3p_*.id.gz \
+	    | join -t "	" -j 1 - <(zc $READS_FILE | fq-convert -v ofq=tfq) \
+	    | tawk '{n=split($1,a,":"); a[6]="1"; $1=a[1]; for(i=2;i<=n;i++) $1=$1 ":" a[i]; print}' \
+	    | fq-convert -v ofq=fq \
 	    | fq-trim-reads-relative -v trim_len_${CRT_TRIM_SIDE}=$TRIM_STEP >"$TDIR"/pipe-3 &
 	pids+=($!)
     else
@@ -72,9 +72,9 @@ while true ; do
 	    | sam-to-fq \
 	    | fq-trim-reads-relative -v trim_len_${CRT_TRIM_SIDE}=$TRIM_STEP >"$TDIR"/pipe-3 &
 	pids+=($!)
-	$ZIP <"$TDIR"/pipe-4 >>"$TDIR"/final-${CRT_TRIM_SIDE}_${PREV_STEP}.sam.gz &
+	$ZIP <"$TDIR"/pipe-4 >"$TDIR"/final-${CRT_TRIM_SIDE}_${PREV_STEP}.sam.gz &
 	pids+=($!)
-	$ZIP <"$TDIR"/pipe-5 >>"$TDIR"/bad-${CRT_TRIM_SIDE}_${PREV_STEP}.sam.gz &
+	<"$TDIR"/pipe-5 cut -f 1 | $ZIP >"$TDIR"/bad-${CRT_TRIM_SIDE}_${PREV_STEP}.id.gz &
 	pids+=($!)
     fi
 
@@ -82,7 +82,7 @@ while true ; do
     fq-remove-short-reads <"$TDIR"/pipe-3 -v min_len=$MIN_LEN -v short_reads_fd=3 \
 	3>"$TDIR"/pipe-6 | tee-p "$TDIR"/pipe-7 | $ZIP >"$TDIR"/reads_${CRT_STEP}.fq.gz &
     pids+=($!)
-    id-to-unmapped-sam <"$TDIR"/pipe-6 | $ZIP >"$TDIR"/short-${CRT_TRIM_SIDE}_${CRT_STEP}.sam.gz &
+    <"$TDIR"/pipe-6 cut -f 1 | $ZIP >"$TDIR"/short-${CRT_TRIM_SIDE}_${CRT_STEP}.id.gz &
     pids+=($!)
     fq-stats <"$TDIR"/pipe-7 >"$TDIR"/reads_${CRT_STEP}.stats &
     pids+=($!)
@@ -90,19 +90,17 @@ while true ; do
     #
     # sync at this point
     #
-    i=0
-    while [ $i -lt ${#pids[@]} ]; do
-	wait ${pids[$i]}
-	let i+=1
+    for pid in ${pids[@]}; do
+	wait $pid
     done
 
     # clean up to keep space reasonable
     if [ $CRT_TRIM -ne 0 ]; then
 	if [ $SWITCH_SIDES -eq 1 ]; then
-	    rm "$TDIR"/bad-3p_*.sam.gz "$TDIR"/short-3p_*.sam.gz
+	    [ $DEBUG ] || rm "$TDIR"/bad-3p_*.id.gz "$TDIR"/short-3p_*.id.gz
 	    SWITCH_SIDES=0
 	else
-	    rm "$TDIR"/map_body_${PREV_STEP}.sam.gz
+	    [ $DEBUG ] || rm "$TDIR"/map_body_${PREV_STEP}.sam.gz
 	fi
     fi
 
@@ -128,7 +126,7 @@ while true ; do
         | $MAPPER_CMD - \
         | tee-p >(sam-header >"$TDIR"/map_header_${CRT_STEP}.sam) \
 	| sam-body | $ZIP >"$TDIR"/map_body_${CRT_STEP}.sam.gz
-    rm "$TDIR"/reads_${CRT_STEP}.fq.gz
+    [ $DEBUG ] || rm "$TDIR"/reads_${CRT_STEP}.fq.gz
 
     PREV_STEP=$CRT_STEP
     CRT_STEP=$(($CRT_STEP + 1))
@@ -137,24 +135,13 @@ done
 
 cat "$TDIR"/map_header_1.sam
 
-command="SORT_OPTIONS=\"-S 10G -s -t : -k 1,1n -k 2,2n\" merge-recursively"
+merge-recursively -z "$TDIR"/final-*_*.sam.gz "$TDIR"/bad-5p_*.id.gz "$TDIR"/short-5p_*.id.gz \
+    | tee >($ZIP >tmp0.sam.gz) \
+    | sed 's/^\([0-9]*:[0-9]*\):/\1\t\1:/' \
+    | tee >($ZIP >tmp1.sam.gz) \
+    | join -t "	" -j 1 \
+        <(fq-convert -v ofq=tfq $READS_FILE | sed 's/^\([0-9]*:[0-9]*\):/\1\t\1:/' | tee >($ZIP >tmp2.sam.gz) ) - \
+    | tee >($ZIP >tmp3.sam.gz) | fix-mappings \
+    | cut -f 6-
 
-for f in "$TDIR"/final-3p_*.sam.gz; do
-    command="$command <(zc $f | sam-add-trim-len-to-cigar -v trim_side=3p)"
-done
-
-for f in "$TDIR"/final-5p_*.sam.gz; do
-    command="$command <(zc $f | sam-add-trim-len-to-cigar -v trim_side=5p)"
-done
-
-for f in "$TDIR"/bad-5p_*.sam.gz; do
-    command="$command <(zc $f | cut -f 1 | id-to-unmapped-sam)"
-done
-
-for f in "$TDIR"/short-5p_*.sam.gz; do
-    command="$command <(zc $f)"
-done
-
-eval $command
-
-rm -rf "$TDIR"
+[ $DEBUG ] || rm -rf "$TDIR"

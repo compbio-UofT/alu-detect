@@ -200,7 +200,7 @@ if [ $START_STAGE -lt 3 ]; then
 		stage_command() {
 		    $PV ${orig_reads_1[$i]} | zc \
 			| bowtie2 -x $BOWTIE2_INDEX \
-			  -1 - -2 <(zc ${orig_reads_2[$i]}) \
+			  -1 - -2 <(exec zc ${orig_reads_2[$i]}) \
 			  $(get-bowtie-pairing -p $(cat $rg_pairing)) \
 			  --phred$input_phred_rg -p $NCPU --rg-id $RGID 2>$rg_mapping.log \
 			| $ZIP >$rg_mapping.sam.gz

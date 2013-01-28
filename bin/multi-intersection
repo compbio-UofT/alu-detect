@@ -40,7 +40,7 @@ i=0
 while [ $i -lt "${#f[@]}" ] ; do
   awk "\$8==\"$(($i + 1))\"" $label.bed \
     | cut -f -6 \
-    | intersectBed -c -s -a - -b <(extend-bed 1 $label.bed) \
+    | intersectBed -c -s -a - -b <(exec extend-bed 1 $label.bed) \
     | awk '$NF==1' \
     | cut -f -6 >"$label.only-$(basename ${f[i]})"
   i=$(($i + 1))

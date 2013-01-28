@@ -1,22 +1,47 @@
 #!/bin/bash
+unzip=
+args=
+OPTIND=1
+while getopts "z" OPT "$@"; do
+    case $OPT in
+	z)
+	    unzip=1
+	    args="-z"
+	    ;;
+    esac
+done
+shift $(($OPTIND - 1))
+
 batch_size=8
 if [ $# -eq 0 ]; then
-    echo "use: [ SORT_OPTIONS=... ] $0 <file> [ <file> ... ]" >&2
+    echo "use: [ SORT_OPTIONS=... ] $0 [ -z ] <file> [ <file> ... ]" >&2
     exit 1
 elif [ $# -eq 1 ]; then
-    exec cat "$1"
+    exec zc "$1"
+elif [ ! $unzip ] && [ $# -le $batch_size ]; then
+    exec sort -m --batch-size=$batch_size $SORT_OPTIONS "$@"
 elif [ $# -le $batch_size ]; then
-    sort -m --batch-size=$batch_size $SORT_OPTIONS "$@"
+    command="sort -m --batch-size=$batch_size $SORT_OPTIONS"
+    for f in "$@"; do
+	command="$command <(exec zc $f)"
+    done
+    eval $command
 else
     let "n=$#/8"
     command="sort -m --batch-size=$batch_size $SORT_OPTIONS"
     if [ $n -eq 1 ]; then
-	command="$command ${@:1:7}"
+	if [ ! $unzip ]; then
+	    command="$command ${@:1:7}"
+	else
+	    for f in "${@:1:7}"; do
+		command="$command <(exec zc $f)"
+	    done
+	fi
     else
 	for i in $(seq 0 6); do
-	    command="$command <($0 ${@:$(($n * $i + 1)):$n})"
+	    command="$command <(exec $0 $args ${@:$(($n * $i + 1)):$n})"
 	done
     fi
-    command="$command <($0 ${@:$(($n * 7 + 1))})"
+    command="$command <(exec $0 $args ${@:$(($n * 7 + 1))})"
     eval $command
 fi

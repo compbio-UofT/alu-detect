@@ -1,2 +1,2 @@
 #!/bin/bash
-exec tawk '{printf("%s\t4\t*\t0\t0\t*\t*\t0\t0\t*\t*\n", $1);}'
+exec tawk '{if (NF>=2) sq=$2; else sq="*"; if (NF>=4) qv=$4; else qv="*"; print $1, 4, "*", 0, 0, "*", "*", 0, 0, sq, qv;}'

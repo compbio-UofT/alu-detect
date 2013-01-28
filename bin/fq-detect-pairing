@@ -17,9 +17,9 @@ make_note "using RGID=${RGID:-00}"
 
 if [ $# -eq 1 ] ; then
     make_note "found single reads file; multiplexing"
-    exec 3< <(zc "$1")
+    exec 3< <(exec zc "$1")
 else
-    exec 3< <(merge-files 4:<(zc "$1") 4:<(zc "$2") 2>/dev/null)
+    exec 3< <(exec merge-files 4:<(exec zc "$1") 4:<(exec zc "$2") 2>/dev/null)
 fi
 
 head -n $((8 * $READ_COUNT)) <&3 \
@@ -33,7 +33,7 @@ INPUT_PHRED=${INPUT_PHRED:-$(fq-detect-phred "$TDIR"/reads.fq)}
 
 bowtie2 -x "$BOWTIE2_INDEX" -U "$TDIR"/reads.fq -S "$TDIR"/map.sam \
   --phred${INPUT_PHRED} -p $NCPU
-zc <(sam-header "$TDIR"/map.sam) <(sam-body "$TDIR"/map.sam | sort -s -t ":" -k 1,1n -k 2,2n) \
+zc <(exec sam-header "$TDIR"/map.sam) <(sam-body "$TDIR"/map.sam | sort -s -t ":" -k 1,1n -k 2,2n) \
     >"$TDIR"/map.rsort.sam
 detect-pairing -f -g $RGID -v --cid-parser cid_parser "$TDIR"/map.rsort.sam
 

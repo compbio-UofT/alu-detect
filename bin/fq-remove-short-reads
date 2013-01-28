@@ -12,7 +12,7 @@ BEGIN {
 
     if (length(r[2]) < min_len) {
         if (short_reads_fd) {
-	    print r[1] >short_reads_file
+	    print r[1] "\t" r[2] "\t" r[3] "\t" r[4] >short_reads_file
 	}
 	next;
     }

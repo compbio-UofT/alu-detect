@@ -11,7 +11,7 @@ else
 fi
 
 if which pv >/dev/null 2>&1; then
-    PV=${PV:-"pv -f -i 60"}
+    PV=${PV:-"pv -f -i 10"}
 else
     PV=${PV:-cat}
 fi
@@ -349,7 +349,7 @@ no_sigpipe () {
 # run in fresh bash, thus enabling -e
 #
 set_explicit_errtrap () {
-    trap 'echo $0: line $LINENO: exit code $?' ERR
+    trap 'echo "$0: line $LINENO: exit code $?" >&2' ERR
 }
 
 quote () { 
@@ -383,16 +383,19 @@ double_pipe () {
 #    typeset -f main_pipe alt_pipe splitter joiner >&2
     (
 	coproc { alt_pipe | drain; }
+	alt_pid=$COPROC_PID
 	exec 4>&${COPROC[1]}-
 	exec 3<&${COPROC[0]}-
 
 	splitter 3<&- \
 	    | { main_pipe | drain; } 3<&- 4>&- \
 	    | joiner 4>&- &
+	main_pid=$!
 
 	exec 4>&-
 	exec 3<&-
-	wait
+	wait $main_pid
+	wait $alt_pid
     ) 3<&- 4>&-
 }
 
