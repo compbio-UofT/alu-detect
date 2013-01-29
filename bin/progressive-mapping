@@ -18,7 +18,6 @@ TRIM_STEP=5
 MIN_LEN=20
 MIN_MQV=5
 MAPPER_CMD="bowtie2-sort -x $BOWTIE2_INDEX -p $NCPU -U"
-#export SORT_OPTIONS="-S 10G -s -t : -k 1,1n -k 2,2n"
 export SORT_OPTIONS="-S 10G"
 
 find_my_name_and_dir "${BASH_SOURCE[0]}"
@@ -136,12 +135,10 @@ done
 cat "$TDIR"/map_header_1.sam
 
 merge-recursively -z "$TDIR"/final-*_*.sam.gz "$TDIR"/bad-5p_*.id.gz "$TDIR"/short-5p_*.id.gz \
-    | tee >($ZIP >tmp0.sam.gz) \
     | sed 's/^\([0-9]*:[0-9]*\):/\1\t\1:/' \
-    | tee >($ZIP >tmp1.sam.gz) \
     | join -t "	" -j 1 \
-        <(fq-convert -v ofq=tfq $READS_FILE | sed 's/^\([0-9]*:[0-9]*\):/\1\t\1:/' | tee >($ZIP >tmp2.sam.gz) ) - \
-    | tee >($ZIP >tmp3.sam.gz) | fix-mappings \
+        <(fq-convert -v ofq=tfq $READS_FILE | sed 's/^\([0-9]*:[0-9]*\):/\1\t\1:/') ) - \
+    | fix-mappings \
     | cut -f 6-
 
 [ $DEBUG ] || rm -rf "$TDIR"
