@@ -29,6 +29,7 @@ public:
   int get_mp_st(const Mapping&, int) const;
   bool is_mp_downstream(const Mapping&, int) const;
   vector<Interval<long long int> > get_mp_pos(const Mapping&, int) const;
+  int get_t_len(const Mapping&, int, const Mapping&, int) const;
   bool pair_concordant(const Mapping&, int, const Mapping&, int) const;
 };
 

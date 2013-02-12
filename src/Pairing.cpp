@@ -119,6 +119,22 @@ Pairing::get_mp_pos(const Mapping& mapping, int r_st) const
   return result;
 }
 
+int
+Pairing::get_t_len(const Mapping& mapping0, int r0_st,
+		   const Mapping& mapping1, int r1_st) const
+{
+  int st0 = (r0_st + mapping0.st) % 2;
+  int st1 = (r1_st + mapping1.st) % 2;
+  long long pos_5p_0 = mapping0.dbPos[st0];
+  long long pos_5p_1 = mapping1.dbPos[st1];
+  if (st0 == 0) {
+    return int(pos_5p_1 - pos_5p_0);
+  } else {
+    return int(pos_5p_0 - pos_5p_1);
+  }
+}
+
+
 bool
 Pairing::pair_concordant(const Mapping& mapping0, int r0_st,
 			 const Mapping& mapping1, int r1_st) const
