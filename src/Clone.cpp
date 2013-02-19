@@ -307,7 +307,7 @@ readFastq(istream& istr, void (*fullNameParser)(const string&, Clone&, int&))
 
   // name
   getline(istr, s);
-  if (istr.fail()) {
+  if (istr.bad()) {
     cerr << "error reading Fastq entry" << endl;
     exit(1);
   }
@@ -322,7 +322,7 @@ readFastq(istream& istr, void (*fullNameParser)(const string&, Clone&, int&))
 
   // seq
   getline(istr, s);
-  if (istr.fail() or istr.eof()) {
+  if (istr.bad() or istr.eof()) {
     cerr << "error: could not read sequence from Fastq file" << endl;
     exit(1);
   }
@@ -339,7 +339,7 @@ readFastq(istream& istr, void (*fullNameParser)(const string&, Clone&, int&))
 
   // comment
   getline(istr, s);
-  if (istr.fail() or istr.eof() or s[0] != '+') {
+  if (istr.bad() or istr.eof() or s[0] != '+') {
     cerr << "error: could not read qvString from Fastq file" << endl;
     exit(1);
   }
@@ -347,7 +347,7 @@ readFastq(istream& istr, void (*fullNameParser)(const string&, Clone&, int&))
 
   // qvString
   getline(istr, s);
-  if (istr.fail() or istr.eof()) {
+  if (istr.bad() or istr.eof()) {
     cerr << "error: could not read qvString from Fastq file" << endl;
     exit(1);
   }

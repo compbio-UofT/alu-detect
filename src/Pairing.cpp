@@ -168,7 +168,7 @@ load_pairing(istream& istr, RGDict& rg_dict, RGDict& num_rg_dict, RGRGDict& rg_t
   while (true) {
     string s;
     getline(istr, s);
-    if (istr.fail()) {
+    if (istr.bad()) {
       cerr << "error reading pairing file" << endl;
       exit(1);
     }

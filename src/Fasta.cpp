@@ -12,7 +12,7 @@ readFasta(istream& istr, SQDict& dict, bool parseSeqOffset)
   while (true) {
     string s;
     getline(istr, s);
-    if (istr.fail()) {
+    if (istr.bad()) {
       cerr << "error reading SAM file" << endl;
       exit(1);
     }

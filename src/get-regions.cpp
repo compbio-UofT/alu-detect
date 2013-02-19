@@ -705,7 +705,7 @@ main(int argc, char* argv[])
 
   if (pairing_file.size() > 0) {
     igzstream pairingIn(pairing_file.c_str());
-    if (pairingIn.fail()) { cerr << "error opening pairing file: " << pairing_file << endl; exit(1); }
+    if (pairingIn.bad()) { cerr << "error opening pairing file: " << pairing_file << endl; exit(1); }
     load_pairing(pairingIn, global::rg_dict, global::num_rg_dict, global::rg_to_num_rg_dict);
     pairingIn.close();
   } else {
@@ -714,7 +714,7 @@ main(int argc, char* argv[])
   }
 
   igzstream refFaIn(argv[optind]);
-  if (refFaIn.fail()) {
+  if (refFaIn.bad()) {
     cerr << "error opening reference fasta file: " << argv[optind] << endl;
     exit(1);
   }
@@ -722,7 +722,7 @@ main(int argc, char* argv[])
   refFaIn.close();
 
   igzstream repFaIn(argv[optind + 2]);
-  if (repFaIn.fail()) {
+  if (repFaIn.bad()) {
     cerr << "error opening repeat fasta file: " << argv[optind + 2] << endl;
     exit(1);
   }
@@ -746,12 +746,12 @@ main(int argc, char* argv[])
   }
 
   igzstream refMapIn(argv[optind + 1]);
-  if (refMapIn.fail()) {
+  if (refMapIn.bad()) {
     cerr << "error opening reference mapping file: " << argv[optind + 1] << endl;
     exit(1);
   }
   igzstream repMapIn(argv[optind + 3]);
-  if (repMapIn.fail()) {
+  if (repMapIn.bad()) {
     cerr << "error opening repeat mapping file:" << argv[optind + 3] << endl;
     exit(1);
   }
