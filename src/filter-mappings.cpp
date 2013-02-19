@@ -305,7 +305,7 @@ main(int argc, char* argv[])
 
   if (pairing_file.size() > 0) {
     igzstream pairingIn(pairing_file.c_str());
-    if (pairingIn.bad()) { cerr << "error opening pairing file: " << pairing_file << endl; exit(1); }
+    if (pairingIn.fail()) { cerr << "error opening pairing file: " << pairing_file << endl; exit(1); }
     load_pairing(pairingIn, global::rg_dict, global::num_rg_dict, global::rg_to_num_rg_dict);
     pairingIn.close();
   }
@@ -315,12 +315,12 @@ main(int argc, char* argv[])
   }
 
   igzstream mapIn(optind < argc? argv[optind] : "-");
-  if (mapIn.bad()) {
+  if (mapIn.fail()) {
     cerr << "error opening mappings file: " << argv[optind] << endl;
     exit(1);
   }
 
-  SamMappingSetGen mapGen(&mapIn, cnp, addSQToRefDict, &global::refDict, false);
+  SamMappingSetGen mapGen(&mapIn, cnp, addSQToRefDict, &global::refDict, true);
   pair<string,vector<SamMapping> >* m = mapGen.get_next();
   if (m != NULL) {
     map<string,stringstream*> out_str;

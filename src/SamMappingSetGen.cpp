@@ -11,7 +11,7 @@ getMapping(istream& istr, void (*headerLineHook)(const string&), SQDict* dict, b
   string line;
   while (true) {
     getline(istr, line);
-    if (istr.bad()) {
+    if (istr.fail()) {
       cerr << "error reading SAM mapping" << endl;
       exit(1);
     }

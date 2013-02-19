@@ -190,7 +190,7 @@ main(int argc, char* argv[])
     }
     cerr << "using fasta file: " << fasta_file_name << endl;
     igzstream fasta_file(fasta_file_name.c_str());
-    if (fasta_file.bad()) {
+    if (fasta_file.fail()) {
       cerr << "error opening fasta file" << endl;
       return 1;
     }
@@ -208,7 +208,7 @@ main(int argc, char* argv[])
     }
     cerr << "using bed file: " << bed_file_name << endl;
     igzstream bed_file(bed_file_name.c_str());
-    if (bed_file.bad()) {
+    if (bed_file.fail()) {
       cerr << "error opening bed file" << endl;
       return 1;
     }
