@@ -238,7 +238,7 @@ main(int argc, char* argv[])
     exit(1);
   }
 
-  SamMappingSetGen mapGen(&mapIn, cnp, addSQToRefDict_then_print, &global::refDict, false);
+  SamMappingSetGen mapGen(&mapIn, cnp, addSQToRefDict_then_print, &global::refDict, true);
   pair<string,vector<SamMapping> >* m = mapGen.get_next();
   if (m != NULL) {
     process_mapping_set(m->first, m->second, &cout, &cerr);

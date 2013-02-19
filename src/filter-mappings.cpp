@@ -320,7 +320,7 @@ main(int argc, char* argv[])
     exit(1);
   }
 
-  SamMappingSetGen mapGen(&mapIn, cnp, addSQToRefDict, &global::refDict, false);
+  SamMappingSetGen mapGen(&mapIn, cnp, addSQToRefDict, &global::refDict, true);
   pair<string,vector<SamMapping> >* m = mapGen.get_next();
   if (m != NULL) {
     map<string,stringstream*> out_str;
