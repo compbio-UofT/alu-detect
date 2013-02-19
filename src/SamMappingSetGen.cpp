@@ -9,19 +9,17 @@ SamMapping*
 getMapping(istream& istr, void (*headerLineHook)(const string&), SQDict* dict, bool add_to_dict)
 {
   string line;
-  while (true) {
-    getline(istr, line);
-    if (istr.bad()) {
-      cerr << "error reading SAM mapping" << endl;
-      exit(1);
-    }
-    if (istr.eof())
-      return NULL;
+  while (getline(istr, line)) {
     if (line[0] != '@')
       return new SamMapping(line, dict, add_to_dict);
     if (headerLineHook != NULL)
       headerLineHook(line);
   }
+  if (istr.bad()) {
+    cerr << "error reading SAM mapping" << endl;
+    exit(1);
+  }
+  return NULL;
 }
 
 

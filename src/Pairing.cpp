@@ -165,15 +165,8 @@ operator <<(ostream& ostr, const Pairing& pairing)
 void
 load_pairing(istream& istr, RGDict& rg_dict, RGDict& num_rg_dict, RGRGDict& rg_to_num_rg_dict)
 {
-  while (true) {
-    string s;
-    getline(istr, s);
-    if (istr.bad()) {
-      cerr << "error reading pairing file" << endl;
-      exit(1);
-    }
-    if (istr.eof()) break;
-
+  string s;
+  while (getline(istr, s)) {
     strtk::std_string::token_list_type token_list;
     strtk::split("\t", s, back_inserter(token_list));
     strtk::std_string::token_list_type::iterator itr = token_list.begin();
@@ -209,5 +202,9 @@ load_pairing(istream& istr, RGDict& rg_dict, RGDict& num_rg_dict, RGRGDict& rg_t
     num_rg_dict.insert(pair<string,Pairing>(num_rg, Pairing(tmp)));
     rg_to_num_rg_dict.insert(pair<string,string>(rg_name, num_rg));
     if (global::verbosity > 0) clog << "added RG [" << rg_name << "] with pairing [" << rg_dict[rg_name] << "]" << endl;
+  }
+  if (istr.bad()) {
+    cerr << "error reading pairing file" << endl;
+    exit(1);
   }
 }

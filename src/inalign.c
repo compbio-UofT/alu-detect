@@ -66,7 +66,7 @@ main(int argc, char* argv[])
 
   // reference file
   igzstream refFaIn(argv[1]);
-  if (refFaIn.bad()) {
+  if (!refFaIn) {
     cerr << "error opening reference fasta file: " << argv[1] << endl;
     exit(1);
   }
@@ -111,7 +111,7 @@ main(int argc, char* argv[])
 
   // repeats file
   igzstream repFaIn(argv[2]);
-  if (repFaIn.bad()) {
+  if (!repFaIn) {
     cerr << "error opening repeat fasta file: " << argv[2] << endl;
     exit(1);
   }
@@ -129,7 +129,7 @@ main(int argc, char* argv[])
 
   // clones file
   igzstream cloneFqIn(argv[3]);
-  if (cloneFqIn.bad()) {
+  if (!cloneFqIn) {
     cerr << "error opening clone fastq file: " << argv[3] << endl;
     exit(1);
   }
