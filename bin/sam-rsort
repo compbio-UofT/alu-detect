@@ -10,9 +10,16 @@ import lib_alu_detect_sam as sam
 
 parser = argparse.ArgumentParser(description=sys.argv[0])
 parser.add_argument('-v', '--verbose', action='append_const', const=1, default=[], dest='verbose')
+parser.add_argument('--cid-parser', action='store', dest='cid_parser')
 parser.add_argument('input', action='store', default='-', nargs='?')
 args = parser.parse_args()
 set_log_level(len(args.verbose))
+
+if args.cid_parser:
+    _temp = __import__(args.cid_parser, globals(), locals(), ['cid_parser'])
+    cid_parser = _temp.cid_parser
+else:
+    cid_parser = sam.default_cid_parser
 
 
 in_fd = gzopen(args.input)
@@ -30,12 +37,13 @@ for line in in_fd:
         print line
     else:
         # paired: wait for mate
-        if a[0] in d:
-            print d[a[0]]
+	m = cid_parser(a[0])
+        if m['clone_id'] in d:
+            print d[m['clone_id']]
             print line
-            del d[a[0]]
+            del d[m['clone_id']]
         else:
-            d[a[0]] = line
+            d[m['clone_id']] = line
 
 if len(d) > 0:
     print >> sys.stderr, 'warning: some paired reads missed mate mappings: ' + str(d[d.keys()[0]])
