@@ -244,7 +244,9 @@ get_orig_mappings() {
     fi
     make_note "command to get mappings: $command"
 #    (set +e +o pipefail; eval $command | add-default-rg $rg || true)
-    eval $command | add-default-rg $rg
+    if [ "$rg" ]; then
+	eval $command | add-default-rg -r "$rg" -s "$NGS_NAME"
+    fi
 }
 
 
