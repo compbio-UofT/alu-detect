@@ -24,14 +24,30 @@ find_my_name_and_dir "${BASH_SOURCE[0]}"
 make_temp_dir "$MY_NAME"
 make_note "using TDIR=$TDIR"
 
-if [ -f "$1" ] ; then
-    READS_FILE="$1"
+get_input_reads () {
+    if [ "$PV" ]; then
+	$PV "${input_reads_1[@]}" | zc
+    else
+	exec zc "${input_reads_1[@]}"
+    fi |
+    if [ ${#input_reads_2[@]} -gt 0 ]; then
+	exec merge-files 4:- 4:<(exec zc "${input_reads_2[@]}")
+    else
+	exec cat
+    fi
+}
+
+input_reads_1=($(ls "$1"))
+if [ "$2" ]; then
+    input_reads_2=($(ls "$2"))
+    [ ${#input_reads_1[@]} -eq ${#input_reads_2[@]} ] \
+	|| crash "non matching read files: [${input_reads_1[@]}] vs [${input_reads_2[@]}]"
 else
-    READS_FILE="$TDIR"/reads.fq.gz
-    make_note "copying reads to tmp..."
-    $PV "$@" | zc | $ZIP >"$READS_FILE"
+    input_reads_2=()
 fi
-make_note "using reads file: $READS_FILE"
+
+make_note "using input_reads_1: ${input_reads_1[@]}"
+make_note "using input_reads_2: ${input_reads_2[@]:-}"
 
 PREV_STEP=0
 CRT_STEP=1
@@ -49,15 +65,14 @@ while true ; do
     pids=()
     if [ $CRT_TRIM -eq 0 ] ; then
 	make_note "preparing reads..."
-	$PV "$READS_FILE" | zc >"$TDIR"/pipe-3 &
+	get_input_reads >"$TDIR"/pipe-3 &
 	pids+=($!)
     elif [ $SWITCH_SIDES -eq 1 ] ; then
 	make_note "switching sides; extracting unmapped and badly mapped reads..."
 	merge-recursively -z "$TDIR"/bad-3p_*.id.gz "$TDIR"/short-3p_*.id.gz \
-	    | join -t "	" -j 1 - <(zc $READS_FILE | fq-convert -v ofq=tfq) \
+	    | join -t "	" -j 1 - <(PV= get_input_reads | fq-convert -v ofq=tfq) \
 	    | tawk '{n=split($1,a,":"); a[6]="1"; $1=a[1]; for(i=2;i<=n;i++) $1=$1 ":" a[i]; print}' \
-	    | fq-convert -v ofq=fq \
-	    | fq-trim-reads-relative -v trim_len_${CRT_TRIM_SIDE}=$TRIM_STEP >"$TDIR"/pipe-3 &
+	    | fq-trim-reads-relative -v ofq=fq -v trim_len_${CRT_TRIM_SIDE}=$TRIM_STEP >"$TDIR"/pipe-3 &
 	pids+=($!)
     else
 	make_note "processing previous stage..."
@@ -137,7 +152,7 @@ cat "$TDIR"/map_header_1.sam
 merge-recursively -z "$TDIR"/final-*_*.sam.gz "$TDIR"/bad-5p_*.id.gz "$TDIR"/short-5p_*.id.gz \
     | sed 's/^\([0-9]*:[0-9]*\):/\1\t\1:/' \
     | join -t "	" -j 1 \
-        <(fq-convert -v ofq=tfq $READS_FILE | sed 's/^\([0-9]*:[0-9]*\):/\1\t\1:/') - \
+        <(PV= get_input_reads | fq-convert -v ofq=tfq | sed 's/^\([0-9]*:[0-9]*\):/\1\t\1:/') - \
     | fix-mappings \
     | cut -f 6-
 

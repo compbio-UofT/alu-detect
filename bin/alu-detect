@@ -288,9 +288,9 @@ grep -q "paired=" $PAIRING_FILE || crash "could not determine pairing informatio
 STAGE_NUM=2
 STAGE_NAME="extract discordant reads"
 READS_DISCORDANT=$PREFIX.reads.discordant
-READS_TO_REMAP=$PREFIX.reads.to_remap
+reads_to_remap=$PREFIX.reads.to_remap
 INPUT_FILES="$ORIG_MAPPINGS"
-OUTPUT_FILES="$READS_TO_REMAP.fq.gz $READS_TO_REMAP.stats"
+OUTPUT_FILES="$reads_to_remap.*.[12].fq.gz"
 STATS_FILE=
 stage_command () {
     i=0
@@ -315,8 +315,11 @@ stage_command () {
     done \
 	| fq-trim-illumina-reads -v input_phred=33 \
         | fq-remove-short-paired-reads \
-        | fq-rename-paired-reads-with-len \
-	| tee >($ZIP >$READS_TO_REMAP.fq.gz) | fq-stats >$READS_TO_REMAP.stats
+        | fq-rename-paired-reads-with-len -v ofq=tfq \
+	| sed 's/^\(.........\([0-9]\+\):\([12]\):\)/\2.\3\t\1/' \
+	| split-file-by-field -r --prefix $reads_to_remap. --suffix .fq.gz \
+	    --cmd "fq-convert -v ofq=fq | $ZIP" \
+	    -d <(tawk '{print $2 ".1", $1 ".1"; print $2 ".2", $1 ".2";}' <$pairing_file)
 }
 run_stage
 
@@ -330,11 +333,11 @@ run_stage
 STAGE_NUM=4
 STAGE_NAME="progressive mapping to reference"
 MAPPINGS_TO_REFERENCE=$PREFIX.map.to_reference
-INPUT_FILES="$READS_TO_REMAP.fq.gz"
+INPUT_FILES="$reads_to_remap.*.[12].fq.gz"
 OUTPUT_FILES="$MAPPINGS_TO_REFERENCE.sam.gz $MAPPINGS_TO_REFERENCE.stats"
 STATS_FILE=
 stage_command() {
-    progressive-mapping $READS_TO_REMAP.fq.gz \
+    progressive-mapping "$reads_to_remap.*.1.fq.gz" "$reads_to_remap.*.2.fq.gz" \
 	| tee >($ZIP >$MAPPINGS_TO_REFERENCE.sam.gz) | samtools view -Su - | samtools flagstat - >$MAPPINGS_TO_REFERENCE.stats
 }
 run_stage
