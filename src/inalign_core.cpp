@@ -6,6 +6,7 @@
 #include <cstring>
 #include <iostream>
 #include <iomanip>
+#include <queue>
 
 #include "globals.hpp"
 #include "Clone.hpp"
@@ -1213,6 +1214,7 @@ run(const Contig& refContig,
   }
 
   //int total_clones = n_pairs;
+  queue<int> evidence_pair_ids;
   vector<int> total_clones_supporting_insertion(1 + n_repeats, int(0));
   vector<int> total_reads_spanning_insert_start(1 + n_repeats, int(0));
   vector<int> total_reads_spanning_insert_end(1 + n_repeats, int(0));
@@ -1249,6 +1251,7 @@ run(const Contig& refContig,
 	{
 	  pe[pair_id].repeat_support[1 + rep_id] = 1;
 	  total_clones_supporting_insertion[1 + rep_id]++;
+	  evidence_pair_ids.push(pair_id);
 
 	  for (int k = 0; k < 2; k++) {
 	    nip = (pe[pair_id].left_read + k) % 2;
@@ -1673,6 +1676,11 @@ run(const Contig& refContig,
   if (sum_scores_null_hypothesis[1 + rep_id] <= 0)
     sum_scores_null_hypothesis[1 + rep_id] = 0;
 
+  string supporting_clones="";
+  while (evidence_pair_ids.size() > 0) {
+	  supporting_clones += *pe[evidence_pair_ids.front()].clone_name;
+	  evidence_pair_ids.pop();
+  }
   // notes to self:
   //   base_offset: 1-based, absolute
   //   overlap_start/end: 1-based, off base_offset
@@ -1709,5 +1717,5 @@ run(const Contig& refContig,
   } else {
     out_str << '.';
   }
-  out_str << '\n';
+  out_str << '\t' << supporting_clones << '\n';
 }
