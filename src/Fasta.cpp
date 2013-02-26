@@ -40,7 +40,12 @@ readFasta(istream& istr, SQDict& dict, bool parseSeqOffset)
       }
       if (istr.eof())
 	break;
-      name = s.substr(1);
+      int stop = s.find(" ")-1;
+      if (stop > 0) {
+      	name = s.substr(1,stop);
+      } else {
+      	name = s.substr(1);
+      }
       buffer.clear();
     } else {
       buffer.insert(buffer.end(), s.begin(), s.end());
