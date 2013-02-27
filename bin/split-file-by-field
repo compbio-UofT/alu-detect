@@ -1,0 +1,71 @@
+#!/usr/bin/env python
+
+import sys
+import argparse
+import gzip
+import subprocess
+from lib_alu_detect import *
+
+parser = argparse.ArgumentParser(description='Split file into several files based on a given field.')
+parser.add_argument('-v', '--verbose', action='append_const', const=1, dest='verbose',
+                    help='icrease verbosity')
+parser.add_argument('-t', '--delim', action='store', dest='delim', default='\t',
+                    help='field delimiter')
+parser.add_argument('-k', '--key', action='store', dest='key', type=int, default=1,
+                    help='key field')
+parser.add_argument('-r', '--remove', action='store_true', dest='remove', default=False,
+                    help='remove key field')
+parser.add_argument('-p', '--prefix', action='store', dest='prefix', default='',
+                    help='prefix filename')
+parser.add_argument('-s', '--suffix', action='store', dest='suffix', default='',
+                    help='suffix filename')
+parser.add_argument('-d', '--key-dict', action='store', dest='key_dict', default='',
+                    help='external dictionary: <key> -> <filename>')
+parser.add_argument('-c', '--cmd', action='store', dest='cmd', default='',
+                    help='pass output through command')
+parser.add_argument('input', action='store', nargs='?',
+                    help='if not given, read stdin')
+args = parser.parse_args()
+set_log_level(len(args.verbose))
+
+if args.input:
+    input_fd = gzopen(args.input)
+else:
+    input_fd = gzopen('-')
+
+if args.key_dict:
+    key_dict = dict()
+    key_dict_file = gzopen(args.key_dict)
+    for line in key_dict_file:
+        line = line.strip().split()
+        key_dict[line[0]] = line[1]
+    gzclose(key_dict_file)
+
+file_dict = dict()
+subprocess_dict = dict()
+for line in input_fd:
+    key = line.strip().split(args.delim)[args.key - 1]
+    if key not in file_dict:
+        if not args.key_dict:
+            file_name = args.prefix + key + args.suffix
+        else:
+            file_name = args.prefix + key_dict[key] + args.suffix
+        note('new key:[' + key + '] file:[' + file_name + ']')
+        file_dict[key] = open(file_name, 'w')
+        if args.cmd:
+            subprocess_dict[key] = subprocess.Popen(['/bin/bash', '-c', args.cmd],
+                                                    stdin=subprocess.PIPE,
+                                                    stdout=file_dict[key],
+                                                    close_fds=True)
+    if args.remove:
+        line = args.delim.join(line.split(args.delim)[:args.key - 1] +
+                               line.split(args.delim)[args.key:])
+    if args.cmd:
+        subprocess_dict[key].stdin.write(line)
+    else:
+        file_dict[key].write(line)
+
+for key in file_dict.keys():
+    if args.cmd:
+        subprocess_dict[key].stdin.close()
+    file_dict[key].close()
