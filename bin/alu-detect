@@ -242,11 +242,12 @@ get_orig_mappings() {
     if (set +o pipefail; zc $file | head -n 1 | grep -q "coordinate") || [ "${RSORT:-}" ]; then
 	command="$command | sam-rsort"
     fi
-    make_note "command to get mappings: $command"
-#    (set +e +o pipefail; eval $command | add-default-rg $rg || true)
     if [ "$rg" ]; then
-	eval $command | add-default-rg -r "$rg" -s "$NGS_NAME"
+	command="$command | add-default-rg -r \"$rg\" -s \"$NGS_NAME\""
     fi
+    make_note "command to get mappings: $command"
+    eval $command
+#    (set +e +o pipefail; eval $command | add-default-rg $rg || true)
 }
 
 
