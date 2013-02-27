@@ -359,13 +359,16 @@ quote () {
 force_errexit () {
 #    typeset | grep -vE "^(UID|EUID|PPID|BASH[A-Z_]*|SHELLOPTS)=" | grep -n '^' >&2
     bash <(
-	typeset | grep -vE "^(UID|EUID|PPID|BASH[A-Z_]*|SHELLOPTS)="
-	echo "set_explicit_errtrap"
-	echo "BASH_XTRACEFD=\${BASH_XTRACEFD:-}"
-	echo "set -eEux -o pipefail"
-	for arg in "$@"; do
-	    echo -n "$(quote "$arg") ";
-	done
+	{
+	    typeset | grep -vE "^(UID|EUID|PPID|BASH[A-Z_]*|SHELLOPTS)="
+	    echo "set_explicit_errtrap"
+	    echo "BASH_XTRACEFD=\${BASH_XTRACEFD:-}"
+	    echo "set -eEux -o pipefail"
+	    for arg in "$@"; do
+		echo -n "$(quote "$arg") ";
+	    done 
+	} |
+	tee >(grep -n '^' >&$BASH_XTRACEFD)
     )
 }
 
