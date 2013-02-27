@@ -1,11 +1,12 @@
-#!/bin/bash extend-hashbang
-#python
+#!/usr/bin/env python
 
 import sys
 import argparse
 import functools
 from lib_alu_detect import *
 import lib_alu_detect_sam as sam
+import signal
+signal.signal(signal.SIGPIPE, signal.SIG_DFL)
 
 
 parser = argparse.ArgumentParser(description=sys.argv[0])
