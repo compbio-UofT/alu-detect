@@ -287,39 +287,50 @@ grep -q "paired=" $PAIRING_FILE || crash "could not determine pairing informatio
 #
 STAGE_NUM=2
 STAGE_NAME="extract discordant reads"
-READS_DISCORDANT=$PREFIX.reads.discordant
 reads_to_remap=$PREFIX.reads.to_remap
 INPUT_FILES="$ORIG_MAPPINGS"
-OUTPUT_FILES="$reads_to_remap.*.[12].fq.gz"
+if [ "${SINGLE_READS_TO_REMAP:-}" ]; then
+    OUTPUT_FILES="$reads_to_remap.fq.gz"
+else
+    OUTPUT_FILES=$(for rg in $(cut -f 1 $PAIRING_FILE); do echo "$reads_to_remap.$rg."{1,2}".fq.gz"; done)
+fi
 STATS_FILE=
 stage_command () {
     i=0
     while [ $i -lt ${#orig_mappings[@]} ]; do
-	add_dummy_pairs=1 get_orig_mappings $i \
-	    | add-extra-sam-flags -N 4 -l $PAIRING_FILE \
-	    | filter-mappings -N 4 -l $PAIRING_FILE 3>/dev/null \
-		-f 0x10000,0x10000:\&3 \
-		\
-		-f 0x10000,0/0x6004:\&3 \
-		-f 0x10000,0:\&1 \
-		-f 0/0x6004,0x10000:\&3 \
-		-f 0,0x10000:\&1 \
-		\
-		-f 0x4,0:\&1 \
-		-f 0,0x4:\&1 \
-		-f 0/0x8000,0:\&1 \
-		-f 0/0x6000,/0x6000:\&3 \
-		-f 0,0:\&1 \
-	    | sam-to-fq -s -l $PAIRING_FILE
+	add_dummy_pairs=1 get_orig_mappings $i |
+	add-extra-sam-flags -N 4 -l $PAIRING_FILE |
+	filter-mappings -N 4 -l $PAIRING_FILE 3>/dev/null \
+	    -f 0x10000,0x10000:\&3 \
+	    \
+	    -f 0x10000,0/0x6004:\&3 \
+	    -f 0x10000,0:\&1 \
+	    -f 0/0x6004,0x10000:\&3 \
+	    -f 0,0x10000:\&1 \
+	    \
+	    -f 0x4,0:\&1 \
+	    -f 0,0x4:\&1 \
+	    -f 0/0x8000,0:\&1 \
+	    -f 0/0x6000,/0x6000:\&3 \
+	    -f 0,0:\&1 |
+	sam-to-fq -s -l $PAIRING_FILE
 	let i+=1
-    done \
-	| fq-trim-illumina-reads -v input_phred=33 \
-        | fq-remove-short-paired-reads \
-        | fq-rename-paired-reads-with-len -v ofq=tfq \
-	| sed 's/^\(.........\([0-9]\+\):\([12]\):\)/\2.\3\t\1/' \
-	| split-file-by-field -r --prefix $reads_to_remap. --suffix .fq.gz \
-	    --cmd "fq-convert -v ofq=fq | $ZIP" \
-	    -d <(tawk '{print $2 ".1", $1 ".1"; print $2 ".2", $1 ".2";}' <$pairing_file)
+    done |
+    fq-trim-illumina-reads -v input_phred=33 |
+    fq-remove-short-paired-reads |
+    fq-rename-paired-reads-with-len |
+    {
+	if [ "${SINGLE_READS_TO_REMAP:-}" ]; then
+	    $ZIP >$reads_to_remap.fq.gz
+	else
+	    fq-convert -v ofq=tfq |
+	    sed 's/^\(.........\([0-9]\+\):\([12]\):\)/\2.\3\t\1/' |
+	    split-file-by-field -r --prefix $reads_to_remap. --suffix .fq.gz \
+		--cmd "fq-convert -v ofq=fq | $ZIP" \
+		-d <(tawk '{print $2 ".1", $1 ".1"; print $2 ".2", $1 ".2";}' \
+			<$PAIRING_FILE)
+	fi
+    }
 }
 run_stage
 
@@ -333,12 +344,22 @@ run_stage
 STAGE_NUM=4
 STAGE_NAME="progressive mapping to reference"
 MAPPINGS_TO_REFERENCE=$PREFIX.map.to_reference
-INPUT_FILES="$reads_to_remap.*.[12].fq.gz"
-OUTPUT_FILES="$MAPPINGS_TO_REFERENCE.sam.gz $MAPPINGS_TO_REFERENCE.stats"
+if [ "${SINGLE_READS_TO_REMAP:-}" ]; then
+    INPUT_FILES="$reads_to_remap.fq.gz"
+else
+    INPUT_FILES=$(for rg in $(cut -f 1 $PAIRING_FILE); do echo "$reads_to_remap.$rg."{1,2}".fq.gz"; done)
+fi 
+OUTPUT_FILES="$MAPPINGS_TO_REFERENCE.sam.gz"
 STATS_FILE=
 stage_command() {
-    progressive-mapping "$reads_to_remap.*.1.fq.gz" "$reads_to_remap.*.2.fq.gz" \
-	| tee >($ZIP >$MAPPINGS_TO_REFERENCE.sam.gz) | samtools view -Su - | samtools flagstat - >$MAPPINGS_TO_REFERENCE.stats
+    if [ "${SINGLE_READS_TO_REMAP:-}" ]; then
+	progressive-mapping "$reads_to_remap.fq.gz"
+    else
+	progressive-mapping "$reads_to_remap.*.1.fq.gz" "$reads_to_remap.*.2.fq.gz"
+    fi |
+    tee >($ZIP >$MAPPINGS_TO_REFERENCE.sam.gz) |
+    samtools view -Su - |
+    samtools flagstat - >$MAPPINGS_TO_REFERENCE.stats
 }
 run_stage
 

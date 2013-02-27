@@ -455,6 +455,8 @@ Variables which affect alu-detect are:
 - XTRACE : save bash xtrace to the given file (use "XTRACE=/dev/fd/2" to save it
   to stderr)
 
+- SINGLE_READS_TO_REMAP : do not split reads.to_remap by rg
+
 
 Sample command lines include:
 
