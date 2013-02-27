@@ -1,6 +1,5 @@
 #!/bin/bash
-. $(which lib.alu-detect.sh)
-#set -x
+. lib.alu-detect.sh
 
 if [ $# -lt 1 ] ; then
   echo "To use gen-file, script must start with:" >&2

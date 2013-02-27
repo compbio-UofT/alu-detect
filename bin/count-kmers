@@ -1,5 +1,6 @@
-#!/bin/bash extend-hashbang
-#python
+#!/usr/bin/env python
+import signal
+signal.signal(signal.SIGPIPE, signal.SIG_DFL)
 
 import sys
 import argparse

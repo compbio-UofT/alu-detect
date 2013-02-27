@@ -1,7 +1,6 @@
 #!/bin/bash
-. $(which lib.alu-detect.sh)
+. lib.alu-detect.sh
 set -e
-#set -x
 
 calls_truth_pairs=($(echo "$CALLS_TRUTH_PAIRS" | tr ';' ' '))
 calls=()

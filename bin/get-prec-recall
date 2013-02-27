@@ -1,5 +1,5 @@
 #!/bin/bash
-. $(which lib.alu-detect.sh)
+. lib.alu-detect.sh
 
 SCALE=${SCALE:-6}
 [ -z "${TRUTH_LEN:-}" ] && TRUTH_LEN=$(wc -l <"$TRUTH")

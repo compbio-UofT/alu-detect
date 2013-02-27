@@ -1,5 +1,5 @@
 #!/bin/bash
-. $(which lib.alu-detect.sh)
+. lib.alu-detect.sh
 
 echo "Using reference: $REF_FA" >&2
 
