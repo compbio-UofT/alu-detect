@@ -38,7 +38,7 @@ get_input_reads () {
 }
 
 input_reads_1=($(ls $1))
-if [ "$2" ]; then
+if [ "${2:-}" ]; then
     input_reads_2=($(ls $2))
     [ ${#input_reads_1[@]} -eq ${#input_reads_2[@]} ] \
 	|| crash "non matching read files: [${input_reads_1[@]}] vs [${input_reads_2[@]}]"
