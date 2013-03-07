@@ -1,0 +1,41 @@
+#!/bin/bash
+#
+# Wrapper: set BASE_DIR, PATH, and AWKPATH
+#
+set -eEu -o pipefail
+this=${BASH_SOURCE[0]}
+while [ -h "$this" ]; do this=$(readlink "$this"); done
+export BASE_DIR=$(cd -P "$(dirname "$this")"; pwd)
+source "$BASE_DIR"/bin/lib.common.sh
+add_to_path "$BASE_DIR"/bin PATH
+export AWKPATH=${AWKPATH:-}
+add_to_path "$BASE_DIR"/bin AWKPATH
+source lib.alu-detect.sh
+
+make_note "$(basename "$this") v$(cat $BASE_DIR/VERSION) (git:$($BASE_DIR/get_git_version)) installed in $BASE_DIR"
+
+
+prog_list=(setup add-ref list-ref del-ref make-fake-ref detect)
+
+usage () {
+    echo "Use: $(basename "$this") <command> [options]"
+    echo "Commands:"
+    for f in ${prog_list[@]}; do
+	echo "    $f"
+    done
+}
+
+if [ $# -eq 0 ]; then
+    usage
+    exit
+fi
+
+for f in ${prog_list[@]}; do
+    if [[ "$1" =~ $f* ]]; then
+	shift
+	exec $f "$@"
+    fi
+done
+echo "$1: command not found" >&2
+usage >&2
+exit 1

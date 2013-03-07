@@ -1,6 +1,25 @@
 #!/bin/bash
-. lib.alu-detect.sh
-set -eEux -o pipefail
+source lib.alu-detect.sh
+set -eEu -o pipefail
+
+data_dir=$BASE_DIR/data
+
+usage () {
+    echo "Use: $(basename $0) <ref_name> [ <fake_ref_name> ]"
+}
+
+if [ $# -ne 1 ] && [ $# -ne 2 ]; then
+    usage
+    exit
+fi
+
+[[ "$1" =~ ^[[:alnum:]_-]*$ ]] || crash "illegal character in reference name [$1]"
+[ $# -eq 1 ] || [[ "$2" =~ ^[[:alnum:]_-]*$ ]] ||
+crash "illegal character in reference name [$2]"
+
+set_real_and_fake_ref_var_names $1 ${2:-}
+check_files_readable "$real_ref_fa" "$real_ref_fai" \
+    "$real_ref_bt2_idx".{{1..4},rev.{1..2}}.bt2 "$real_ref_alus_bed"
 
 
 START_STAGE=${START_STAGE:-1}
@@ -8,38 +27,16 @@ END_STAGE=${END_STAGE:-100}
 make_note "using START_STAGE=$START_STAGE and END_STAGE=$END_STAGE"
 
 
-BASE_DIR=$(dirname $(readlink -e $(which alu-detect 2>/dev/null)) | sed 's/\/bin$//')
-[ "$BASE_DIR" ] || crash "could not find alu-detect installation folder"
-
-GLOBAL_SETTINGS=$BASE_DIR/settings/global
-. "$GLOBAL_SETTINGS" || crash "missing global settings file: $GLOBAL_SETTINGS"
-
-REAL_REF_NAME=${1:-}
-[ "$REAL_REF_NAME" ] || read -p "Enter reference name: " -e REAL_REF_NAME
-REAL_REF_SETTINGS=$BASE_DIR/settings/ref.$REAL_REF_NAME
-[ -r "$REAL_REF_SETTINGS" ] || crash "could not find settings for reference: $REAL_REF_NAME"
-
-FAKE_REF_NAME=${2:-}
-[ "$FAKE_REF_NAME" ] || read -p "Enter fake reference name: " -i "fake_$REAL_REF_NAME" -e FAKE_REF_NAME
-FAKE_REF_SETTINGS=$BASE_DIR/settings/ref.$FAKE_REF_NAME
-[ ! -r "$FAKE_REF_SETTINGS" ] || crash "fake reference file exists: $FAKE_REF_SETTINGS"
-
-. "$REAL_REF_SETTINGS"
-REAL_REF_FA=$REF_FA
-REAL_CHROMINFO=$CHROMINFO
-REAL_ALUS_BED=$ALUS_BED
-
 #
 # step 1: annotate tsd-s
 #
 STAGE_NUM=1
 STAGE_NAME="annotate tsd-s in reference alus"
-REAL_ALUS_TSD_BED=$BASE_DIR/data/alus.tsd.$REAL_REF_NAME.bed.gz
-INPUT_FILES="$REAL_REF_FA $REAL_ALUS_BED"
-OUTPUT_FILES="$REAL_ALUS_TSD_BED"
-STATS_FILE=
+INPUT_FILES="$real_ref_fa $real_ref_alus_bed"
+OUTPUT_FILES="$real_ref_alus_tsd_bed"
 stage_command() {
-    tsd-search -N $NCPU "$REAL_REF_FA" "$REAL_ALUS_BED" | $ZIP >"$REAL_ALUS_TSD_BED"
+    tsd-search -N $NCPU "$real_ref_fa" "$real_ref_alus_bed" |
+    $ZIP >"$real_ref_alus_tsd_bed"
 }
 run_stage
 
@@ -48,20 +45,17 @@ run_stage
 #
 STAGE_NUM=2
 STAGE_NAME="select alus to delete"
-REAL_DELETIONS_BED=$BASE_DIR/data/deletions.$REAL_REF_NAME.to.$FAKE_REF_NAME.bed
-REAL_ALUS_TO_REMOVE_BED=$BASE_DIR/data/alus.to-remove.$REAL_REF_NAME.to.$FAKE_REF_NAME.bed
-INPUT_FILES="$REAL_ALUS_TSD_BED"
-OUTPUT_FILES="$REAL_DELETIONS_BED $REAL_ALUS_TO_REMOVE_BED"
-STATS_FILE=
+INPUT_FILES="$real_ref_alus_tsd_bed"
+OUTPUT_FILES="$real_deletions_bed $real_alus_to_remove_bed"
 stage_command() {
-    zc "$REAL_ALUS_TSD_BED" \
-	| grep AluY \
-	| filter-length 310 \
-	| awk '$10>0 && $10==$12' \
-	| tawk '$6=="+" && $9==0 && $11<20 {$3+=$11; print} $6=="-" && $11==0 && $9<20 {$2-=$9; print}' \
-	| cut -f 1-8,10 \
-	| tee-p "$REAL_ALUS_TO_REMOVE_BED" \
-	| tawk '{$3+=$9} 1' >"$REAL_DELETIONS_BED"
+    zc "$real_ref_alus_tsd_bed" |
+    grep AluY |
+    filter-length 310 |
+    awk '$10>0 && $10==$12' |
+    tawk '$6=="+" && $9==0 && $11<20 {$3+=$11; print} $6=="-" && $11==0 && $9<20 {$2-=$9; print}' |
+    cut -f 1-8,10 |
+    tee-p "$real_alus_to_remove_bed" |
+    tawk '{$3+=$9} 1' >"$real_deletions_bed"
 }
 run_stage
 
@@ -70,13 +64,11 @@ run_stage
 #
 STAGE_NUM=3
 STAGE_NAME="compute alu targets"
-FAKE_TARGETS_BED=$BASE_DIR/data/targets.$FAKE_REF_NAME.bed
-INPUT_FILES="$REAL_ALUS_TO_REMOVE_BED"
-OUTPUT_FILES="$FAKE_TARGETS_BED"
-STATS_FILE=
+INPUT_FILES="$real_alus_to_remove_bed"
+OUTPUT_FILES="$fake_targets_bed"
 stage_command() {
-    tawk '{$2-=$9+1; $3+=$9+1} 1' "$REAL_ALUS_TO_REMOVE_BED" \
-	| real-to-fake "$REAL_DELETIONS_BED" - >"$FAKE_TARGETS_BED"
+    tawk '{$2-=$9+1; $3+=$9+1} 1' "$real_alus_to_remove_bed" |
+    real-to-fake "$real_deletions_bed" - >"$fake_targets_bed"
 }
 run_stage
 
@@ -85,12 +77,11 @@ run_stage
 #
 STAGE_NUM=4
 STAGE_NAME="build fake reference fasta file"
-FAKE_REF_FA=$BASE_DIR/data/$FAKE_REF_NAME.fa
-INPUT_FILES="$REAL_REF_FA $REAL_DELETIONS_BED"
-OUTPUT_FILES="$FAKE_REF_FA"
-STATS_FILE=
+INPUT_FILES="$real_ref_fa $real_deletions_bed"
+OUTPUT_FILES="$fake_ref_fa"
 stage_command() {
-    make-fake-ref-fasta "$REAL_DELETIONS_BED" "$REAL_REF_FA" >"$FAKE_REF_FA"
+    make-fake-ref-fasta "$real_deletions_bed" "$real_ref_fa" >"$fake_ref_fa"
+    samtools faidx "$fake_ref_fa"
 }
 run_stage
 
@@ -99,12 +90,10 @@ run_stage
 #
 STAGE_NUM=5
 STAGE_NAME="build bowtie2 indexes for fake reference"
-FAKE_BOWTIE2_INDEX=$BASE_DIR/data/$FAKE_REF_NAME
-INPUT_FILES="$FAKE_REF_FA"
-OUTPUT_FILES="$FAKE_BOWTIE2_INDEX.1.bt2"
-STATS_FILE=
+INPUT_FILES="$fake_ref_fa"
+OUTPUT_FILES="$fake_ref_bt2_idx.1.bt2"
 stage_command() {
-    bowtie2-build "$FAKE_REF_FA" "$FAKE_BOWTIE2_INDEX"
+    bowtie2-build "$fake_ref_fa" "$fake_ref_bt2_idx"
 }
 run_stage
 
@@ -113,12 +102,11 @@ run_stage
 #
 STAGE_NUM=6
 STAGE_NAME="annotate repeats in fake reference"
-INPUT_FILES="$FAKE_REF_FA"
-OUTPUT_FILES="$FAKE_REF_FA.out"
-STATS_FILE=
+INPUT_FILES="$fake_ref_fa"
+OUTPUT_FILES="$fake_ref_fa.out"
 stage_command() {
     pushd ${TMPDIR:-/tmp} 2>/dev/null
-    RepeatMasker -pa $NCPU -s "$FAKE_REF_FA"
+    RepeatMasker -pa $NCPU -s "$fake_ref_fa"
     popd 2>/dev/null
 }
 run_stage
@@ -128,11 +116,9 @@ run_stage
 #
 STAGE_NUM=7
 STAGE_NAME="add fake reference to alu-detect"
-INPUT_FILES="$FAKE_REF_FA $FAKE_BOWTIE2_INDEX.1.bt2 $FAKE_REF_FA.out"
-OUTPUT_FILES="$FAKE_REF_SETTINGS"
-STATS_FILE=
+INPUT_FILES="$fake_ref_fa $fake_ref_bt2_idx.1.bt2 $fake_ref_fa.out"
+OUTPUT_FILES="$fake_ref_alus_bed"
 stage_command() {
-    REF_FA=$FAKE_REF_FA BOWTIE2_INDEX=$FAKE_BOWTIE2_INDEX ALUS_BED= CHROM_FA_OUT=$FAKE_REF_FA.out \
-	$BASE_DIR/setup $FAKE_REF_NAME
+    $BASE_DIR/alu-detect add-ref -o $fake_ref_fa.out $fake_ref_name
 }
 run_stage

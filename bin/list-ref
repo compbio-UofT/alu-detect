@@ -1,0 +1,27 @@
+#!/bin/bash
+source lib.alu-detect.sh
+set -eEu -o pipefail
+
+data_dir=$BASE_DIR/data
+
+usage () {
+    echo "Use: $(basename $0)"
+}
+
+if [ $# -ne 0 ]; then
+    usage >&2
+    exit
+fi
+
+for f in "$data_dir"/ref.*.fa; do
+    ref_name=${f%.fa}
+    ref_name=${ref_name##*.}
+    set_ref_var_names $ref_name
+    have_all=1
+    for g in "$ref_fa" "$ref_fai" "$ref_bt2_idx".{{1..4},rev.{1,2}}.bt2 "$ref_alus_bed"; do
+	[ -r "$g" ] || { have_all= ; break; }
+    done
+    if [ $have_all ]; then
+	echo $ref_name
+    fi
+done

@@ -1,0 +1,40 @@
+#!/bin/bash
+source lib.alu-detect.sh
+set -eEu -o pipefail
+
+data_dir=$BASE_DIR/data
+
+usage () {
+    echo "Use: $(basename $0) [ -f ] <ref_name>"
+}
+
+cl_force=
+OPTIND=1
+while getopts "f" OPT "$@"; do
+    case $OPT in
+	f)
+	    cl_force=1
+	    ;;
+    esac
+done
+shift $(($OPTIND - 1))
+
+
+if [ $# -ne 1 ]; then
+    usage >&2
+    exit
+fi
+
+ref_name=$1
+set_ref_var_names $ref_name
+
+for f in "$ref_fa" "$ref_fai" "$ref_bt2_idx".{{1..4},rev.{1,2}}.bt2 "$ref_alus_bed"; do
+    if [ -e "$f" ]; then
+	if [ -L "$f" ] || [ $cl_force ]; then
+	    make_note "[$f]: removing"
+	    rm "$f"
+	else
+	    make_note "[$f]: not a symlink; to remove use -f"
+	fi
+    fi
+done

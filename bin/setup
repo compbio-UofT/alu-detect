@@ -1,0 +1,102 @@
+#!/bin/bash
+source lib.alu-detect.sh
+set -eEu -o pipefail
+
+data_dir=$BASE_DIR/data
+[ -d $data_dir ] || mkdir -p $data_dir
+
+usage () {
+    echo "Use: $(basename $0) [ <alus.fa> ]"
+}
+
+if [ $# -ne 0 ] && [ $# -ne 1 ]; then
+    usage
+    exit
+fi
+
+# check input
+[ $# -eq 0 ] || [ -r "$1" ] || crash "fasta file not found [$1]"
+
+add_path_dependency() {
+    label=$1
+    check_command=$2
+    extra_path=
+
+    while ! PATH=$extra_path${extra_path:+:}$PATH eval $check_command; do
+	echo "$label not found"
+	read -p "Enter $label path: " -e extra_path
+	if [ $(ls -d1 $extra_path 2>/dev/null | wc -l) -ne 1 ]; then
+	    extra_path=
+	    continue
+	fi
+	extra_path=$(ls -d1 $extra_path)
+	extra_path=$(readlink -f "$extra_path" || true)
+    done
+    [ ! "$extra_path" ] || echo "$extra_path" >>"$extra_paths_file"
+}
+
+#
+# first, set up extra paths
+#
+if [ -r "$extra_paths_file" ]; then
+    echo "file exists [$extra_paths_file]; to regenerate it, remove it, then rerun setup"
+else
+    add_path_dependency "python2.6+" "cmd_exists python && [ \"\$(python --version 2>&1 | cut -d '.' -f 2)\" -ge 6 ]"
+    add_path_dependency "samtools" "cmd_exists samtools"
+    add_path_dependency "bedtools" "cmd_exists bedtools"
+    add_path_dependency "bowtie2" "cmd_exists bowtie2"
+    add_path_dependency "gmapper" "cmd_exists gmapper-ls"
+    add_path_dependency "RepeatMasker" "cmd_exists RepeatMasker"
+    setup_extra_paths
+fi
+
+#
+# next, set up alu consensus sequences
+#
+if [ -r "$alus_fa" ]; then
+    echo "file exists [$alus_fa]; to regenerate it, remove it, then rerun setup"
+else
+    if [ $# -eq 0 ]; then
+	echo "Need to build list of Alu consensus sequences"
+
+	find_my_name_and_dir "$(which RepeatMasker)"
+	REPEATMASKER_DIR=$MY_DIR
+
+	echo -n "Generating list of alu consensus sequences... "
+	"$REPEATMASKER_DIR"/util/queryRepeatDatabase.pl -species homo -class SINE | 
+	grep-fasta "^>Alu[JSY][a-z0-9]*#" | 
+	sed 's/^\(.*\)#SINE\/Alu/\1/' | 
+	sed 's/^\(.*\)RepbaseID:/\1/' | 
+	sed 's/^\(.*\)ALU/\1/' | 
+	awk '/^>/ {if (substr($2,1,3)=="Alu"&&$2!=substr($1,2)) $1=$1"/"substr($2,4); print $1} /^[^>]/' >"$alus_fa"
+
+	if [ -z "$(head -n 1 $alus_fa)" ]; then
+	    echo "oops"
+	    cat <<EOF
+Your RepeatMasker installation does not include the Repbase libraries,
+which are needed to derive the Alu consensus sequences. The libraries
+can be downloaded from http://www.girinst.org/server/RepBase/index.php
+EOF
+	    rm "$alus_fa"
+	    exit 1
+	else
+	    echo "done"
+	fi
+    else
+	# fasta file given on command line
+	find_my_name_and_dir "$1"
+	ln -s "$MY_DIR/$MY_NAME" "$alus_fa"
+    fi
+fi
+
+#
+# finally, set up alu consensus sequences with hidden polya
+#
+if [ -r "$alus_no_polya_fa" ]; then
+    echo "file exists [$alus_no_polya_fa]; to regenerate it, remove it, then rerun setup"
+else
+    echo "Building list with hidden poly-A streches"
+    hide-polya <"$alus_fa" >"$alus_no_polya_fa"
+fi
+
+make_note "setup complete"

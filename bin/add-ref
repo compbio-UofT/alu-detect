@@ -1,0 +1,135 @@
+#!/bin/bash
+source lib.alu-detect.sh
+set -eEu -o pipefail
+
+data_dir=$BASE_DIR/data
+[ -d $data_dir ] || mkdir -p $data_dir
+
+usage () {
+    echo "Use: $(basename $0) [ -f <ref.fa> ] [ -x <ref_bt2_idx> ] [ -a <ref_alus.bed> ] [ -o <ref_chrom_fa_out> ] <ref_name>"
+}
+
+cl_ref_fa=
+cl_ref_bt2_idx=
+cl_ref_alus_bed=
+cl_ref_rm_out=
+OPTIND=1
+while getopts "f:x:a:o:" OPT "$@"; do
+    case $OPT in
+	f)
+	    cl_ref_fa=$OPTARG
+	    ;;
+	x)
+	    cl_ref_bt2_idx=$OPTARG
+	    ;;
+	a)
+	    cl_ref_alus_bed=$OPTARG
+	    ;;
+	o)
+	    cl_ref_rm_out=$OPTARG
+	    ;;
+    esac
+done
+shift $(($OPTIND - 1))
+
+if [ $# -ne 1 ]; then
+    usage
+    exit
+fi
+
+# check input
+[[ "$1" =~ ^[[:alnum:]_-]*$ ]] || crash "illegal character in reference name [$1]"
+[ ! "$cl_ref_fa" ] || check_files_readable "$cl_ref_fa"
+[ ! "$cl_ref_alus_bed" ] || check_files_readable "$cl_ref_alus_bed"
+[ ! "$cl_ref_bt2_idx" ] || check_files_readable "$cl_ref_bt2_idx".{{1..4},rev.{1,2}}.bt2
+[ ! "$cl_ref_rm_out" ] || check_files_readable $cl_ref_rm_out
+
+ref_name=$1
+set_ref_var_names $ref_name
+
+
+# add fasta
+if [ -r "$ref_fa" ]; then
+    echo "file exists [$ref_fa]; to regenerate it, remove it, then rerun setup"
+else
+    [ "$cl_ref_fa" ] || crash "reference fasta file must be given"
+    find_my_name_and_dir "$cl_ref_fa"
+    ln -s "$MY_DIR/$MY_NAME" "$ref_fa"
+    make_note "using fasta file [$cl_ref_fa]"
+fi
+
+# add fasta index
+if [ -r "$ref_fai" ]; then
+    echo "file exists [$ref_fai]; to regenerate it, remove it, then rerun setup"
+else
+    if [ "$cl_ref_fa" ]; then
+	find_my_name_and_dir "$cl_ref_fa"
+	if [ -r "$MY_DIR/$MY_NAME".fai ]; then
+	    make_note "using existing faidx file [$MY_DIR/$MY_NAME.fai]"
+	    ln -s "$MY_DIR/$MY_NAME".fai "$ref_fai"
+	fi
+    fi
+    if [ ! -r "$ref_fai" ]; then
+	make_note "generating faidx file"
+	samtools faidx "$ref_fa"
+    fi
+fi
+
+# add bt2 index
+have_any=
+for f in "$ref_bt2_idx".{{1..4},rev.{1,2}}.bt2; do
+    [ ! -r "$f" ] || { have_any=1 ; break; }
+done
+if [ $have_any ]; then
+    echo "some files exist [$ref_bt2_idx.*.bt2]; to regenerate them, remove them all, then rerun setup"
+else
+    if [ "$cl_ref_bt2_idx" ]; then
+	find_my_name_and_dir "$cl_ref_bt2_idx".1.bt2
+	for suffix in {{1..4},rev.{1,2}}.bt2; do
+	    ln -s "$MY_DIR"/$(basename "$cl_ref_bt2_idx").$suffix "$ref_bt2_idx".$suffix
+	done
+	make_note "using existing bowtie2 index [$cl_ref_bt2_idx]"
+    else
+	make_note "Must generate bowtie2 index"
+	if ask_confirmation; then
+	    bowtie2-build "$ref_fa" "$ref_bt2_idx"
+	else
+	    exit 1
+	fi
+    fi
+fi
+
+# add ref alus
+if [ -r "$ref_alus_bed" ]; then
+    echo "file exists [$ref_alus_bed]; to regenerate it, remove it, then rerun setup"
+else
+    if [ "$cl_ref_alus_bed" ]; then
+	find_my_name_and_dir "$cl_ref_alus_bed"
+	ln -s "$MY_DIR/$MY_NAME" "$ref_alus_bed"
+	make_note "using existing reference alu list [$cl_ref_alus_bed]"
+    else
+	if [ ! "$cl_ref_rm_out" ]; then
+	    make_note "Must generate reference alu annotations"
+	    if ask_confirmation; then
+		pushd ${TMPDIR:-/tmp} 2>/dev/null
+		RepeatMasker -pa $NCPU -s "$ref_fa"
+		popd 2>/dev/null
+		cl_ref_rm_out=$ref_fa.out
+	    else
+		exit 1
+	    fi
+	else
+	    make_note "using existing RepeatMasker output in [$cl_ref_rm_out]"
+	fi
+	echo -n "Generating list of reference alus in bed format... "
+	grep -h SINE/Alu $cl_ref_rm_out | 
+	sed 's/ \+/\t/g' |
+	sed 's/^\t//' |
+	sed 's/\t$//' |
+	awk 'BEGIN{OFS="\t"} {pct=int($2+$3+$4);if(pct>100)pct=100; if($9=="C"){strand="-"}else{strand="+"}if(substr($12,1,1)=="("){start=$13;end=$14}else{start=$12;end=$13} print $5, $6-1, $7, $10, 100-pct, strand, start, end}' | 
+	$ZIP >$ref_alus_bed
+	echo "done"
+    fi
+fi
+
+make_note "added reference [$1]"
