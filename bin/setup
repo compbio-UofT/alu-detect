@@ -76,6 +76,8 @@ else
 Your RepeatMasker installation does not include the Repbase libraries,
 which are needed to derive the Alu consensus sequences. The libraries
 can be downloaded from http://www.girinst.org/server/RepBase/index.php
+
+If you have the fasta file, use it with "alu-detect setup <alus.fa>"
 EOF
 	    rm "$alus_fa"
 	    exit 1
