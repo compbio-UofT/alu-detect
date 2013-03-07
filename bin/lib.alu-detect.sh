@@ -24,7 +24,7 @@ fi
 export BASH_XTRACEFD=$BASH_XTRACEFD
 
 setup_extra_paths () {
-    [ -r "$extra_paths_file" ] || return
+    [ -r "$extra_paths_file" ] || return 0
     local oldifs=$IFS
     IFS=$'\n'
     local line
