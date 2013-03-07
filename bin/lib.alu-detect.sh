@@ -24,6 +24,7 @@ fi
 export BASH_XTRACEFD=$BASH_XTRACEFD
 
 setup_extra_paths () {
+    [ -r "$extra_paths_file" ] || return
     local oldifs=$IFS
     IFS=$'\n'
     local line
@@ -41,7 +42,7 @@ set_global_var_names () {
 }
 if [ "${BASE_DIR:-}" ]; then
     set_global_var_names
-    [ ! -r "$extra_paths_file" ] || setup_extra_paths
+    setup_extra_paths
 fi
 
 set_ref_var_names () {
