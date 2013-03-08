@@ -8,7 +8,9 @@
 string
 cloneNameParser(const string& name)
 {
-  return string(name.substr(0, name.find_first_of(':')));
+  size_t i = name.find_first_of(':') + 1;
+  size_t j = name.find_first_of(':', i);
+  return string(name.substr(i, j - i));
 }
 
 void
@@ -18,9 +20,9 @@ fullNameParser(const string& name, Clone& clone, int& nip)
 
   int i = 0;
   int j = name.find(':');
-  // this is the clone name
+  // first is the num_rgid
   if (global::num_rg_len > 0) {
-    string tmp = name.substr(j - global::num_rg_len, global::num_rg_len);
+    string tmp = name.substr(i, j);
     RGDict::iterator it = global::num_rg_dict.find(tmp);
     if (it == global::num_rg_dict.end()) {
       cerr << "error: no pairing info for RG of " << name << endl;
@@ -28,6 +30,10 @@ fullNameParser(const string& name, Clone& clone, int& nip)
     }
     clone.pairing = &it->second;
   }
+
+  i = j + 1;
+  j = name.find(':', i);
+  // next, the clone name, but we already know it
   //cerr << "clone name: " << name.substr(i, j) << endl;
 
   i = j + 1;
