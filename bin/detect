@@ -1,41 +1,29 @@
 #!/bin/bash
-. lib.alu-detect.sh
-set -eEux -o pipefail
+[ "$BASE_DIR" ] ||
+{
+    echo "run this script through alu-detect wrapper" >&2
+    exit 1
+}
+source lib.alu-detect.sh
+set -eEu -o pipefail
 
 
-find_my_name_and_dir "${BASH_SOURCE[0]}"
-BASE_DIR=$(dirname $MY_DIR)
-make_note "$MY_NAME v$(cat $BASE_DIR/VERSION) (git:$($BASE_DIR/get_git_version)) installed in $MY_DIR"
+# don't trust the user; check global settings
+(cmd_exists python && [ "$(python --version 2>&1 | cut -d '.' -f 2)" -ge 6 ]) ||
+crash "python2.6+ not found"
+cmd_exists samtools || crash "samtools not found"
+cmd_exists bedtools || crash "bedtools not found"
+cmd_exists bowtie2 || crash "bowtie2 not found"
+cmd_exists gmapper-ls || crash "gmapper not found"
+check_files_readable "$alus_fa" "$alus_no_polya_fa"
+
 
 ngs_name=$1
 ref_name=$2
+set_ref_var_names "$ref_name"
+check_files_readable "$ref_fa" "$ref_fai" \
+    "$ref_bt2_idx".{{1..4},rev.{1..2}}.bt2 "$ref_alus_bed"
 prefix=$ngs_name.$ref_name
-
-global_settings=$BASE_DIR/settings/global
-. "$global_settings" || crash "missing global settings file: $global_settings"
-ref_settings=$BASE_DIR/settings/ref.$ref_name
-. "$ref_settings" 2>/dev/null || crash "missing reference settings file: $ref_settings"
-
-
-#
-# don't trust the user; check most settings
-#
-(which python >/dev/null 2>&1 && [ "$(python --version 2>&1 | cut -d '.' -f 2)" -ge 6 ]) \
-    || crash "python2.6+ not found"
-which samtools >/dev/null 2>&1 || crash "samtools not found"
-which intersectBed >/dev/null 2>&1 || crash "intersectBed not found"
-which bowtie2 >/dev/null 2>&1 || crash "bowtie2 not found"
-which gmapper-ls >/dev/null 2>&1 || crash "gmapper not found"
-[[ "$AWKPATH" =~ $BASE_DIR/bin ]] || crash "AWKPATH not set properly"
-[ -r "$ALU_ALL_FA" ] || crash "Alu consensus sequences missing from: $ALU_ALL_FA"
-[ -r "$ALU_NO_POLYA_FA" ] || crash "masked Alu consensus sequences missing from: $ALU_NO_POLYA_FA"
-
-[ -r "$REF_FA" ] || crash "reference fasta file missing: $REF_FA"
-[ -r "$CHROMINFO" ] || crash "chrominfo file missing: $CHROMINFO"
-for suffix in .1.bt2 .2.bt2 .3.bt2 .4.bt2 .rev.1.bt2 .rev.2.bt2; do
-    [ -r "$BOWTIE2_INDEX$suffix" ] || crash "bowtie2 index file missing: $BOWTIE2_INDEX$suffix"
-done
-[ -r "$ALUS_BED" ] || crash "reference alu annotations missing: $ALUS_BED"
 
 
 make_note "using NCPU=$NCPU"
@@ -127,7 +115,7 @@ if [ $START_STAGE -lt 3 ]; then
 		stage_command() {
 		    $PV ${orig_unpaired_reads[$i]} |
 		    zc |
-		    bowtie2 -x $BOWTIE2_INDEX -U - \
+		    bowtie2 -x $ref_bt2_idx -U - \
 			--phred$input_phred_rg -p $NCPU --rg-id $RGID 2>$rg_mapping.log |
 		    $ZIP >$rg_mapping.sam.gz
 		}
@@ -147,7 +135,8 @@ if [ $START_STAGE -lt 3 ]; then
 		INPUT_FILES="${orig_paired_reads[$i]}"
 		OUTPUT_FILES="$rg_pairing"
 		stage_command() {
-		    INPUT_PHRED=$input_phred_rg fq-detect-pairing ${orig_paired_reads[$i]} |
+		    INPUT_PHRED=$input_phred_rg BOWTIE2_INDEX=$ref_bt2_idx \
+			fq-detect-pairing ${orig_paired_reads[$i]} |
 		    cut -f 3 >$rg_pairing
 		}
 		run_stage
@@ -160,7 +149,7 @@ if [ $START_STAGE -lt 3 ]; then
 		    $PV ${orig_paired_reads[$i]} |
 		    zc |
 		    split-file 4:- 4:/dev/null |
-		    bowtie2 -x $BOWTIE2_INDEX \
+		    bowtie2 -x $ref_bt2_idx \
 			-1 - -2 <(zc ${orig_paired_reads[$i]} | split-file 4:/dev/null 4:-) \
 			$(get-bowtie-pairing -p $(cat $rg_pairing)) \
 			--phred$input_phred_rg -p $NCPU --rg-id $RGID 2>$rg_mapping.log |
@@ -184,8 +173,8 @@ if [ $START_STAGE -lt 3 ]; then
 		INPUT_FILES="${orig_reads_1[$i]} ${orig_reads_2[$i]}"
 		OUTPUT_FILES="$rg_pairing"
 		stage_command() {
-		    INPUT_PHRED=$input_phred_rg fq-detect-pairing \
-			${orig_reads_1[$i]} ${orig_reads_2[$i]} |
+		    INPUT_PHRED=$input_phred_rg BOWTIE2_INDEX=$ref_bt2_idx \
+			fq-detect-pairing ${orig_reads_1[$i]} ${orig_reads_2[$i]} |
 		    cut -f 3 >$rg_pairing
 		}
 		run_stage
@@ -197,7 +186,7 @@ if [ $START_STAGE -lt 3 ]; then
 		stage_command() {
 		    $PV ${orig_reads_1[$i]} |
 		    zc |
-		    bowtie2 -x $BOWTIE2_INDEX \
+		    bowtie2 -x $ref_bt2_idx \
 			-1 - -2 <(exec zc ${orig_reads_2[$i]}) \
 			$(get-bowtie-pairing -p $(cat $rg_pairing)) \
 			--phred$input_phred_rg -p $NCPU --rg-id $RGID 2>$rg_mapping.log |
@@ -349,9 +338,9 @@ fi
 OUTPUT_FILES="$mappings_to_reference.sam.gz"
 stage_command() {
     if [ "${SINGLE_READS_TO_REMAP:-}" ]; then
-	progressive-mapping "$reads_to_remap.fq.gz"
+	BOWTIE2_INDEX=$ref_bt2_idx progressive-mapping "$reads_to_remap.fq.gz"
     else
-	progressive-mapping "$reads_to_remap.*.1.fq.gz" "$reads_to_remap.*.2.fq.gz"
+	BOWTIE2_INDEX=$ref_bt2_idx progressive-mapping "$reads_to_remap.*.1.fq.gz" "$reads_to_remap.*.2.fq.gz"
     fi |
     tee >($ZIP >$mappings_to_reference.sam.gz) |
     samtools view -Su - |
@@ -437,7 +426,7 @@ gmapper_options="-N $NCPU -n 1 --progress 10000 --qv-offset 33 -o 100 --local --
 INPUT_FILES="$reads_for_alu_mapping.fq.gz"
 OUTPUT_FILES="$mappings_to_alus.sam.gz"
 stage_command() {
-    $gmapper_exec $gmapper_options $reads_for_alu_mapping.fq.gz $ALU_NO_POLYA_FA \
+    $gmapper_exec $gmapper_options $reads_for_alu_mapping.fq.gz $alus_no_polya_fa \
 	2>$mappings_to_alus.log |
     tee-p >($ZIP >$mappings_to_alus.sam.gz) |
     sam-body |
@@ -464,8 +453,8 @@ INPUT_FILES="$mappings_clean_to_reference.sam.gz $mappings_to_alus.sam.gz"
 OUTPUT_FILES="$raw_calls.bed"
 stage_command() {
     get-regions -l $pairing_file -N $NCPU \
-	$REF_FA $mappings_clean_to_reference.sam.gz \
-	$ALU_ALL_FA $mappings_to_alus.sam.gz \
+	$ref_fa $mappings_clean_to_reference.sam.gz \
+	$alus_fa $mappings_to_alus.sam.gz \
 	2> >($ZIP >$raw_calls.log.gz) |
     relabel-family |
     sed 's/Alu//g; s/Null://' >$raw_calls.bed
@@ -485,7 +474,7 @@ novel_calls=$prefix.calls.basic-filters
 INPUT_FILES="$raw_calls.bed"
 OUTPUT_FILES="$novel_calls.bed"
 stage_command() {
-    filter-ref-alu-bp $ALUS_BED $raw_calls.bed |
+    filter-ref-alu-bp $ref_alus_bed $raw_calls.bed |
     filter-length 150 |
     filter-support 10 |
     filter-weak-null 200 |
