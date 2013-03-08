@@ -13,7 +13,6 @@ make_note "using BOWTIE2_INDEX=$BOWTIE2_INDEX"
 make_note "using READ_COUNT=${READ_COUNT:=100000}"
 make_temp_dir "$MY_NAME"
 make_note "using TDIR=$TDIR"
-make_note "using RGID=${RGID:-00}"
 
 if [ $# -eq 1 ] ; then
     make_note "found single reads file; multiplexing"
@@ -37,6 +36,6 @@ bowtie2 -x "$BOWTIE2_INDEX" -U "$TDIR"/reads.fq -S "$TDIR"/map.sam \
     sam-header "$TDIR"/map.sam
     sam-body "$TDIR"/map.sam | sort -s -t ":" -k 1,1n -k 2,2n
 } >"$TDIR"/map.rsort.sam
-detect-pairing -f -g $RGID -v --cid-parser cid_parser "$TDIR"/map.rsort.sam
+detect-pairing -f -g 00 -v --cid-parser cid_parser "$TDIR"/map.rsort.sam
 
 rm -rf "$TDIR"
