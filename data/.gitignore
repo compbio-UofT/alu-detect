@@ -1,6 +1,5 @@
-*.fa
-*.fa.*
-*.bt2
+ref.*
 alus.*
 deletions.*
 targets.*
+extra-paths
