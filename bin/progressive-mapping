@@ -1,16 +1,13 @@
 #!/bin/bash
-. lib.alu-detect.sh
-set -eEux -o pipefail
+source lib.alu-detect.sh
+set -eEu -o pipefail
 
 
-#
 # don't trust the user; check most settings
-#
-which samtools >/dev/null 2>&1 || crash "samtools not found"
-which bowtie2 >/dev/null 2>&1 || crash "bowtie2 not found"
-for suffix in .1.bt2 .2.bt2 .3.bt2 .4.bt2 .rev.1.bt2 .rev.2.bt2; do
-    [ -r "$BOWTIE2_INDEX$suffix" ] || crash "bowtie2 index file missing: $BOWTIE2_INDEX$suffix"
-done
+cmd_exists samtools || crash "samtools not found"
+cmd_exists bowtie2 || crash "bowtie2 not found"
+check_files_readable "$BOWTIE2_INDEX".{{1..4},rev.{1,2}}.bt2
+
 
 DEBUG=${DEBUG:-}
 
