@@ -1,0 +1,13 @@
+#!/bin/bash extend-hashbang
+#awk -f lib.alu-detect.awk -f
+
+{
+    s = get_read($0)
+    split(s, r, "\t")
+
+    n = index(r[1], ":")
+    r[1] = substr(r[1], 10, n - 10) ":0" substr(r[1], 1, 9) substr(r[1], n)
+    r[3] = ""
+
+    put_read(r[1] "\t" r[2] "\t" r[3] "\t" r[4])
+}
