@@ -185,7 +185,7 @@ run_cmds() {
 # Check whether to proceed with action
 #
 ask_confirmation () {
-    [ ! "${CONF:-}" = a ] || return
+    [ ! "${CONF:-}" = a ] || return 0
     read -p "${1:-"continue?"} ([y]es/[a]lways/[s]kip/[N]o) " CONF
     ([ "$CONF" = y ] || [ "$CONF" = a ] || [ "$CONF" = s ]) || exit 1
     [ ! "$CONF" = s ] || return 1
