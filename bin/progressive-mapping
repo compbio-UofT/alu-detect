@@ -37,8 +37,8 @@ get_input_reads () {
 input_reads_1=($(ls $1))
 if [ "${2:-}" ]; then
     input_reads_2=($(ls $2))
-    [ ${#input_reads_1[@]} -eq ${#input_reads_2[@]} ] \
-	|| crash "non matching read files: [${input_reads_1[@]}] vs [${input_reads_2[@]}]"
+    [ ${#input_reads_1[@]} -eq ${#input_reads_2[@]} ] ||
+    crash "non matching read files: [${input_reads_1[@]}] vs [${input_reads_2[@]}]"
 else
     input_reads_2=()
 fi
@@ -66,22 +66,22 @@ while true ; do
 	pids+=($!)
     elif [ $SWITCH_SIDES -eq 1 ] ; then
 	make_note "switching sides; extracting unmapped and badly mapped reads..."
-	merge-recursively -z "$TDIR"/bad-3p_*.id.gz "$TDIR"/short-3p_*.id.gz \
-	    | join -t "	" -j 1 - <(PV= get_input_reads | fq-convert -v ofq=tfq) \
-	    | tawk '{n=split($1,a,":"); a[6]="1"; $1=a[1]; for(i=2;i<=n;i++) $1=$1 ":" a[i]; print}' \
-	    | fq-trim-reads-relative -v ofq=fq -v trim_len_${CRT_TRIM_SIDE}=$TRIM_STEP >"$TDIR"/pipe-3 &
+	merge-recursively -z "$TDIR"/bad-3p_*.id.gz "$TDIR"/short-3p_*.id.gz |
+	join -t "	" -j 1 - <(PV= get_input_reads | fq-convert -v ofq=tfq) |
+	tawk '{n=split($1,a,":"); a[6]="1"; $1=a[1]; for(i=2;i<=n;i++) $1=$1 ":" a[i]; print}' |
+	fq-trim-reads-relative -v ofq=fq -v trim_len_${CRT_TRIM_SIDE}=$TRIM_STEP >"$TDIR"/pipe-3 &
 	pids+=($!)
     else
 	make_note "processing previous stage..."
-	$PV "$TDIR"/map_body_${PREV_STEP}.sam.gz \
-	    | zc "$TDIR"/map_header_${PREV_STEP}.sam - \
-	    | add-extra-sam-flags -N 4 -q $MIN_MQV -i 0 \
-	    | filter-mappings -N 4 \
-	      -f 0x1000:"$TDIR"/pipe-4 \
-	      -f 0/0x1004:"$TDIR"/pipe-5 \
-	      -f 0x4:\&1 \
-	    | sam-to-fq \
-	    | fq-trim-reads-relative -v trim_len_${CRT_TRIM_SIDE}=$TRIM_STEP >"$TDIR"/pipe-3 &
+	$PV "$TDIR"/map_body_${PREV_STEP}.sam.gz |
+	zc "$TDIR"/map_header_${PREV_STEP}.sam - |
+	add-extra-sam-flags -N 4 -q $MIN_MQV -i 0 |
+	filter-mappings -N 4 \
+	    -f 0x1000:"$TDIR"/pipe-4 \
+	    -f 0/0x1004:"$TDIR"/pipe-5 \
+	    -f 0x4:\&1 |
+	sam-to-fq |
+	fq-trim-reads-relative -v trim_len_${CRT_TRIM_SIDE}=$TRIM_STEP >"$TDIR"/pipe-3 &
 	pids+=($!)
 	$ZIP <"$TDIR"/pipe-4 >"$TDIR"/final-${CRT_TRIM_SIDE}_${PREV_STEP}.sam.gz &
 	pids+=($!)
@@ -90,10 +90,13 @@ while true ; do
     fi
 
     # remove short reads
-    fq-remove-short-reads <"$TDIR"/pipe-3 -v min_len=$MIN_LEN -v short_reads_fd=3 \
-	3>"$TDIR"/pipe-6 | tee-p "$TDIR"/pipe-7 | $ZIP >"$TDIR"/reads_${CRT_STEP}.fq.gz &
+    fq-remove-short-reads <"$TDIR"/pipe-3 -v min_len=$MIN_LEN -v short_reads_fd=3 |
+    3>"$TDIR"/pipe-6 |
+    tee-p "$TDIR"/pipe-7 |
+    $ZIP >"$TDIR"/reads_${CRT_STEP}.fq.gz &
     pids+=($!)
-    <"$TDIR"/pipe-6 cut -f 1 | $ZIP >"$TDIR"/short-${CRT_TRIM_SIDE}_${CRT_STEP}.id.gz &
+    <"$TDIR"/pipe-6 cut -f 1 |
+    $ZIP >"$TDIR"/short-${CRT_TRIM_SIDE}_${CRT_STEP}.id.gz &
     pids+=($!)
     fq-stats <"$TDIR"/pipe-7 >"$TDIR"/reads_${CRT_STEP}.stats &
     pids+=($!)
@@ -133,10 +136,12 @@ while true ; do
 
     # map current batch
     make_note "mapping current batch and sorting..."
-    $PV "$TDIR"/reads_${CRT_STEP}.fq.gz | zc \
-        | $MAPPER_CMD - \
-        | tee-p >(sam-header >"$TDIR"/map_header_${CRT_STEP}.sam) \
-	| sam-body | $ZIP >"$TDIR"/map_body_${CRT_STEP}.sam.gz
+    $PV "$TDIR"/reads_${CRT_STEP}.fq.gz |
+    zc |
+    $MAPPER_CMD - |
+    tee-p >(sam-header >"$TDIR"/map_header_${CRT_STEP}.sam) |
+    sam-body |
+    $ZIP >"$TDIR"/map_body_${CRT_STEP}.sam.gz
     [ $DEBUG ] || rm "$TDIR"/reads_${CRT_STEP}.fq.gz
 
     PREV_STEP=$CRT_STEP
@@ -146,11 +151,13 @@ done
 
 cat "$TDIR"/map_header_1.sam
 
-merge-recursively -z "$TDIR"/final-*_*.sam.gz "$TDIR"/bad-5p_*.id.gz "$TDIR"/short-5p_*.id.gz \
-    | sed 's/^\([0-9]*:[0-9]*\):/\1\t\1:/' \
-    | join -t "	" -j 1 \
-        <(PV= get_input_reads | fq-convert -v ofq=tfq | sed 's/^\([0-9]*:[0-9]*\):/\1\t\1:/') - \
-    | fix-mappings \
-    | cut -f 6-
+merge-recursively -z "$TDIR"/final-*_*.sam.gz "$TDIR"/bad-5p_*.id.gz "$TDIR"/short-5p_*.id.gz |
+sed 's/^\([0-9]*:[0-9]*\):/\1\t\1:/' |
+join -t "	" -j 1 \
+    <(PV= get_input_reads |
+    fq-convert -v ofq=tfq |
+    sed 's/^\([0-9]*:[0-9]*\):/\1\t\1:/') - |
+fix-mappings |
+cut -f 6-
 
 [ $DEBUG ] || rm -rf "$TDIR"
