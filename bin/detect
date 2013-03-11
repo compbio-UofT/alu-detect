@@ -24,6 +24,7 @@ set_ref_var_names "$ref_name"
 check_files_readable "$ref_fa" "$ref_fai" \
     "$ref_bt2_idx".{{1..4},rev.{1..2}}.bt2 "$ref_alus_bed"
 prefix=$ngs_name.$ref_name
+sample=${SAMPLE:-$ngs_name}
 
 
 make_note "using NCPU=$NCPU"
@@ -115,8 +116,9 @@ if [ $START_STAGE -lt 3 ]; then
 		stage_command() {
 		    $PV ${orig_unpaired_reads[$i]} |
 		    zc |
-		    bowtie2 -x $ref_bt2_idx -U - \
-			--phred$input_phred_rg -p $NCPU --rg-id $RGID 2>$rg_mapping.log |
+		    bowtie2 -p $NCPU -x $ref_bt2_idx -U - \
+			--phred$input_phred_rg --rg-id $RGID --rg "SM:$sample" \
+			2>$rg_mapping.log |
 		    $ZIP >$rg_mapping.sam.gz
 		}
 		run_stage
@@ -149,10 +151,11 @@ if [ $START_STAGE -lt 3 ]; then
 		    $PV ${orig_paired_reads[$i]} |
 		    zc |
 		    split-file 4:- 4:/dev/null |
-		    bowtie2 -x $ref_bt2_idx \
+		    bowtie2 -p $NCPU -x $ref_bt2_idx \
 			-1 - -2 <(zc ${orig_paired_reads[$i]} | split-file 4:/dev/null 4:-) \
 			$(get-bowtie-pairing -p $(cat $rg_pairing)) \
-			--phred$input_phred_rg -p $NCPU --rg-id $RGID 2>$rg_mapping.log |
+			--phred$input_phred_rg --rg-id $RGID --rg "SM:$sample" \
+			2>$rg_mapping.log |
 		    tee >($ZIP >$rg_mapping.sam.gz) |
 		    samtools view -Su - |
 		    samtools flagstat - >$rg_mapping.stats
@@ -186,10 +189,11 @@ if [ $START_STAGE -lt 3 ]; then
 		stage_command() {
 		    $PV ${orig_reads_1[$i]} |
 		    zc |
-		    bowtie2 -x $ref_bt2_idx \
+		    bowtie2 -p $NCPU -x $ref_bt2_idx \
 			-1 - -2 <(exec zc ${orig_reads_2[$i]}) \
 			$(get-bowtie-pairing -p $(cat $rg_pairing)) \
-			--phred$input_phred_rg -p $NCPU --rg-id $RGID 2>$rg_mapping.log |
+			--phred$input_phred_rg --rg-id $RGID --rg "SM:$sample" \
+			2>$rg_mapping.log |
 		    tee >($ZIP >$rg_mapping.sam.gz) |
 		    samtools view -Su - |
 		    samtools flagstat - >$rg_mapping.stats
