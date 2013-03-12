@@ -161,17 +161,16 @@ run_stage () {
 run_cmds() {
     [ $# -ge 1 ] || crash "run_cmds needs arguments"
     local pid=$BASHPID
-    local fd=$(get_unused_fd $pid)
     local cmds_string=
     local crt_cmd=1
     while [ $# -ge 2 ]; do
-        cmds_string="$cmds_string tee-p >(echo \"$crt_cmd \$($1)\" >&$fd) |"
+        cmds_string="$cmds_string tee-p >(echo \"$crt_cmd \$($1)\" >&\$fd) |"
         let crt_cmd+=1
         shift
     done
-    cmds_string="$cmds_string echo \"$crt_cmd \$($1)\" >&$fd"
+    cmds_string="$cmds_string echo \"$crt_cmd \$($1)\" >&\$fd"
     echo "cmds_string:$cmds_string" >&2
-    local cmds_raw_output=$( { eval $cmds_string ; } {fd}>&1 )
+    local cmds_raw_output=$( exec {fd}>&1; eval $cmds_string; )
     echo "cmds_raw_output:$cmds_raw_output" >&2
     CMD_OUTPUT=()
     local i
