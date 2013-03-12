@@ -1,48 +1,24 @@
 #!/bin/bash
 . lib.alu-detect.sh
-set -eE -o pipefail
+set -eEu -o pipefail
 
 args=("$@")
 
-#main_pipe () { echo "main pipe"; cat; }
-#main_pipe () { split-file 1:- 1:/dev/null; }
 eval "main_pipe () { exec bowtie2 ${args[@]}; }"
-
-#alt_pipe () { echo "coproc pipe"; cat; }
-#alt_pipe () { split-file 1:/dev/null 1:-; }
 alt_pipe () { fq-convert -v ofq=tfq | cut -f 1; }
-
-#splitter () { tee /proc/$BASHPID/fd/4; }
-splitter () { exec tee >(exec cat >&4); }
-
+splitter () { exec tee >(exec cat >$out_fd); }
 #joiner () { cat /proc/$BASHPID/fd/3 -; }
 #joiner () { cat; cat <&3; }
 #joiner () { merge-files 1:<(cat) 1:<(cat <&3); }
 joiner () {
+    local fd
+    exec {fd}>&1
+    tee-p >(exec sam-header >$fd) |
     {
-	tee-p >(exec sam-header >&4) | sam-body 4>&- | sort-with-dict <(exec cat <&3) <(exec cat) 4>&-
-    } 4>&1
-}
-
-joiner-extra () {
-    splitter () {
-	IFS=$'\n'
-	have_line=
-	while read -r line; do
-	    have_line=1
-	    [ "${line:0:1}" = "@" ] || break
-	    echo $line >&4
-	done
-	[ ! $have_line ] || echo $line
-	cat
-    }
-    joiner () {	cat <&3; cat; }
-    alt_pipe () { cat; }
-    main_pipe () {
-	sort-with-dict <(exec cat <&42) <(exec cat)
-    }
-    exec 42<&3-
-    double_pipe 4>&2
+	sam-body |
+	sort-with-dict <(exec cat <$in_fd) <(exec cat)
+    } {fd}>&-
+    exec {fd}>&-
 }
 
 double_pipe
