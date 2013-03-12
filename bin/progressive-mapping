@@ -151,12 +151,13 @@ done
 
 cat "$TDIR"/map_header_1.sam
 
-merge-recursively -z "$TDIR"/final-*_*.sam.gz "$TDIR"/bad-5p_*.id.gz "$TDIR"/short-5p_*.id.gz |
-sed 's/^\([0-9]*:[0-9]*\):/\1\t\1:/' |
+merge-recursively -z "$TDIR"/final-*_*.sam.gz \
+    "$TDIR"/bad-5p_*.id.gz "$TDIR"/short-5p_*.id.gz |
+tawk '{split($1,a,":"); print a[1] ":" a[2] ":" a[3], $0}' |
 join -t "	" -j 1 \
     <(PV= get_input_reads |
     fq-convert -v ofq=tfq |
-    sed 's/^\([0-9]*:[0-9]*\):/\1\t\1:/') - |
+    tawk '{split($1,a,":"); print a[1] ":" a[2] ":" a[3], $0}') - |
 fix-mappings |
 cut -f 6-
 
