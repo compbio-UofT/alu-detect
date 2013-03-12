@@ -1,0 +1,99 @@
+#!/usr/bin/env extend-hashbang
+#awk -f
+
+function init_complement() {
+    c["A"] = "T";
+    c["T"] = "A";
+    c["C"] = "G";
+    c["G"] = "C";
+    c["N"] = "N";
+    c["X"] = "X";
+    c["a"] = "t";
+    c["t"] = "a";
+    c["c"] = "g";
+    c["g"] = "c";
+    c["n"] = "n";
+    c["x"] = "x";
+    c["."] = ".";
+}
+
+function reverse(s) {
+    res = "";
+    for (i = length(s); i >= 1; i--) {
+	res = res substr(s, i, 1);
+    }
+    return res
+}
+
+function complement(s) {
+    res = ""
+    for (i = 1; i <= length(s); i++) {
+	res = res c[substr(s, i, 1)];
+    }
+    return res
+}
+
+function reverse_complement(s) {
+    res = "";
+    for (i = length(s); i >= 1; i--) {
+	res = res c[substr(s, i, 1)];
+    }
+    return res
+}
+
+BEGIN {
+    FS = "\t";
+    OFS = "\t";
+    init_complement();
+}
+
+{
+    n = split($6, a, ":");
+    trim_side = a[6];
+    a[6] = 0;
+    $6 = a[1];
+    for (i = 2; i <= n; i++) $6 = $6 ":" a[i];
+}
+
+NF >= 16 {
+    real_len = length($3);
+    crt_len = length($15);
+    if (crt_len < real_len) {
+	if (trim_side == 0) {
+	    sq = substr($3, crt_len + 1, real_len - crt_len);
+	    qv = substr($5, crt_len + 1, real_len - crt_len);
+	} else {
+	    sq = substr($3, 1, real_len - crt_len);
+	    qv = substr($5, 1, real_len - crt_len);
+	}
+	rc = (and($7, 0x10) != 0)
+	if (rc) {
+	    sq = reverse_complement(sq);
+	    qv = reverse(qv);
+	}
+	if ((trim_side == 0) != rc) {
+	    $15 = $15 sq;
+	    $16 = $16 qv;
+	    $11 = $11 "" (real_len - crt_len) "S";
+	} else {
+	    $15 = sq $15;
+	    $16 = qv $16;
+	    $11 = (real_len - crt_len) "S" $11;
+	}
+    }
+}
+
+NF == 6 {
+    $7 = 4;
+    $8 = "*";
+    $9 = 0;
+    $10 = 0;
+    $11 = "*";
+    $12 = "*";
+    $13 = 0;
+    $14 = 0;
+    $15 = $3;
+    $16 = $5;
+}
+
+1
