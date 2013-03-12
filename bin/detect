@@ -335,8 +335,8 @@ stage_command() {
 	BOWTIE2_INDEX=$ref_bt2_idx progressive-mapping "$reads_to_remap.fq.gz"
     else
 	BOWTIE2_INDEX=$ref_bt2_idx progressive-mapping \
-	    $(for rg in ${rg_string[@]}; do echo "$reads_to_remap.$rg.1.fq.gz"; done) \
-	    $(for rg in ${rg_string[@]}; do echo "$reads_to_remap.$rg.2.fq.gz"; done)
+	    "$(for rg in ${rg_string[@]}; do echo "$reads_to_remap.$rg.1.fq.gz"; done)" \
+	    "$(for rg in ${rg_string[@]}; do echo "$reads_to_remap.$rg.2.fq.gz"; done)"
     fi |
     tee >($ZIP >$mappings_to_reference.sam.gz) |
     samtools view -Su - |
