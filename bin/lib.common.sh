@@ -339,7 +339,7 @@ double_pipe () (
     {
 	make_note "$0: undefined splitter; using default"
 	splitter () {
-	    exec tee-p >(exec cat >$out_fd)
+	    exec tee-p >(exec cat >&$out_fd)
 	}
     }
     (set +o pipefail; type -t joiner | grep -q function) || crash "$0: joiner undefined"

@@ -6,17 +6,17 @@ args=("$@")
 
 eval "main_pipe () { exec bowtie2 ${args[@]}; }"
 alt_pipe () { fq-convert -v ofq=tfq | cut -f 1; }
-splitter () { exec tee >(exec cat >$out_fd); }
+splitter () { exec tee >(exec cat >&$out_fd); }
 #joiner () { cat /proc/$BASHPID/fd/3 -; }
 #joiner () { cat; cat <&3; }
 #joiner () { merge-files 1:<(cat) 1:<(cat <&3); }
 joiner () {
     local fd
     exec {fd}>&1
-    tee-p >(exec sam-header >$fd) |
+    tee-p >(exec sam-header >&$fd) |
     {
 	sam-body |
-	sort-with-dict <(exec cat <$in_fd) <(exec cat)
+	sort-with-dict <(exec cat <&$in_fd) <(exec cat)
     } {fd}>&-
     exec {fd}>&-
 }
