@@ -17,3 +17,13 @@ bin-package: all
 	tar cvzf alu-detect-${VERSION}.lx26.x86_64.tar.gz --transform "s,^,alu-detect-${VERSION}/," \
 		Makefile README HISTORY VERSION GIT_VERSION get_git_version alu-detect \
 		bin/[a-zA-Z0-9]* data/known-novel-alus.*.bed
+
+test-package: bin-package
+	cd /tmp
+	tar xf ~/git/alu-detect-${VERSION}.lx26.x86_64.tar.gz
+	GIT_VERSION := $(shell cat alu-detect-${VERSION}/GIT_VERSION)
+	mv alu-detect-${VERSION} alu-detect-${VERSION}-${GIT_VERSION}
+	mv alu-detect-${VERSION}-${GIT_VERSION} ~/opt
+	cd ~/opt/alu-detect-${VERSION}-${GIT_VERSION}
+	mv data data-orig
+	ln -s ~/git/alu-detect/data
