@@ -19,13 +19,8 @@ bin-package: all
 		bin/[a-zA-Z0-9]* data/known-novel-alus.*.bed
 
 test-package: bin-package
-	cd /tmp
-	tar xf ~/git/alu-detect/alu-detect-${VERSION}.lx26.x86_64.tar.gz
-	pwd
-	ls -l
-	GIT_VERSION := $(shell cat alu-detect-${VERSION}/GIT_VERSION)
-	mv alu-detect-${VERSION} alu-detect-${VERSION}-${GIT_VERSION}
-	mv alu-detect-${VERSION}-${GIT_VERSION} ~/opt
-	cd ~/opt/alu-detect-${VERSION}-${GIT_VERSION}
-	mv data data-orig
-	ln -s ~/git/alu-detect/data
+	GIT_VERSION := $(shell cat GIT_VERSION)
+	tar xf ~/git/alu-detect/alu-detect-${VERSION}.lx26.x86_64.tar.gz -C ~/opt \
+	  --transform "s,alu-detect-${VERSION}/,alu-detect-${VERSION}-${GIT_VERSION}/,"
+	rm -rf ~/opt/alu-detect-${VERSION}-${GIT_VERSION}/data
+	ln -s ~/git/alu-detect/data ~/opt/alu-detect-${VERSION}-${GIT_VERSION}/data
