@@ -26,7 +26,25 @@ check_files_not_exist () {
 }
 
 quote () { 
-    echo \'${1//\'/\'\\\'\'}\'
+    while [ $# -gt 0 ]; do
+	echo \'${1//\'/\'\\\'\'}\'
+	shift
+    done
+}
+
+arg_product () {
+    local tmp=""
+    local a
+    while [ $# -gt 0 ]; do
+	a=($(quote $1))
+	if [ ${#a[@]} -eq 1 ]; then
+	    tmp=$tmp$a
+	elif [ ${#a[@]} -gt 1 ]; then
+	    tmp=$tmp{$(IFS=,; echo "${a[*]}")}
+	fi
+	shift
+    done
+    eval echo $tmp
 }
 
 # use: add_to_path /a/new/dir AWKPATH
