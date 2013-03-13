@@ -428,7 +428,7 @@ stage_command() {
     sam-body |
     cut -f 1 |
     {
-	run_cmds "cut -d ':' -f 1,2 | uniq | wc -l" "cut -d ':' -f 1 | uniq | wc -l"
+	run_cmds "wc -l" "cut -d ':' -f 2 | sort | uniq | wc -l"
 	echo "Reads mapped to alus: ${CMD_OUTPUT[1]}"
 	echo "Clones mapped to alus: ${CMD_OUTPUT[2]}"
     } >$mappings_to_alus.stats
