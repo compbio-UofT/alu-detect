@@ -21,6 +21,8 @@ bin-package: all
 test-package: bin-package
 	cd /tmp
 	tar xf ~/git/alu-detect/alu-detect-${VERSION}.lx26.x86_64.tar.gz
+	pwd
+	ls -l
 	GIT_VERSION := $(shell cat alu-detect-${VERSION}/GIT_VERSION)
 	mv alu-detect-${VERSION} alu-detect-${VERSION}-${GIT_VERSION}
 	mv alu-detect-${VERSION}-${GIT_VERSION} ~/opt
