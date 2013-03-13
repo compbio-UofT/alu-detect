@@ -316,12 +316,12 @@ run_stage
 
 
 #
-# Stage 4: Progressive mapping
+# Stage 3: Progressive mapping
 #
 # Input: reads to remap
 # Output: mappings to reference, possibly trimmed
 #
-STAGE_NUM=4
+STAGE_NUM=3
 STAGE_NAME="progressive mapping to reference"
 mappings_to_reference=$prefix.map.to_reference
 if [ "${SINGLE_READS_TO_REMAP:-}" ]; then
@@ -346,12 +346,12 @@ run_stage
 
 
 #
-# Stage 5: Clean reference mappings
+# Stage 4: Clean reference mappings
 #
 # Input: mappings to reference
 # Output: same, removing clones which are mapped as pairs
 #
-STAGE_NUM=5
+STAGE_NUM=4
 STAGE_NAME="clean up reference mappings: remove unpaired and paired well; add orig reads and quals"
 mappings_clean_to_reference=$prefix.map.clean_to_reference
 INPUT_FILES="$mappings_to_reference.sam.gz"
@@ -386,12 +386,12 @@ run_stage
 
 
 #
-# Stage 6: Extract reads for alu mapping
+# Stage 5: Extract reads for alu mapping
 #
 # Input: clean mappings to reference
 # Output: reads to map to alus
 #
-STAGE_NUM=6
+STAGE_NUM=5
 STAGE_NAME="extract reads for alu mapping"
 reads_for_alu_mapping=$prefix.reads.for_alu_mapping
 INPUT_FILES="$mappings_clean_to_reference.sam.gz"
@@ -409,12 +409,12 @@ run_stage
 
 
 #
-# Stage 7: Map to alus
+# Stage 6: Map to alus
 #
 # Input: reads to map to alus
 # Output: mappings to alus
 #
-STAGE_NUM=7
+STAGE_NUM=6
 STAGE_NAME="mapping to alus"
 mappings_to_alus=$prefix.map.to_alus
 gmapper_exec="gmapper-ls"
@@ -437,12 +437,12 @@ run_stage
 
 
 #
-# Stage 8: Get regions
+# Stage 7: Get regions
 #
 # Input: clean mappings to reference, mappings to alus
 # Output: regions with potential insertions
 #
-STAGE_NUM=8
+STAGE_NUM=7
 STAGE_NAME="find potential insertions"
 raw_calls=$prefix.calls.raw
 INPUT_FILES="$mappings_clean_to_reference.sam.gz $mappings_to_alus.sam.gz"
@@ -459,12 +459,12 @@ run_stage
 
 
 #
-# Stage 9: Find novel insertions
+# Stage 8: Find novel insertions
 #
 # Input: detected insertions, known insertions
 # Output: novel insertions
 #
-STAGE_NUM=9
+STAGE_NUM=8
 STAGE_NAME="get novel insertions"
 novel_calls=$prefix.calls.basic-filters
 INPUT_FILES="$raw_calls.bed"
