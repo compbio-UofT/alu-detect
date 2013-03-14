@@ -36,7 +36,7 @@ arg_product () {
     local tmp=""
     local a
     while [ $# -gt 0 ]; do
-	a=($(quote $1))
+	a=($(set -f; quote $1))
 	if [ ${#a[@]} -eq 1 ]; then
 	    tmp=$tmp$a
 	elif [ ${#a[@]} -gt 1 ]; then
