@@ -53,6 +53,7 @@ add_to_path () {
     local var_name=$2
     [[ ! $(eval echo \$$var_name) =~ "$dir" ]] || return 0
     eval $var_name=\"$dir\${$var_name:+:}\$$var_name\"
+    [[ ! $var_name =~ ^[A-Z_]$ ]] || export $var_name
 }
 
 get_unused_fd () {
