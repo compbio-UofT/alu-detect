@@ -18,6 +18,7 @@ MAPPER_CMD="bowtie2-sort -x $BOWTIE2_INDEX -p $NCPU -U"
 export SORT_OPTIONS="-S 10G"
 
 find_my_name_and_dir "${BASH_SOURCE[0]}"
+[ ! $DEBUG ] || TMPDIR=/tmp
 make_temp_dir "$MY_NAME"
 make_note "using TDIR=$TDIR"
 
