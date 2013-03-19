@@ -1,6 +1,8 @@
 #!/bin/bash
-. $(which lib.alu-detect.sh)
-find_my_name_and_dir "${BASH_SOURCE[0]}"
+set -eEu -o pipefail
+trap 'echo "$0: line $LINENO: exit code $?" >&2' ERR
+this=${BASH_SOURCE[0]}
+while [ -h "$this" ]; do this=$(readlink "$this"); done
 
 version_file=$MY_DIR/GIT_VERSION
 if [ -r "$version_file" ]; then
