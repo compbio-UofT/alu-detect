@@ -15,7 +15,6 @@ TRIM_STEP=5
 MIN_LEN=20
 MIN_MQV=5
 MAPPER_CMD="bowtie2-sort -x $BOWTIE2_INDEX -p $NCPU -U"
-export SORT_OPTIONS="-S 10G"
 
 find_my_name_and_dir "${BASH_SOURCE[0]}"
 [ ! $DEBUG ] || TMPDIR=/tmp
