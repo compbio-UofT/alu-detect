@@ -4,7 +4,7 @@ trap 'echo "$0: line $LINENO: exit code $?" >&2' ERR
 this=${BASH_SOURCE[0]}
 while [ -h "$this" ]; do this=$(readlink "$this"); done
 
-version_file=$MY_DIR/GIT_VERSION
+version_file=$(basedir "$this")/GIT_VERSION
 if [ -r "$version_file" ]; then
     version=$(cat "$version_file")
 else
