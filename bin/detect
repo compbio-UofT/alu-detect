@@ -218,7 +218,9 @@ get_orig_mappings() {
     [ -r $file ] || crash "$file: file not found"
     rg=${orig_read_groups[$1]:-}
     command="$PV $file"
+    is_bam=
     if (set +o pipefail; zc $file | head -n 1 | cut -c -3 | grep -q "BAM"); then
+	is_bam=1
 	command="$command | samtools view -h -"
     elif (set +o pipefail; file $file | grep -q gzip); then
 	command="$command | $UNZIP"
@@ -229,7 +231,7 @@ get_orig_mappings() {
     if [ ${add_dummy_pairs:-} ]; then
 	command="$command | add-dummy-pairs"
     fi
-    if (set +o pipefail; zc $file | head -n 1 | grep -q "coordinate") || [ "${RSORT:-}" ]; then
+    if (set +o pipefail; { if [ $is_bam ]; then exec samtools view -H $file; else exec zc $file; fi; } | head -n 1 | grep -q "coordinate") || [ "${RSORT:-}" ]; then
 	command="$command | sam-rsort"
     fi
     if [ "$rg" ]; then
