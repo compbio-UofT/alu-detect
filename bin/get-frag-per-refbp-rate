@@ -32,7 +32,6 @@ while read -r line ; do
 	let ref_len+=crt_len
     fi
 done
-echo ref_len=$ref_len >&2
 
 {
     [ ! $have_line ] || echo $line
@@ -41,4 +40,4 @@ echo ref_len=$ref_len >&2
 tawk 'and($2,0x40) {i=12; while (i<NF && substr($i,1,2)!="RG") i++; print substr($i,6);}' |
 sort |
 uniq -c |
-awk -v OFS="\t" -v ref_len=$ref_len '{printf ("%s\t%.4f\n", $2, $1/ref_len)}'
+awk -v OFS="\t" -v ref_len=$ref_len '{printf ("%s\t%.6f\n", $2, $1/ref_len)}'
