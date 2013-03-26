@@ -40,4 +40,4 @@ done
 tawk 'and($2,0x40) {i=12; while (i<NF && substr($i,1,2)!="RG") i++; print substr($i,6);}' |
 sort |
 uniq -c |
-awk -v OFS="\t" -v ref_len=$ref_len '{printf ("%s\t%.6f\n", $2, $1/ref_len)}'
+awk -v OFS="\t" -v ref_len=$ref_len '{print $2, int($1*1000000/ref_len)}'
