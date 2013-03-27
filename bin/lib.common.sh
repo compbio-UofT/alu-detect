@@ -123,7 +123,7 @@ restore_xtrace () {
 }
 
 run_stage () {
-    echo "--------------------" >&2
+    echo "-------------------- $(date)" >&2
     make_note "Stage $STAGE_NUM: $STAGE_NAME"
 
     if [ "${STAGE_NUM%%.*}" -lt "$START_STAGE" ] ; then
@@ -171,6 +171,7 @@ run_stage () {
 	    make_note "skipping"
 	fi
     fi
+    echo "-------------------- $(date)" >&2
 }
 
 #
