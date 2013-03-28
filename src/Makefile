@@ -55,7 +55,7 @@ endif
 CC=${CXX}
 CFLAGS=${CXXFLAGS}
 
-all: ../bin/get-regions ../bin/inalign ../bin/get-coverage ../bin/tsd-search ../bin/zc ../bin/add-extra-sam-flags ../bin/filter-mappings ../bin/sam-to-fq ../bin/print_tab ../bin/tee-p ../bin/drain ../bin/sort-with-dict
+all: ../bin/get-regions ../bin/inalign ../bin/get-coverage ../bin/tsd-search ../bin/zc ../bin/add-extra-sam-flags ../bin/filter-mappings ../bin/sam-to-fq ../bin/printab ../bin/tee-p ../bin/drain ../bin/sort-with-dict
 
 include-boost:
 	if [[ ! -e boost && -d "$(BOOST)" ]]; then ln -s "$(BOOST)" boost; fi
@@ -185,7 +185,7 @@ get-coverage.o: get-coverage.?pp Range.hpp
 ../bin/zc: zc.c
 	$(LD) $(CXXFLAGS) -o $@ $+ $(LDFLAGS)
 
-../bin/print_tab: print_tab.cpp
+../bin/printab: printab.cpp
 	$(LD) $(CXXFLAGS) -o $@ $+ $(LDFLAGS)
 
 ../bin/tee-p: tee-p.cpp
@@ -198,4 +198,4 @@ get-coverage.o: get-coverage.?pp Range.hpp
 	$(LD) $(CXXFLAGS) -o $@ $+ $(LDFLAGS)
 
 clean:
-	rm -f *.o common/*.o gzstream/gzstream.o ../bin/get-regions ../bin/inalign ../bin/get-coverage ../bin/tsd-search.cpp ../bin/zc ../bin/add-extra-sam-flags ../bin/filter-mappings ../bin/sam-to-fq ../bin/tee-p ../bin/drain ../bin/sort-with-dict
+	rm -f *.o common/*.o gzstream/gzstream.o ../bin/get-regions ../bin/inalign ../bin/get-coverage ../bin/tsd-search.cpp ../bin/zc ../bin/add-extra-sam-flags ../bin/filter-mappings ../bin/sam-to-fq ../bin/printab ../bin/tee-p ../bin/drain ../bin/sort-with-dict

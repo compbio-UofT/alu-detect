@@ -46,7 +46,7 @@ while read -r line; do
     have_line=
 done
 
-[ $have_rg_line ] || print_tab "@RG" "ID:$rg" $([ ! "$sample" ] || echo "SM:$sample")
+[ $have_rg_line ] || printab "@RG" "ID:$rg" $([ ! "$sample" ] || echo "SM:$sample")
 {
     [ ! $have_line ] || echo $line
     exec cat

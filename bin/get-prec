@@ -11,4 +11,4 @@ else
     PRECISION=$(echo "scale=$SCALE; ${CMD_OUTPUT[1]} / ${CMD_OUTPUT[2]}" | bc)
 fi
 
-exec print_tab -- ${CMD_OUTPUT[1]} ${CMD_OUTPUT[2]} $PRECISION
+exec printab -- ${CMD_OUTPUT[1]} ${CMD_OUTPUT[2]} $PRECISION

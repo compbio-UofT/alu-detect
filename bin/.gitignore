@@ -9,7 +9,7 @@ sam-to-fq
 get-coverage
 get-bed-coverage
 tsd-search
-print_tab
+printab
 tee-p
 drain
 sort-with-dict

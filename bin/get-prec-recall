@@ -24,4 +24,4 @@ else
     F_MEASURE=$(echo "scale=$SCALE; (2 * $PRECISION * $RECALL)/($PRECISION + $RECALL)" | bc)
 fi
 
-exec print_tab -- ${CMD_OUTPUT[1]} ${CMD_OUTPUT[2]} $PRECISION $TRUTH_LEN $RECALL $F_MEASURE
+exec printab -- ${CMD_OUTPUT[1]} ${CMD_OUTPUT[2]} $PRECISION $TRUTH_LEN $RECALL $F_MEASURE

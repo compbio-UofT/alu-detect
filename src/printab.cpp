@@ -2,7 +2,9 @@
 #include <cstdlib>
 #include <string>
 
-std::string delim("\t");
+using namespace std;
+
+string delim("\t");
 bool print_newline = true;
 
 int
@@ -18,19 +20,17 @@ main(int argc, char * argv[])
       print_newline = false;
       break;
     default:
-      std::cerr << "unrecognized option: " << c << std::endl;
+      cerr << "unrecognized option: " << c << endl;
       exit(EXIT_FAILURE);
     }
   }
   
   if (argc > optind) {
-    std::cout << argv[optind];
-
+    cout << argv[optind];
     for (int i = optind + 1; i < argc; ++i)
-      std::cout << delim << argv[i];
-
-    if (print_newline)
-      std::cout << std::endl;
+      cout << delim << argv[i];
   }
+  if (print_newline)
+    cout << '\n';
   return EXIT_SUCCESS;
 }
