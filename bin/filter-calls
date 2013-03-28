@@ -92,50 +92,61 @@ stage_command() {
     export CI_LEN_VALS=${CI_LEN_VALS:-$(seq -s " " 300 200 1100)}
     export OUTPUT_FD=3
     export CALLS_TRUTH_PAIRS="$filtered_fake_calls:$targets;$filtered_real_calls:$known_novel_alus"
-    len_min=${len_min:-150}
-    len_max=${len_max:-290}
-    supp_min=${supp_min:-5}
-    supp_max=${supp_max:-30}
+
+    abs_len_min=150
+    abs_len_max=290
+    abs_supp_min=5
+    abs_supp_max=30
     len_safety=50
+    len_step=10
     supp_safety=5
+    supp_step=1
+
+    len_min=${len_min:-$abs_len_min}
+    len_max=${len_max:-$abs_len_max}
+    supp_min=${supp_min:-$abs_supp_min}
+    supp_max=${supp_max:-$abs_supp_max}
 
     while true; do
 	log_file=log.${NGS_NAME}.len${len_min}-${len_max}.supp${supp_min}-${supp_max}.txt
-	export LEN_VALS=$(seq -s " " $len_min 10 $len_max)
-	export SUPP_VALS=$(seq -s " " $supp_min $supp_max)
+	export LEN_VALS=$(seq -s " " $len_min $len_step $len_max)
+	export SUPP_VALS=$(seq -s " " $supp_min $supp_step $supp_max)
 	make_note "trying len${len_min}-${len_max} supp${supp_min}-${supp_max}"
 
-	run-filters.parallel "$NCPU" 3>>$table_filters >${WORK_DIR}$log_file 2>&1 || exit 1
+	run-filters.parallel "$NCPU" 3>>$table_filters >${WORK_DIR}$log_file 2>&1
 
 	top_filter=($(get-top-filter $table_filters))
 	if [ "${#top_filter[*]}" -eq 0 ]; then
-	    if [ $supp_max -lt 30 ]; then
-		supp_max=$(($supp_max + $supp_safety))
-		[ $supp_max -gt 30 ] && supp_max=30
+	    if [ $supp_max -lt $abs_supp_max ]; then
+		let supp_max+=$supp_safety
+		[ $supp_max -le $abs_supp_max ] || supp_max=$abs_supp_max
 		make_note "no suitable filters; increasing support"
 		continue
 	    else
-		make_note "no suitable filters found!"
+		make_note "no suitable filters and maximum support!"
 		break
 	    fi
 	fi
 
 	make_note "top filter: ${top_filter[@]}"
 
-	done=1
-	[ $((${top_filter[0]} + $len_safety)) -gt $len_max -a $len_max -lt 290 ] && done=
-	[ $((${top_filter[0]} - $len_safety)) -lt $len_min -a $len_min -gt 150 ] && done=
-	[ $((${top_filter[1]} + $supp_safety)) -gt $supp_max ] && done=
-	[ $((${top_filter[1]} - $supp_safety)) -lt $supp_min -a $supp_min -gt 5 ] && done=
-	[ $done ] && break
+	done_here=1
+	[ $len_max -ge $abs_len_max ] ||
+	[ $((${top_filter[0]} + $len_safety)) -le $len_max ] || done_here=
+	[ $len_min -le $abs_len_min ] ||
+	[ $((${top_filter[0]} - $len_safety)) -ge $len_min ] || done_here=
+	[ $((${top_filter[1]} + $supp_safety)) -le $supp_max ] || done_here=
+	[ $supp_min -le $abs_supp_min ] ||
+	[ $((${top_filter[1]} - $supp_safety)) -ge $supp_min ] || done_here=
+	[ ! $done_here ] || break
 
-	len_max=$((${top_filter[0]} + $len_safety))
-	[ $len_max -gt 290 ] && len_max=290
-	len_min=$((${top_filter[0]} - $len_safety))
-	[ $len_min -lt 150 ] && len_min=150
-	supp_max=$((${top_filter[1]} + $supp_safety))
-	supp_min=$((${top_filter[1]} - $supp_safety))
-	[ $supp_min -lt 5 ] && supp_min=5
+	let len_max=${top_filter[0]}+$len_safety
+	[ $len_max -le $abs_len_max ] || len_max=$abs_len_max
+	let len_min=${top_filter[0]}-$len_safety
+	[ $len_min -ge $abs_len_min ] || len_min=$abs_len_min
+	let supp_max=${top_filter[1]}+$supp_safety
+	let supp_min=${top_filter[1]}-$supp_safety
+	[ $supp_min -ge $abs_supp_min ] || supp_min=$abs_supp_min
     done
 }
 run_stage
