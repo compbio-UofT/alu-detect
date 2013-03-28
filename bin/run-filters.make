@@ -12,13 +12,14 @@ get_supp = ${shell echo $@ | grep -o 'supp[0-9]*' | cut -c 5-}
 
 all : guard-NGS_NAME \
 	guard-LEN_VALS guard-SUPP_VALS guard-NULL_VALS guard-CI_LEN_VALS \
-	guard-OUTPUT_FD guard-WORK_DIR guard-CALLS_TRUTH_PAIRS \
+	guard-OUTPUT_FD guard-WORK_DIR \
+	guard-CALLS_LIST guard-CALLS_FILTER_LIST guard-TRUTH_LIST guard-TRUTH_LEN_LIST \
 	${files}
 	cat ${prefix}.len*.supp*.${suffix} >&${OUTPUT_FD}
 
 test : ${files}
 	@ echo files: ${files}
-	@ echo CALLS_TRUTH_PAIRS: "${CALLS_TRUTH_PAIRS}"
+	@ echo CALLS_LIST: "${CALLS_LIST}"
 
 guard-% :
 	@ if [ -z "${${*}}" ]; then echo "$* not set"; exit 1; fi
