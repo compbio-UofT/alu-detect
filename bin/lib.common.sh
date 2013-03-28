@@ -32,6 +32,10 @@ quote () {
     done
 }
 
+set_array () {
+    read -ra "$1" <<<"$2"
+}
+
 arg_product () {
     local tmp=""
     local a
@@ -190,7 +194,7 @@ run_cmds() {
     cmds_string="$cmds_string echo \"$crt_cmd \$($1)\" >&\$fd"
 #    echo "cmds_string:$cmds_string" >&2
     local cmds_raw_output=$( exec {fd}>&1; eval $cmds_string; )
-#    echo "cmds_raw_output:$cmds_raw_output" >&2
+#    echo "cmds_raw_output=\"$cmds_raw_output\"" >&2
     CMD_OUTPUT=()
     local i
     for i in $(seq 1 $crt_cmd); do

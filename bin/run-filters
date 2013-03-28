@@ -2,21 +2,21 @@
 source lib.alu-detect.sh
 set -e
 
-IFS=';' calls=($CALLS_LIST)
-IFS=';' calls_filter=($CALLS_FILTER_LIST)
-IFS=';' truth=($TRUTH_LIST)
-IFS=';' truth_len=($TRUTH_LEN_LIST)
-[ ${#calls[@]} -ne ${#calls_filter[@]} ] ||
+IFS=';' set_array calls "$CALLS_LIST"
+IFS=';' set_array calls_filter "$CALLS_FILTER_LIST"
+IFS=';' set_array truth "$TRUTH_LIST"
+IFS=';' set_array truth_len "$TRUTH_LEN_LIST"
+[ ${#calls[@]} -eq ${#calls_filter[@]} ] ||
 crash "#calls ($CALLS_LIST) != #calls_filter ($CALLS_FILTER_LIST)"
 [ ${#calls[@]} -eq ${#truth[@]} ] ||
 crash "#calls ($CALLS_LIST) != #truth ($TRUTH_LIST)"
 [ ${#calls[@]} -eq ${#truth_len[@]} ] ||
 crash "#calls ($CALLS_LIST) != #truth_len ($TRUTH_LEN_LIST)"
 
-printab "calls:" "${calls[@]}" >&2
-printab "calls_filter:" "${calls_filter[@]}" >&2
-printab "truth:" "${truth[@]}" >&2
-printab "truth_len:" "${truth_len[@]}" >&2
+#printab "calls:" "${calls[@]}" >&2
+#printab "calls_filter:" "${calls_filter[@]}" >&2
+#printab "truth:" "${truth[@]}" >&2
+#printab "truth_len:" "${truth_len[@]}" >&2
 
 for len in $LEN_VALS ; do
 for supp in $SUPP_VALS ; do
@@ -25,7 +25,7 @@ for ci_len in $CI_LEN_VALS ; do
     printab -n -- $len $supp $null $ci_len ref-alus
     i=0
     while [ $i -lt ${#calls[@]} ]; do
-	IFS=: cf=(${calls_filter[$i]})
+	IFS=: set_array cf "${calls_filter[$i]}"
 	cmds=()
 	j=0
 	while [ $j -lt ${#cf[@]} ]; do
@@ -37,7 +37,7 @@ for ci_len in $CI_LEN_VALS ; do
 	    cmds+=("$crt_cmd")
 	    let j+=1
 	done
-	printab "cmds:" "${cmds[@]}" >&2
+#	printab "cmds:" "${cmds[@]}" >&2
 	exec {fd}< <(<${calls[$i]} exec apply-filter $len $supp $null $ci_len)
 	<&$fd run_cmds "${cmds[@]}"
 	exec {fd}<&-
