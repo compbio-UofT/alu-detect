@@ -1,43 +1,35 @@
 #!/bin/bash
-. lib.alu-detect.sh
-set -ex
+[ "$BASE_DIR" ] ||
+{
+    echo "run this script through alu-detect wrapper" >&2
+    exit 1
+}
+source lib.alu-detect.sh
+set -eEu -o pipefail
 
 
 export NGS_NAME=$1
-REAL_REF_NAME=$2
-FAKE_REF_NAME=$3
-RAW_REAL_CALLS=$4
-RAW_FAKE_CALLS=$5
+real_ref_name=$2
+fake_ref_name=$3
+raw_real_calls=$4
+raw_fake_calls=$5
 
-# find install directory
-BASE_DIR=$(dirname $(readlink -e $(which alu-detect 2>/dev/null)) | sed 's/\/bin$//')
-[ -z "$BASE_DIR" ] && crash "could not find alu-detect installation folder"
+set_real_and_fake_ref_var_names $real_ref_name $fake_ref_name
+check_files_readable "$real_ref_fa" "$real_ref_fai" \
+    "$real_ref_bt2_idx".{{1..4},rev.{1..2}}.bt2 "$real_ref_alus_bed"
+check_files_readable "$fake_ref_fa" "$fake_ref_fai" \
+    "$fake_ref_bt2_idx".{{1..4},rev.{1..2}}.bt2 "$fake_ref_alus_bed"
 
-# load real reference settings
-REAL_REF_SETTINGS=$BASE_DIR/settings/ref.$REAL_REF_NAME
-[ ! -r "$REAL_REF_SETTINGS" ] && crash "could not find settings for real reference: $REAL_REF_NAME"
-. "$REAL_REF_SETTINGS"
-REAL_REF_FA=$REF_FA
-REAL_CHROMINFO=$CHROMINFO
-REAL_ALUS_BED=$ALUS_BED
-
-# load fake reference settings
-FAKE_REF_SETTINGS=$BASE_DIR/settings/ref.$FAKE_REF_NAME
-[ ! -r "$FAKE_REF_SETTINGS" ] && crash "could not find settings for fake reference: $FAKE_REF_NAME"
-. "$FAKE_REF_SETTINGS"
-FAKE_REF_FA=$REF_FA
-FAKE_CHROMINFO=$CHROMINFO
-FAKE_ALUS_BED=$ALUS_BED
 
 # check for deletions, targets, and known alus
-DELETIONS=$BASE_DIR/data/deletions.$REAL_REF_NAME.to.$FAKE_REF_NAME.bed
-[ ! -r "$DELETIONS" ] && crash "could not find deletions file: $DELETIONS"
-TARGETS=$BASE_DIR/data/targets.$FAKE_REF_NAME.bed
-[ ! -r "$TARGETS" ] && crash "could not find targets file: $TARGETS"
-TARGETS_BAD=$BASE_DIR/data/targets.bad.$FAKE_REF_NAME.bed
-[ ! -r "$TARGETS_BAD" ] && TARGETS_BAD=
-KNOWN_NOVEL_ALUS=$BASE_DIR/data/known-novel-alus.$REAL_REF_NAME.bed
-[ ! -r "$KNOWN_NOVEL_ALUS" ] && KNOWN_NOVEL_ALUS=
+deletions=$BASE_DIR/data/deletions.$real_ref_name.to.$fake_ref_name.bed
+check_files_readable "$deletions"
+targets=$BASE_DIR/data/targets.$fake_ref_name.bed
+check_files_readable "$targets"
+targets_bad=$BASE_DIR/data/targets.bad.$fake_ref_name.bed
+[ -r "$targets_bad" ] || targets_bad=
+known_novel_alus=$BASE_DIR/data/known-novel-alus.$real_ref_name.bed
+[ -r "$known_novel_alus" ] || known_novel_alus=
 
 
 START_STAGE=${START_STAGE:-1}
@@ -48,13 +40,12 @@ make_note "using START_STAGE=$START_STAGE and END_STAGE=$END_STAGE"
 # step 1: apply ref-alu-bp to real calls
 STAGE_NUM=1
 STAGE_NAME="apply ref-alu-bp to real calls"
-FILTERED_REAL_CALLS=$NGS_NAME.$REAL_REF_NAME.calls.raw.ref-alu-bp.bed
-INPUT_FILES="$RAW_REAL_CALLS"
-OUTPUT_FILES="$FILTERED_REAL_CALLS"
-STATS_FILE=
+filtered_real_calls=$NGS_NAME.$real_ref_name.calls.raw.ref-alu-bp.bed
+INPUT_FILES="$raw_real_calls"
+OUTPUT_FILES="$filtered_real_calls"
 stage_command() {
-    filter-ref-alu-bp "$REAL_ALUS_BED" "$RAW_REAL_CALLS" \
-	| sort -s -k 1,1 -k 2,2n >"$FILTERED_REAL_CALLS"
+    filter-ref-alu-bp "$real_ref_alus_bed" "$raw_real_calls" |
+    sort -s -k 1,1 -k 2,2n >"$filtered_real_calls"
 }
 run_stage
 
@@ -62,20 +53,20 @@ run_stage
 # step 2: clean up fake calls, and apply ref-alu-bp to fake calls
 STAGE_NUM=2
 STAGE_NAME="clean up fake calls, and apply ref-alu-bp to fake calls"
-FILTERED_FAKE_CALLS=$NGS_NAME.$FAKE_REF_NAME.calls.raw.ref-alu-bp.bed
-INPUT_FILES="$RAW_FAKE_CALLS"
-OUTPUT_FILES="$FILTERED_FAKE_CALLS"
+filtered_fake_calls=$NGS_NAME.$fake_ref_name.calls.raw.ref-alu-bp.bed
+INPUT_FILES="$raw_fake_calls"
+OUTPUT_FILES="$filtered_fake_calls"
 stage_command() {
     {
-	intersectBed -u -s -a "$RAW_FAKE_CALLS" -b $TARGETS;
-	intersectBed -v -s -a "$RAW_FAKE_CALLS" -b \
-	    <(zc "$TARGETS" \
-		<([ "$TARGETS_BAD" ] && exec zc "$TARGETS_BAD") \
-		<([ "$KNOWN_NOVEL_ALUS" ] && exec real-to-fake "$DELETIONS" "$KNOWN_NOVEL_ALUS") \
-		| cut -f -6);
-    } \
-	| filter-ref-alu-bp "$FAKE_ALUS_BED" - \
-	| sort -s -k 1,1 -k 2,2n >"$FILTERED_FAKE_CALLS"
+	intersectBed -u -s -a "$raw_fake_calls" -b "$targets"
+	zc "$targets" \
+	    <([ ! "$targets_bad" ] || exec zc "$targets_bad") \
+	    <([ ! "$known_novel_alus" ] || exec real-to-fake "$deletions" "$known_novel_alus") |
+	cut -f -6 |
+	intersectBed -v -s -a "$raw_fake_calls" -b -
+    } |
+    filter-ref-alu-bp "$fake_ref_alus_bed" - |
+    sort -s -k 1,1 -k 2,2n >"$filtered_fake_calls"
 }
 run_stage
 
@@ -83,36 +74,36 @@ run_stage
 # step 3: try various filters, adapting
 STAGE_NUM=3
 STAGE_NAME="try various filters, adapting"
-TABLE_FILTERS=table.$NGS_NAME.csv
-INPUT_FILES="$FILTERED_FAKE_CALLS $FILTERED_REAL_CALLS"
-OUTPUT_FILES="$TABLE_FILTERS"
+table_filters=table.$NGS_NAME.csv
+INPUT_FILES="$filtered_fake_calls $filtered_real_calls"
+OUTPUT_FILES="$table_filters"
 stage_command() {
     export WORK_DIR=table.$NGS_NAME.dir/
     mkdir -p $WORK_DIR
     export NULL_VALS=${NULL_VALS:-$(seq -s " " 0 50 300)}
     export CI_LEN_VALS=${CI_LEN_VALS:-$(seq -s " " 300 200 1100)}
     export OUTPUT_FD=3
-    export CALLS_TRUTH_PAIRS="$FILTERED_FAKE_CALLS:$TARGETS;$FILTERED_REAL_CALLS:$KNOWN_NOVEL_ALUS"
-    LEN_MIN=${LEN_MIN:-150}
-    LEN_MAX=${LEN_MAX:-290}
-    SUPP_MIN=${SUPP_MIN:-5}
-    SUPP_MAX=${SUPP_MAX:-30}
-    LEN_SAFETY=50
-    SUPP_SAFETY=5
+    export CALLS_TRUTH_PAIRS="$filtered_fake_calls:$targets;$filtered_real_calls:$known_novel_alus"
+    len_min=${len_min:-150}
+    len_max=${len_max:-290}
+    supp_min=${supp_min:-5}
+    supp_max=${supp_max:-30}
+    len_safety=50
+    supp_safety=5
 
     while true; do
-	LOG_FILE=log.${NGS_NAME}.len${LEN_MIN}-${LEN_MAX}.supp${SUPP_MIN}-${SUPP_MAX}.txt
-	export LEN_VALS=$(seq -s " " $LEN_MIN 10 $LEN_MAX)
-	export SUPP_VALS=$(seq -s " " $SUPP_MIN $SUPP_MAX)
-	make_note "trying len${LEN_MIN}-${LEN_MAX} supp${SUPP_MIN}-${SUPP_MAX}"
+	log_file=log.${NGS_NAME}.len${len_min}-${len_max}.supp${supp_min}-${supp_max}.txt
+	export LEN_VALS=$(seq -s " " $len_min 10 $len_max)
+	export SUPP_VALS=$(seq -s " " $supp_min $supp_max)
+	make_note "trying len${len_min}-${len_max} supp${supp_min}-${supp_max}"
 
-	run-filters.parallel "$NCPU" 3>>$TABLE_FILTERS >${WORK_DIR}$LOG_FILE 2>&1 || exit 1
+	run-filters.parallel "$NCPU" 3>>$table_filters >${WORK_DIR}$log_file 2>&1 || exit 1
 
-	top_filter=($(get-top-filter $TABLE_FILTERS))
+	top_filter=($(get-top-filter $table_filters))
 	if [ "${#top_filter[*]}" -eq 0 ]; then
-	    if [ $SUPP_MAX -lt 30 ]; then
-		SUPP_MAX=$(($SUPP_MAX + $SUPP_SAFETY))
-		[ $SUPP_MAX -gt 30 ] && SUPP_MAX=30
+	    if [ $supp_max -lt 30 ]; then
+		supp_max=$(($supp_max + $supp_safety))
+		[ $supp_max -gt 30 ] && supp_max=30
 		make_note "no suitable filters; increasing support"
 		continue
 	    else
@@ -124,19 +115,19 @@ stage_command() {
 	make_note "top filter: ${top_filter[@]}"
 
 	done=1
-	[ $((${top_filter[0]} + $LEN_SAFETY)) -gt $LEN_MAX -a $LEN_MAX -lt 290 ] && done=
-	[ $((${top_filter[0]} - $LEN_SAFETY)) -lt $LEN_MIN -a $LEN_MIN -gt 150 ] && done=
-	[ $((${top_filter[1]} + $SUPP_SAFETY)) -gt $SUPP_MAX ] && done=
-	[ $((${top_filter[1]} - $SUPP_SAFETY)) -lt $SUPP_MIN -a $SUPP_MIN -gt 5 ] && done=
-	[ "$done" ] && break
+	[ $((${top_filter[0]} + $len_safety)) -gt $len_max -a $len_max -lt 290 ] && done=
+	[ $((${top_filter[0]} - $len_safety)) -lt $len_min -a $len_min -gt 150 ] && done=
+	[ $((${top_filter[1]} + $supp_safety)) -gt $supp_max ] && done=
+	[ $((${top_filter[1]} - $supp_safety)) -lt $supp_min -a $supp_min -gt 5 ] && done=
+	[ $done ] && break
 
-	LEN_MAX=$((${top_filter[0]} + $LEN_SAFETY))
-	[ $LEN_MAX -gt 290 ] && LEN_MAX=290
-	LEN_MIN=$((${top_filter[0]} - $LEN_SAFETY))
-	[ $LEN_MIN -lt 150 ] && LEN_MIN=150
-	SUPP_MAX=$((${top_filter[1]} + $SUPP_SAFETY))
-	SUPP_MIN=$((${top_filter[1]} - $SUPP_SAFETY))
-	[ $SUPP_MIN -lt 5 ] && SUPP_MIN=5
+	len_max=$((${top_filter[0]} + $len_safety))
+	[ $len_max -gt 290 ] && len_max=290
+	len_min=$((${top_filter[0]} - $len_safety))
+	[ $len_min -lt 150 ] && len_min=150
+	supp_max=$((${top_filter[1]} + $supp_safety))
+	supp_min=$((${top_filter[1]} - $supp_safety))
+	[ $supp_min -lt 5 ] && supp_min=5
     done
 }
 run_stage
@@ -145,11 +136,11 @@ run_stage
 # step 4: filter real calls based on top filter
 STAGE_NUM=4
 STAGE_NAME="filter real calls based on top filter"
-REAL_CALLS=$NGS_NAME.$REAL_REF_NAME.calls.filtered.bed
-INPUT_FILES="$FILTERED_REAL_CALLS $TABLE_FILTERS"
-OUTPUT_FILES="$REAL_CALLS"
+real_calls=$NGS_NAME.$real_ref_name.calls.filtered.bed
+INPUT_FILES="$filtered_real_calls $table_filters"
+OUTPUT_FILES="$real_calls"
 stage_command() {
-    apply-filter $(get-top-filter "$TABLE_FILTERS") <"$FILTERED_REAL_CALLS" >"$REAL_CALLS"
+    apply-filter $(get-top-filter "$table_filters") <"$filtered_real_calls" >"$real_calls"
 }
 run_stage
 
@@ -157,10 +148,10 @@ run_stage
 # step 5: filter fake calls based on top filter
 STAGE_NUM=5
 STAGE_NAME="filter fake calls based on top filter"
-FAKE_CALLS=$NGS_NAME.$FAKE_REF_NAME.calls.filtered.bed
-INPUT_FILES="$FILTERED_FAKE_CALLS $TABLE_FILTERS"
-OUTPUT_FILES="$FAKE_CALLS"
+fake_calls=$NGS_NAME.$fake_ref_name.calls.filtered.bed
+INPUT_FILES="$filtered_fake_calls $table_filters"
+OUTPUT_FILES="$fake_calls"
 stage_command() {
-    apply-filter $(get-top-filter "$TABLE_FILTERS") <"$FILTERED_FAKE_CALLS" >"$FAKE_CALLS"
+    apply-filter $(get-top-filter "$table_filters") <"$filtered_fake_calls" >"$fake_calls"
 }
 run_stage
