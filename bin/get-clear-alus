@@ -1,8 +1,17 @@
 #!/bin/bash
-set -u
+source lib.common.sh
+set -eEu -o pipefail
 
-intersectBed -c -a "$1" -b <(exec extend-bed 200 "$1") \
-  | tawk '$NF==1 {NF-=1; print}' \
-  | grep Alu \
-  | tawk '($6=="+" && $7<10 && $8>290 && $8<350) || ($6=="-" && $7>290 && $7<350 && $8<10) {out_len=$3-$2+1; if ($6=="+") inn_len=$8-$7+1; else inn_len=$7-$8+1; if (out_len<=1.1*inn_len && inn_len<=1.1*out_len) print}' \
-  | sort -s -k 1,1 -k 2,2n
+self-intersect-count -e 200 "$@" |
+tawk '$NF==1 {NF-=1; print}' |
+grep Alu |
+tawk \
+'
+($6=="+" && $7<10 && $8>290 && $8<350) || ($6=="-" && $7>290 && $7<350 && $8<10) {
+  out_len=$3-$2+1;
+  if ($6=="+") inn_len=$8-$7+1;
+  else inn_len=$7-$8+1;
+  if (out_len<=1.1*inn_len && inn_len<=1.1*out_len) print;
+}
+' |
+sort -s -k 1,1 -k 2,2n
