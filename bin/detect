@@ -7,6 +7,15 @@
 source lib.alu-detect.sh
 set -eEu -o pipefail
 
+usage () {
+    echo "Use: $(basename $0) <ngs_name> <ref_name>"
+}
+
+if [ $# -ne 2 ]; then
+    usage >&2
+    exit
+fi
+
 
 # don't trust the user; check global settings
 (cmd_exists python && [ "$(python --version 2>&1 | cut -d '.' -f 2)" -ge 6 ]) ||

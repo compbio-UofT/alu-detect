@@ -10,7 +10,7 @@ usage () {
 }
 
 if [ $# -ne 0 ] && [ $# -ne 1 ]; then
-    usage
+    usage >&2
     exit
 fi
 

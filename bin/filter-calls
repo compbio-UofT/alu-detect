@@ -7,6 +7,14 @@
 source lib.alu-detect.sh
 set -eEu -o pipefail
 
+usage () {
+    echo "Use: $(basename $0) <ngs_name> <real_ref_name> <fake_ref_name> <real_ref_calls_bed> <fake_ref_calls_bed>"
+}
+
+if [ $# -ne 5 ]; then
+    usage >&2
+    exit
+fi
 
 export NGS_NAME=$1
 real_ref_name=$2
