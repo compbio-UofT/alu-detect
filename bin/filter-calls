@@ -82,11 +82,11 @@ run_stage
 # step 3: try various filters, adapting
 STAGE_NUM=3
 STAGE_NAME="try various filters, adapting"
-table_filters=table.$NGS_NAME.csv
+table_filters=$NGS_NAME.$real_ref_name.table.csv
 INPUT_FILES="$filtered_fake_calls $filtered_real_calls"
 OUTPUT_FILES="$table_filters"
 stage_command() {
-    export WORK_DIR=table.$NGS_NAME.dir/
+    export WORK_DIR=$NGS_NAME.$real_ref_name.table.dir/
     mkdir -p $WORK_DIR
     export NULL_VALS=${NULL_VALS:-$(seq -s " " 0 50 300)}
     export CI_LEN_VALS=${CI_LEN_VALS:-$(seq -s " " 300 200 1100)}
@@ -112,7 +112,7 @@ stage_command() {
     supp_max=${supp_max:-$abs_supp_max}
 
     while true; do
-	log_file=log.${NGS_NAME}.len${len_min}-${len_max}.supp${supp_min}-${supp_max}.txt
+	log_file=log.${NGS_NAME}.$real_ref_name.len${len_min}-${len_max}.supp${supp_min}-${supp_max}.txt
 	export LEN_VALS=$(seq -s " " $len_min $len_step $len_max)
 	export SUPP_VALS=$(seq -s " " $supp_min $supp_step $supp_max)
 	make_note "trying len${len_min}-${len_max} supp${supp_min}-${supp_max}"
