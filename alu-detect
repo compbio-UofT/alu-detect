@@ -15,7 +15,7 @@ source lib.alu-detect.sh
 make_note "$(basename "$this") v$(cat $BASE_DIR/VERSION) (git:$($BASE_DIR/get_git_version)) installed in $BASE_DIR"
 
 
-prog_list=(setup add-ref list-ref del-ref make-fake-ref detect)
+prog_list=(setup add-ref list-ref del-ref make-fake-ref detect filter-calls)
 
 usage () {
     echo "Use: $(basename "$this") <command> [options]"
