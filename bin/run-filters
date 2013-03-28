@@ -1,41 +1,50 @@
 #!/bin/bash
-. lib.alu-detect.sh
+source lib.alu-detect.sh
 set -e
 
-calls_truth_pairs=($(echo "$CALLS_TRUTH_PAIRS" | tr ';' ' '))
-calls=()
-truth=()
-truth_len=()
-for pair in ${calls_truth_pairs[@]}; do
-    tmp=($(echo "$pair" | tr ':' ' '))
-    [ ${#tmp[@]} -ne 2 ] && crash "invalid <calls_bed>:<truth_bed> pair: $pair"
-    calls+=(${tmp[0]})
-    truth+=(${tmp[1]})
-    truth_len+=($(wc -l <${tmp[1]}))
-done
+IFS=';' calls=($CALLS_LIST)
+IFS=';' calls_filter=($CALLS_FILTER_LIST)
+IFS=';' truth=($TRUTH_LIST)
+IFS=';' truth_len=($TRUTH_LEN_LIST)
+[ ${#calls[@]} -ne ${#calls_filter[@]} ] ||
+crash "#calls ($CALLS_LIST) != #calls_filter ($CALLS_FILTER_LIST)"
+[ ${#calls[@]} -eq ${#truth[@]} ] ||
+crash "#calls ($CALLS_LIST) != #truth ($TRUTH_LIST)"
+[ ${#calls[@]} -eq ${#truth_len[@]} ] ||
+crash "#calls ($CALLS_LIST) != #truth_len ($TRUTH_LEN_LIST)"
 
-#echo "calls: ${calls[@]}" >&2
-#echo "truth: ${truth[@]}" >&2
-#echo "truth_len: ${truth_len[@]}" >&2
+printab "calls:" "${calls[@]}" >&2
+printab "calls_filter:" "${calls_filter[@]}" >&2
+printab "truth:" "${truth[@]}" >&2
+printab "truth_len:" "${truth_len[@]}" >&2
 
 for len in $LEN_VALS ; do
 for supp in $SUPP_VALS ; do
 for null in $NULL_VALS ; do
 for ci_len in $CI_LEN_VALS ; do
-    print_tab -n -- $len $supp $null $ci_len ref-alus
-
+    printab -n -- $len $supp $null $ci_len ref-alus
     i=0
     while [ $i -lt ${#calls[@]} ]; do
-	exec 3< <(<${calls[$i]} exec apply-filter $len $supp $null $ci_len)
-	<&3 run_cmds "TRUTH=${truth[$i]} TRUTH_LEN=${truth_len[$i]} get-prec-recall" \
-	    "filter-ci-length 100 | TRUTH=${truth[$i]} TRUTH_LEN=${truth_len[$i]} get-prec-recall" \
-	    "filter-bp 2 | TRUTH=${truth[$i]} TRUTH_LEN=${truth_len[$i]} get-prec-recall" 2>/dev/null
-	exec 3<&-
-	print_tab -n -- '' "${CMD_OUTPUT[@]}"
-	i=$(($i + 1))
+	IFS=: cf=(${calls_filter[$i]})
+	cmds=()
+	j=0
+	while [ $j -lt ${#cf[@]} ]; do
+	    crt_cmd=
+	    if [ "${cf[$j]:-}" ]; then
+		crt_cmd="${cf[$j]} | "
+	    fi
+	    crt_cmd=$crt_cmd"TRUTH=${truth[$i]} TRUTH_LEN=${truth_len[$i]} get-prec-recall"
+	    cmds+=("$crt_cmd")
+	    let j+=1
+	done
+	printab "cmds:" "${cmds[@]}" >&2
+	exec {fd}< <(<${calls[$i]} exec apply-filter $len $supp $null $ci_len)
+	<&$fd run_cmds "${cmds[@]}"
+	exec {fd}<&-
+	printab -n -- '' "${CMD_OUTPUT[@]}"
+	let i+=1
     done
-
-    echo
+    printab
 done
 done
 done

@@ -92,6 +92,10 @@ stage_command() {
     export CI_LEN_VALS=${CI_LEN_VALS:-$(seq -s " " 300 200 1100)}
     export OUTPUT_FD=3
     export CALLS_TRUTH_PAIRS="$filtered_fake_calls:$targets;$filtered_real_calls:$known_novel_alus"
+    export CALLS_LIST="$filtered_fake_calls;$filtered_real_calls"
+    export CALLS_FILTER_LIST=":filter-bp 1:filter-bp 2;:filter-bp 1:filter-bp 2"
+    export TRUTH_LIST="$targets;$known_novel_alus"
+    export TRUTH_LEN_LIST="$(wc -l <$targets);$(wc -l <$known_novel_alus)"
 
     abs_len_min=150
     abs_len_max=290
