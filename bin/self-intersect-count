@@ -1,0 +1,38 @@
+#!/bin/bash
+source lib.common.sh
+set -eEu -o pipefail
+
+cmd_exists drain || crash "drain: not found"
+cmd_exists tee-p || crash "tee-p: not found"
+cmd_exists bedtools || crash "bedtools: not found"
+
+strand=
+extension=0
+use_zc=
+OPTIND=1
+while getopts "se:z" OPT "$@"; do
+    case $OPT in
+	s)
+	    strand=-s
+	    ;;
+	e)
+	    extension=$OPTARG
+	    ;;
+	z)
+	    use_zc=1
+	    ;;
+    esac
+done
+shift $(($OPTIND - 1))
+
+([ $# -eq 0 ] && [ ! $use_zc ]) || { exec < <(exec zc "$@"); make_note "using zc"; }
+
+splitter () {
+    exec tee-p >(exec cat >&$out_fd)
+}
+
+joiner () {
+    exec bedtools intersect $strand -c -a - -b <(exec extend-bed $extension <&$in_fd)
+}
+
+double_pipe
