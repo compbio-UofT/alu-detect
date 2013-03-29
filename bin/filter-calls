@@ -32,10 +32,20 @@ check_files_readable "$fake_ref_fa" "$fake_ref_fai" \
 # check for deletions, targets, and known alus
 deletions=$BASE_DIR/data/deletions.$real_ref_name.to.$fake_ref_name.bed
 check_files_readable "$deletions"
+
 targets=$BASE_DIR/data/targets.$fake_ref_name.bed
 check_files_readable "$targets"
+
+targets_near_alus=$BASE_DIR/data/targets.near-clear-alus.$fake_ref_name.bed
+[ -r "$targets_near_alus" ] || targets_near_alus=
+
+fake_ref_clear_alus=$BASE_DIR/data/ref.$fake_ref_name.alus.clear.bed.gz
+[ "$targets_near_alus" ] || fake_ref_clear_alus=
+[ ! "$fake_ref_clear_alus" ] || check_files_readable "$fake_ref_clear_alus"
+
 targets_bad=$BASE_DIR/data/targets.bad.$fake_ref_name.bed
 [ -r "$targets_bad" ] || targets_bad=
+
 known_novel_alus=$BASE_DIR/data/known-novel-alus.$real_ref_name.bed
 [ -r "$known_novel_alus" ] || known_novel_alus=
 
@@ -58,12 +68,12 @@ stage_command() {
 run_stage
 
 
-# step 2: clean up fake calls, and apply ref-alu-bp to fake calls
+# step 2: clean up fake calls
 STAGE_NUM=2
-STAGE_NAME="clean up fake calls, and apply ref-alu-bp to fake calls"
-filtered_fake_calls=$NGS_NAME.$fake_ref_name.calls.raw.ref-alu-bp.bed
+STAGE_NAME="clean up fake calls"
+clean_fake_calls=$NGS_NAME.$fake_ref_name.calls.clean.bed
 INPUT_FILES="$raw_fake_calls"
-OUTPUT_FILES="$filtered_fake_calls"
+OUTPUT_FILES="$clean_fake_calls"
 stage_command() {
     {
 	intersectBed -u -s -a "$raw_fake_calls" -b "$targets"
@@ -73,14 +83,70 @@ stage_command() {
 	cut -f -6 |
 	intersectBed -v -s -a "$raw_fake_calls" -b -
     } |
-    filter-ref-alu-bp "$fake_ref_alus_bed" - |
+    sort -s -k 1,1 -k 2,2n >"$clean_fake_calls"
+}
+run_stage
+
+
+# step 3: apply ref-alu-bp to fake calls
+STAGE_NUM=3
+STAGE_NAME="apply ref-alu-bp to clean fake calls"
+filtered_fake_calls=$NGS_NAME.$fake_ref_name.calls.clean.ref-alu-bp.bed
+INPUT_FILES="$clean_fake_calls"
+OUTPUT_FILES="$filtered_fake_calls"
+stage_command() {
+    filter-ref-alu-bp "$fake_ref_alus_bed" "$clean_fake_calls" |
     sort -s -k 1,1 -k 2,2n >"$filtered_fake_calls"
 }
 run_stage
 
 
-# step 3: try various filters, adapting
-STAGE_NUM=3
+# step 4: get fake calls near clear alus
+if [ "$targets_near_alus" ]; then
+    STAGE_NUM=4
+    STAGE_NAME="get fake calls near clear alus"
+    filtered_fake_calls_near_alus=$NGS_NAME.$fake_ref_name.calls.clean.near-clear-alus.ref-alu-bp.bed
+    INPUT_FILES="$clean_fake_calls"
+    OUTPUT_FILES="$filtered_fake_calls_near_alus"
+    stage_command() {
+	{
+	    # 1: pass through calls that detect targets near clear alus
+	    intersectBed -u -s -a "$clean_fake_calls" -b "$targets_near_alus"
+            # 2: from the rest, remove calls that detect other targets
+	    #    and keep only calls near clear alus
+            intersectBed -v -s -a "$clean_fake_calls" -b "$targets" |
+	    intersectBed -u -a - -b <(extend-bed 100 "$fake_ref_clear_alus")
+	} |
+	filter-ref-alu-bp "$fake_ref_alus_bed" - |
+	sort -s -k 1,1 -k 2,2n >"$filtered_fake_calls_near_alus"
+    }
+    run_stage
+    CALLS_LIST="$filtered_fake_calls_near_alus${CALLS_LIST:+;}${CALLS_LIST:-}"
+    CALLS_FILTER_LIST=":filter-bp 1:filter-bp 2${CALLS_FILTER_LIST:+;}${CALLS_FILTER_LIST:-}"
+    TRUTH_LIST="$targets_near_alus${TRUTH_LIST:+;}${TRUTH_LIST:-}"
+    TRUTH_LEN_LIST="$(wc -l <$targets_near_alus)${TRUTH_LEN_LIST:+;}${TRUTH_LEN_LIST:-}"
+fi
+
+# build lists of calls and truth to compare
+export CALLS_LIST="$filtered_fake_calls;$filtered_real_calls"
+export CALLS_FILTER_LIST=":filter-bp 1:filter-bp 2;:filter-bp 1:filter-bp 2"
+export TRUTH_LIST="$targets;$known_novel_alus"
+export TRUTH_LEN_LIST="$(wc -l <$targets);$(wc -l <$known_novel_alus)"
+if [ "$targets_near_alus" ]; then
+    CALLS_LIST=$CALLS_LIST";$filtered_fake_calls_near_alus"
+    CALLS_FILTER_LIST=$CALLS_FILTER_LIST";:filter-bp 1:filter-bp 2"
+    TRUTH_LIST=$TRUTH_LIST";$targets_near_alus"
+    TRUTH_LEN_LIST=$TRUTH_LEN_LIST";$(wc -l <$targets_near_alus)"
+fi
+if [ "$OTHER_REAL_TRUTH" ]; then
+    CALLS_LIST=$CALLS_LIST";$filtered_real_calls"
+    CALLS_FILTER_LIST=$CALLS_FILTER_LIST";:filter-bp 1:filter-bp 2"
+    TRUTH_LIST=$TRUTH_LIST";$OTHER_REAL_TRUTH"
+    TRUTH_LEN_LIST=$TRUTH_LEN_LIST";$(wc -l <$OTHER_REAL_TRUTH)"
+fi
+
+# step 5: try various filters, adapting
+STAGE_NUM=5
 STAGE_NAME="try various filters, adapting"
 table_filters=$NGS_NAME.$real_ref_name.table.csv
 INPUT_FILES="$filtered_fake_calls $filtered_real_calls"
@@ -91,11 +157,6 @@ stage_command() {
     export NULL_VALS=${NULL_VALS:-$(seq -s " " 0 50 300)}
     export CI_LEN_VALS=${CI_LEN_VALS:-$(seq -s " " 300 200 1100)}
     export OUTPUT_FD=3
-
-    export CALLS_LIST="$filtered_fake_calls;$filtered_real_calls${CALLS_LIST:+;}${CALLS_LIST:-}"
-    export CALLS_FILTER_LIST=":filter-bp 1:filter-bp 2;:filter-bp 1:filter-bp 2${CALLS_FILTER_LIST:+;}${CALLS_FILTER_LIST:-}"
-    export TRUTH_LIST="$targets;$known_novel_alus${TRUTH_LIST:+;}${TRUTH_LIST:-}"
-    export TRUTH_LEN_LIST="$(wc -l <$targets);$(wc -l <$known_novel_alus)${TRUTH_LEN_LIST:+;}${TRUTH_LEN_LIST:-}"
 
     abs_len_min=150
     abs_len_max=290
@@ -156,8 +217,8 @@ stage_command() {
 run_stage
 
 
-# step 4: filter real calls based on top filter
-STAGE_NUM=4
+# step 6: filter real calls based on top filter
+STAGE_NUM=6
 STAGE_NAME="filter real calls based on top filter"
 real_calls=$NGS_NAME.$real_ref_name.calls.filtered.bed
 INPUT_FILES="$filtered_real_calls $table_filters"
@@ -168,8 +229,8 @@ stage_command() {
 run_stage
 
 
-# step 5: filter fake calls based on top filter
-STAGE_NUM=5
+# step 7: filter fake calls based on top filter
+STAGE_NUM=7
 STAGE_NAME="filter fake calls based on top filter"
 fake_calls=$NGS_NAME.$fake_ref_name.calls.filtered.bed
 INPUT_FILES="$filtered_fake_calls $table_filters"
