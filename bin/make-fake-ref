@@ -118,8 +118,21 @@ run_stage
 STAGE_NUM=7
 STAGE_NAME="add fake reference to alu-detect"
 INPUT_FILES="$fake_ref_fa $fake_ref_bt2_idx.1.bt2 $fake_ref_fa.out"
-OUTPUT_FILES="$fake_ref_alus_bed"
+OUTPUT_FILES="$fake_ref_alus_bed $fake_ref_clear_alus_bed"
 stage_command() {
     $BASE_DIR/alu-detect add-ref -o $fake_ref_fa.out $fake_ref_name
+}
+run_stage
+
+#
+# step 8
+#
+STAGE_NUM=8
+STAGE_NAME="compute targets near clear alus in fake reference"
+INPUT_FILES="$fake_targets_bed $fake_ref_clear_alus_bed"
+OUTPUT_FILES="$fake_targets_near_alus_bed"
+stage_command() {
+    bedtools intersect -u -a "$fake_targets_bed" \
+	-b <(zc "$fake_ref_clear_alus_bed" | extend-bed 100) >"$fake_targets_near_alus_bed"
 }
 run_stage
