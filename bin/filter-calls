@@ -141,7 +141,7 @@ if [ "$targets_near_alus" ]; then
 else
     make_note "targets near alus: not found"
 fi
-if [ "$OTHER_REAL_TRUTH" ]; then
+if [ "${OTHER_REAL_TRUTH:-}" ]; then
     make_note "other real truth: found"
     CALLS_LIST=$CALLS_LIST";$filtered_real_calls"
     CALLS_FILTER_LIST=$CALLS_FILTER_LIST";:filter-bp 1:filter-bp 2"
