@@ -470,21 +470,58 @@ run_stage
 
 
 #
-# Stage 8: Find novel insertions
+# Stage 8: Apply basic filters to get novel insertions
 #
-# Input: detected insertions, known insertions
+# Input: raw calls
 # Output: novel insertions
 #
 STAGE_NUM=8
 STAGE_NAME="get novel insertions"
+if [ -r "$targets_bed" ]; then
+    # this is a fake reference
+    clean_calls=$prefix.calls.clean
+    if [ -r "$targets_near_alus_bed" ]; then
+	clean_calls_near_alus=$prefix.calls.near-clear-alus
+	clean_calls_near_alus_ref_alu_bp=$clean_calls_near_alus.ref-alu-bp
+    fi
+else
+    clean_calls=$raw_calls
+fi
+clean_calls_ref_alu_bp=$clean_calls.ref-alu-bp
 novel_calls=$prefix.calls.basic-filters
 INPUT_FILES="$raw_calls.bed"
-OUTPUT_FILES="$novel_calls.bed"
+OUTPUT_FILES="$clean_calls_ref_alu_bp.bed $novel_calls.bed"
 stage_command() {
-    filter-ref-alu-bp $ref_alus_bed $raw_calls.bed |
-    filter-length 150 |
+    if [ -r "$targets_bed" ]; then
+	{
+	    intersectBed -u -s -a "$raw_calls.bed" -b "$targets_bed"
+	    zc "$targets_bed" \
+		<([ ! -r "$targets_bad_bed" ] || exec zc "$targets_bad_bed") \
+		<([ ! -r "$ref_known_novel_alus" ] || exec zc "$ref_known_novel_alus") |
+	    cut -f -6 |
+	    intersectBed -v -s -a "$raw_calls".bed -b -
+	} |
+	sort -s -k 1,1 -k 2,2n >"$clean_calls".bed
+
+	if [ -r "$targets_near_alus_bed" ]; then
+	    {
+		# 1: pass through calls that detect targets near clear alus
+		intersectBed -u -s -a "$clean_calls".bed -b "$targets_near_alus_bed"
+                # 2: from the rest, remove calls that detect other targets
+		#    and keep only calls near clear alus
+		intersectBed -v -s -a "$clean_calls".bed -b "$targets_bed" |
+		intersectBed -u -a - -b <(exec extend-bed 100 "$ref_clear_alus_bed")
+	    } >"$clean_calls_near_alus".bed
+	    filter-ref-alu-bp "$ref_alus_bed" "$clean_calls_near_alus".bed \
+		>"$clean_calls_near_alus_ref_alu_bp".bed
+	fi
+    fi
+
+    filter-ref-alu-bp "$ref_alus_bed" "$clean_calls".bed >"$clean_calls_ref_alu_bp".bed
+
+    filter-length 150 <"$clean_calls_ref_alu_bp".bed |
     filter-support 10 |
     filter-weak-null 200 |
-    filter-ci-length 1100 >$novel_calls.bed
+    filter-ci-length 1100 >"$novel_calls".bed
 }
 run_stage
