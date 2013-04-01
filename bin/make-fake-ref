@@ -46,7 +46,7 @@ run_stage
 STAGE_NUM=2
 STAGE_NAME="select alus to delete"
 INPUT_FILES="$real_ref_alus_tsd_bed"
-OUTPUT_FILES="$real_deletions_bed $real_alus_to_remove_bed"
+OUTPUT_FILES="$real_deletions_bed $real_alus_to_remove_bed $fake_known_novel_alus_bed"
 stage_command() {
     zc "$real_ref_alus_tsd_bed" |
     grep AluY |
@@ -56,6 +56,7 @@ stage_command() {
     cut -f 1-8,10 |
     tee-p "$real_alus_to_remove_bed" |
     tawk '{$3+=$9} 1' >"$real_deletions_bed"
+    real-to-fake "$real_deletions_bed" "$real_known_novel_alus_bed" >"$fake_known_novel_alus_bed"
 }
 run_stage
 

@@ -71,6 +71,9 @@ set_real_and_fake_ref_var_names () {
     real_deletions_bed=$BASE_DIR/data/deletions.$real_ref_name.to.$fake_ref_name.bed
     real_alus_to_remove_bed=$BASE_DIR/data/alus.to-remove.$real_ref_name.to.$fake_ref_name.bed
     fake_targets_bed=$BASE_DIR/data/targets.$fake_ref_name.bed
+
+    real_known_novel_alus_bed=$BASE_DIR/data/known-novel-alus.$real_ref_name.bed
+    fake_known_novel_alus_bed=$BASE_DIR/data/known-novel-alus.$fake_ref_name.bed
 }
 
 set -x
