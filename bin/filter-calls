@@ -18,6 +18,7 @@ fi
 
 export NGS_NAME=$1
 real_ref_name=$2
+export REAL_REF_NAME=$real_ref_name
 fake_ref_name=$3
 raw_real_calls=$4
 raw_fake_calls=$5
@@ -158,7 +159,7 @@ table_filters=$NGS_NAME.$real_ref_name.table.csv
 INPUT_FILES="$filtered_fake_calls $filtered_real_calls"
 OUTPUT_FILES="$table_filters"
 stage_command() {
-    export WORK_DIR=$NGS_NAME.$real_ref_name.table.dir/
+    export WORK_DIR=$NGS_NAME.$real_ref_name.table.dir
     mkdir -p $WORK_DIR
     export NULL_VALS=${NULL_VALS:-$(seq -s " " 0 50 300)}
     export CI_LEN_VALS=${CI_LEN_VALS:-$(seq -s " " 300 200 1100)}

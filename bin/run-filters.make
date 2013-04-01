@@ -1,7 +1,7 @@
 #!/bin/bash extend-hashbang
 #make -f
 
-prefix := ${WORK_DIR}table.${NGS_NAME}
+prefix := ${WORK_DIR}/${NGS_NAME}.${REAL_REF_NAME}.table
 suffix := csv
 
 files := ${foreach len,${LEN_VALS},${foreach supp,${SUPP_VALS},${prefix}.len${len}.supp${supp}.${suffix}}}
