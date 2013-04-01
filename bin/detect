@@ -497,7 +497,7 @@ stage_command() {
 	    intersectBed -u -s -a "$raw_calls.bed" -b "$targets_bed"
 	    zc "$targets_bed" \
 		<([ ! -r "$targets_bad_bed" ] || exec zc "$targets_bad_bed") \
-		<([ ! -r "$ref_known_novel_alus" ] || exec zc "$ref_known_novel_alus") |
+		<([ ! -r "$ref_known_novel_alus_bed" ] || exec zc "$ref_known_novel_alus_bed") |
 	    cut -f -6 |
 	    intersectBed -v -s -a "$raw_calls".bed -b -
 	} |
