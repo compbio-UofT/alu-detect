@@ -133,16 +133,22 @@ export CALLS_FILTER_LIST=":filter-bp 1:filter-bp 2;:filter-bp 1:filter-bp 2"
 export TRUTH_LIST="$targets;$known_novel_alus"
 export TRUTH_LEN_LIST="$(wc -l <$targets);$(wc -l <$known_novel_alus)"
 if [ "$targets_near_alus" ]; then
+    make_note "targets near alus: found"
     CALLS_LIST=$CALLS_LIST";$filtered_fake_calls_near_alus"
     CALLS_FILTER_LIST=$CALLS_FILTER_LIST";:filter-bp 1:filter-bp 2"
     TRUTH_LIST=$TRUTH_LIST";$targets_near_alus"
     TRUTH_LEN_LIST=$TRUTH_LEN_LIST";$(wc -l <$targets_near_alus)"
+else
+    make_note "targets near alus: not found"
 fi
 if [ "$OTHER_REAL_TRUTH" ]; then
+    make_note "other real truth: found"
     CALLS_LIST=$CALLS_LIST";$filtered_real_calls"
     CALLS_FILTER_LIST=$CALLS_FILTER_LIST";:filter-bp 1:filter-bp 2"
     TRUTH_LIST=$TRUTH_LIST";$OTHER_REAL_TRUTH"
     TRUTH_LEN_LIST=$TRUTH_LEN_LIST";$(wc -l <$OTHER_REAL_TRUTH)"
+else
+    make_note "other real truth: not found"
 fi
 
 # step 5: try various filters, adapting
