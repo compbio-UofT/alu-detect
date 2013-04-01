@@ -487,10 +487,14 @@ if [ -r "$targets_bed" ]; then
 else
     clean_calls=$raw_calls
 fi
-clean_calls_ref_alu_bp=$clean_calls.ref-alu-bp
+calls_ref_alu_bp=$prefix.calls.ref-alu-bp
 novel_calls=$prefix.calls.basic-filters
 INPUT_FILES="$raw_calls.bed"
-OUTPUT_FILES="$clean_calls_ref_alu_bp.bed $novel_calls.bed"
+if [ -r "$targets_bed" ] && [ -r "$targets_near_alus_bed" ]; then
+    OUTPUT_FILES="$calls_ref_alu_bp.bed $novel_calls.bed $clean_calls_near_alus.bed $clean_calls_near_alus_ref_alu_bp.bed"
+else
+    OUTPUT_FILES="$calls_ref_alu_bp.bed $novel_calls.bed"
+fi
 stage_command() {
     if [ -r "$targets_bed" ]; then
 	{
@@ -517,9 +521,9 @@ stage_command() {
 	fi
     fi
 
-    filter-ref-alu-bp "$ref_alus_bed" "$clean_calls".bed >"$clean_calls_ref_alu_bp".bed
+    filter-ref-alu-bp "$ref_alus_bed" "$clean_calls".bed >"$calls_ref_alu_bp".bed
 
-    filter-length 150 <"$clean_calls_ref_alu_bp".bed |
+    filter-length 150 <"$calls_ref_alu_bp".bed |
     filter-support 10 |
     filter-weak-null 200 |
     filter-ci-length 1100 >"$novel_calls".bed
