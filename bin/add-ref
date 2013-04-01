@@ -132,4 +132,13 @@ else
     fi
 fi
 
+# add clear ref alus
+if [ -r "$ref_clear_alus_bed" ]; then
+    echo "file exists [$ref_clear_alus_bed]; to regenerate it, remove it, then rerun setup"
+else
+    make_note "Generating list of clear alus"
+    zc "$ref_alus_bed" | get-clear-alus | $ZIP >"$ref_clear_alus_bed"
+fi
+
+
 make_note "added reference [$1]"
