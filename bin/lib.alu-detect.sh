@@ -50,6 +50,11 @@ set_ref_var_names () {
     ref_fai=$BASE_DIR/data/ref.$1.fa.fai
     ref_bt2_idx=$BASE_DIR/data/ref.$1
     ref_alus_bed=$BASE_DIR/data/ref.$1.alus.bed.gz
+    ref_clear_alus_bed=$BASE_DIR/data/ref.$1.alus.clear.bed.gz
+    ref_known_novel_alus_bed=$BASE_DIR/data/known-novel-alus.$1.bed
+    targets_bed=$BASE_DIR/data/targets.$1.bed
+    targets_bad_bed=$BASE_DIR/data/targets.bad.$1.bed
+    targets_near_alus_bed=$BASE_DIR/data/targets.near-clear-alus.$1.bed
 }
 
 set_real_and_fake_ref_var_names () {
@@ -59,6 +64,8 @@ set_real_and_fake_ref_var_names () {
     real_ref_fai=$ref_fai
     real_ref_bt2_idx=$ref_bt2_idx
     real_ref_alus_bed=$ref_alus_bed
+    real_ref_clear_alus_bed=$ref_clear_alus_bed
+    real_known_novel_alus_bed=$ref_known_novel_alus_bed
 
     set_ref_var_names ${2:-fake_$1}
     fake_ref_name=${2:-fake_$1}
@@ -66,14 +73,15 @@ set_real_and_fake_ref_var_names () {
     fake_ref_fai=$ref_fai
     fake_ref_bt2_idx=$ref_bt2_idx
     fake_ref_alus_bed=$ref_alus_bed
+    fake_ref_clear_alus_bed=$ref_clear_alus_bed
+    fake_known_novel_alus_bed=$ref_known_novel_alus_bed
+    fake_targets_bed=$targets_bed
+    fake_targets_bad_bed=$targets_bad_bed
+    fake_targets_near_alus_bed=$targets_near_alus_bed
 
     real_ref_alus_tsd_bed=$BASE_DIR/data/ref.$real_ref_name.alus.tsd.bed.gz
     real_deletions_bed=$BASE_DIR/data/deletions.$real_ref_name.to.$fake_ref_name.bed
     real_alus_to_remove_bed=$BASE_DIR/data/alus.to-remove.$real_ref_name.to.$fake_ref_name.bed
-    fake_targets_bed=$BASE_DIR/data/targets.$fake_ref_name.bed
-
-    real_known_novel_alus_bed=$BASE_DIR/data/known-novel-alus.$real_ref_name.bed
-    fake_known_novel_alus_bed=$BASE_DIR/data/known-novel-alus.$fake_ref_name.bed
 }
 
 set -x
