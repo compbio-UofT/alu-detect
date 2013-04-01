@@ -180,7 +180,7 @@ stage_command() {
     supp_max=${supp_max:-$abs_supp_max}
 
     while true; do
-	log_file=$NGS_NAME.$real_ref_name.len${len_min}-${len_max}.supp${supp_min}-${supp_max}.log
+	log_file=$NGS_NAME.$real_ref_name.table.len${len_min}-${len_max}.supp${supp_min}-${supp_max}.log
 	export LEN_VALS=$(seq -s " " $len_min $len_step $len_max)
 	export SUPP_VALS=$(seq -s " " $supp_min $supp_step $supp_max)
 	make_note "trying len${len_min}-${len_max} supp${supp_min}-${supp_max}"
