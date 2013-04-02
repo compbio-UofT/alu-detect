@@ -35,6 +35,11 @@ filtered_fake_calls_bed=$fake_calls_dir/$NGS_NAME.$fake_ref_name.calls.ref-alu-b
 filtered_fake_calls_near_alus_bed=$fake_calls_dir/$NGS_NAME.$fake_ref_name.calls.near-clear-alus.ref-alu-bp.bed
 check_files_readable "$filtered_real_calls_bed" "$clean_fake_calls_bed" "$filtered_fake_calls_bed"
 
+make_note "using NCPU=$NCPU"
+START_STAGE=${START_STAGE:-0}
+END_STAGE=${END_STAGE:-100}
+make_note "using START_STAGE=$START_STAGE and END_STAGE=$END_STAGE"
+
 
 # build lists of calls and truth to compare
 export CALLS_LIST="$filtered_fake_calls_bed"
@@ -72,8 +77,8 @@ else
     make_note "other real truth: not found"
 fi
 
-# step 5: try various filters, adapting
-STAGE_NUM=5
+# step 1: try various filters, adapting
+STAGE_NUM=1
 STAGE_NAME="try various filters, adapting"
 table_filters=$NGS_NAME.$real_ref_name.table.csv
 INPUT_FILES="$filtered_fake_calls_bed $filtered_real_calls_bed"
@@ -144,8 +149,8 @@ stage_command() {
 run_stage
 
 
-# step 6: filter real calls based on top filter
-STAGE_NUM=6
+# step 2: filter real calls based on top filter
+STAGE_NUM=2
 STAGE_NAME="filter real calls based on top filter"
 real_calls=$NGS_NAME.$real_ref_name.calls.filtered
 INPUT_FILES="$filtered_real_calls_bed $table_filters"
@@ -156,8 +161,8 @@ stage_command() {
 run_stage
 
 
-# step 7: filter fake calls based on top filter
-STAGE_NUM=7
+# step 3: filter fake calls based on top filter
+STAGE_NUM=3
 STAGE_NAME="filter fake calls based on top filter"
 fake_calls=$NGS_NAME.$fake_ref_name.calls.filtered
 INPUT_FILES="$filtered_fake_calls_bed $table_filters"
