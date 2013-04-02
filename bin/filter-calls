@@ -46,8 +46,8 @@ if [ -r "$real_known_novel_alus_bed" ]; then
     make_note "real known novel alus: found"
     CALLS_LIST=$CALLS_LIST";$filtered_real_calls_bed"
     CALLS_FILTER_LIST=$CALLS_FILTER_LIST";:filter-bp 1:filter-bp 2"
-    TRUTH_LIST=$TRUTH_LIST";$known_novel_alus_bed"
-    TRUTH_LEN_LIST=$TRUTH_LEN_LIST";$(wc -l <$known_novel_alus_bed)"
+    TRUTH_LIST=$TRUTH_LIST";$real_known_novel_alus_bed"
+    TRUTH_LEN_LIST=$TRUTH_LEN_LIST";$(wc -l <$real_known_novel_alus_bed)"
 else
     make_note "real known novel alus: not found"
 fi
