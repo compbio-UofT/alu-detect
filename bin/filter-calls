@@ -152,7 +152,7 @@ run_stage
 # step 2: filter real calls based on top filter
 STAGE_NUM=2
 STAGE_NAME="filter real calls based on top filter"
-real_calls=$NGS_NAME.$real_ref_name.calls.filtered
+real_calls=$real_calls_dir/$NGS_NAME.$real_ref_name.calls.filtered
 INPUT_FILES="$filtered_real_calls_bed $table_filters"
 OUTPUT_FILES="$real_calls"
 stage_command() {
@@ -164,7 +164,7 @@ run_stage
 # step 3: filter fake calls based on top filter
 STAGE_NUM=3
 STAGE_NAME="filter fake calls based on top filter"
-fake_calls=$NGS_NAME.$fake_ref_name.calls.filtered
+fake_calls=$fake_calls_dir/$NGS_NAME.$fake_ref_name.calls.filtered
 INPUT_FILES="$filtered_fake_calls_bed $table_filters"
 OUTPUT_FILES="$fake_calls"
 stage_command() {
