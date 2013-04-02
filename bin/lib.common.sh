@@ -266,7 +266,7 @@ gen_file () {
 		set -o pipefail
 		COMMAND |
 		{
-		    if [ "$PRINT_OUTPUT" ]; then
+		    if [ ! "$PRINT_OUTPUT" ]; then
 			exec cat >"$OUTPUT_FILE"
 		    else
 			exec tee-p "$OUTPUT_FILE"
