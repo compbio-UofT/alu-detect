@@ -464,7 +464,8 @@ stage_command() {
 	$alus_fa $mappings_to_alus.sam.gz \
 	2> >($ZIP >$raw_calls.log.gz) |
     relabel-family |
-    sed 's/Alu//g; s/Null://' >$raw_calls.bed
+    sed 's/Alu//g; s/Null://' |
+    sort -s -k 1,1 -k 2,2n >$raw_calls.bed
 }
 run_stage
 
@@ -515,13 +516,15 @@ stage_command() {
 		#    and keep only calls near clear alus
 		intersectBed -v -s -a "$clean_calls".bed -b "$targets_bed" |
 		intersectBed -u -a - -b <(exec extend-bed 100 "$ref_clear_alus_bed")
-	    } >"$clean_calls_near_alus".bed
+	    } |
+	    sort -s -k 1,1 -k 2,2n >"$clean_calls_near_alus".bed
 	    filter-ref-alu-bp "$ref_alus_bed" "$clean_calls_near_alus".bed \
 		>"$clean_calls_near_alus_ref_alu_bp".bed
 	fi
     fi
 
-    filter-ref-alu-bp "$ref_alus_bed" "$clean_calls".bed >"$calls_ref_alu_bp".bed
+    filter-ref-alu-bp "$ref_alus_bed" "$clean_calls".bed |
+    sort -s -k 1,1 -k 2,2n >"$calls_ref_alu_bp".bed
 
     filter-length 150 <"$calls_ref_alu_bp".bed |
     filter-support 10 |
