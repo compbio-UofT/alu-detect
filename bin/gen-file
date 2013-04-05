@@ -18,10 +18,13 @@ $(cat "$1")
 shift
 PRINT_OUTPUT=${PRINT_OUTPUT-1}
 OPTIND=1
-while getopts "g" OPT "$@"; do
+while getopts "gn" OPT "$@"; do
     case $OPT in
 	g)
 	    PRINT_OUTPUT=
+	    ;;
+	n)
+	    OUTPUT_FILE=/dev/null
 	    ;;
     esac
 done
