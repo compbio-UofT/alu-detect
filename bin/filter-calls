@@ -47,16 +47,6 @@ export CALLS_FILTER_LIST=":filter-bp 1:filter-bp 2"
 export TRUTH_LIST="$fake_targets_bed"
 export TRUTH_LEN_LIST="$(wc -l <$fake_targets_bed)"
 
-if [ -r "$real_known_novel_alus_bed" ]; then
-    make_note "real known novel alus: found"
-    CALLS_LIST=$CALLS_LIST";$filtered_real_calls_bed"
-    CALLS_FILTER_LIST=$CALLS_FILTER_LIST";:filter-bp 1:filter-bp 2"
-    TRUTH_LIST=$TRUTH_LIST";$real_known_novel_alus_bed"
-    TRUTH_LEN_LIST=$TRUTH_LEN_LIST";$(wc -l <$real_known_novel_alus_bed)"
-else
-    make_note "real known novel alus: not found"
-fi
-
 if [ -r "$filtered_fake_calls_near_alus_bed" ] && [ -r "$fake_targets_near_alus_bed" ]; then
     make_note "fake calls near alus: found"
     CALLS_LIST=$CALLS_LIST";$filtered_fake_calls_near_alus_bed"
@@ -67,14 +57,17 @@ else
     make_note "fake calls near alus: not found"
 fi
 
-if [ "${OTHER_REAL_TRUTH:-}" ]; then
-    make_note "other real truth: found"
-    CALLS_LIST=$CALLS_LIST";$filtered_real_calls_bed"
-    CALLS_FILTER_LIST=$CALLS_FILTER_LIST";:filter-bp 1:filter-bp 2"
-    TRUTH_LIST=$TRUTH_LIST";$OTHER_REAL_TRUTH"
-    TRUTH_LEN_LIST=$TRUTH_LEN_LIST";$(wc -l <$OTHER_REAL_TRUTH)"
+if [ "${REAL_TRUTH:-}" ]; then
+    IFS=';' set_array real_truth "$REAL_TRUTH"
+    for t in "${real_truth[@]}"; do
+	make_note "real truth: $t"
+	CALLS_LIST=$CALLS_LIST";$filtered_real_calls_bed"
+	CALLS_FILTER_LIST=$CALLS_FILTER_LIST";:filter-bp 1:filter-bp 2"
+	TRUTH_LIST=$TRUTH_LIST";$t"
+	TRUTH_LEN_LIST=$TRUTH_LEN_LIST";$(wc -l <$t)"
+    done
 else
-    make_note "other real truth: not found"
+    make_note "real truth: not found"
 fi
 
 # step 1: try various filters, adapting
