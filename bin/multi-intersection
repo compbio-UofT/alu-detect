@@ -1,6 +1,6 @@
 #!/bin/bash
-. lib.alu-detect.sh
-set -x
+source lib.alu-detect.sh
+set -eEux -o pipefail
 
 label="$1"
 shift
