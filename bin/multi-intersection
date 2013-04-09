@@ -14,7 +14,7 @@ done
 CMD_POS="bedtools multiinter -cluster -i"
 CMD_NEG="bedtools multiinter -cluster -i"
 
-rm $label.stats
+rm -f $label.stats
 i=0
 while [ $i -lt "${#f[@]}" ] ; do
   print_with_delim \
