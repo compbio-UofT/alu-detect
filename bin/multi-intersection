@@ -17,7 +17,7 @@ CMD_NEG="bedtools multiinter -cluster -i"
 rm -f $label.stats
 i=0
 while [ $i -lt "${#f[@]}" ] ; do
-  print_with_delim \
+  printab \
     $(($i+1)) \
     ${f[i]} \
     $(wc -l <${f[i]}) \
