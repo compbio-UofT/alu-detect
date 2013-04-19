@@ -18,7 +18,8 @@ else
     RECALL=$(echo "scale=$SCALE; ${CMD_OUTPUT[1]} / $TRUTH_LEN" | bc)
 fi
 
-if [ $PRECISION = "-" ] || [ $RECALL = "-" ] || [ $(($PRECISION + $RECALL)) -eq 0 ]; then
+if [ $PRECISION = "-" ] || [ $RECALL = "-" ] ||
+    ([ $PRECISION -eq 0 ] && [ $RECALL -eq 0 ]); then
     F_MEASURE=-
 else
     F_MEASURE=$(echo "scale=$SCALE; (2 * $PRECISION * $RECALL)/($PRECISION + $RECALL)" | bc)
