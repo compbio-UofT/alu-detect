@@ -15,20 +15,18 @@ def load_deletions(s):
     d = dict()
     for l in f:
         l = l.strip().split('\t')
-        if l[0] not in d:
-            d[l[0]] = [[[], []], [[], []]]
-        if l[5] == '+':
-            st = 0
-        else:
-            st = 1
-        d[l[0]][st][0].append(int(l[1]))
-        d[l[0]][st][1].append(int(l[2]))
+        chr = l[0]
+        if chr not in d:
+            d[chr] = [None] * 2
+            d[chr][0] = list()
+            d[chr][1] = list()
+        st = int(l[5] == '-')
+        d[chr][st].append([int(l[1]), int(l[6])])
+        d[chr][st].append([int(l[2]) - 1, int(l[7])])
     gzclose(f)
     for chr in d:
-        d[chr][0][0].sort()
-        d[chr][0][1].sort()
-        d[chr][1][0].sort()
-        d[chr][1][1].sort()
+        d[chr][0].sort()
+        d[chr][1].sort()
     return d
 
 
@@ -47,22 +45,19 @@ note('using delta=' + str(delta), 1)
 
 refAlus = load_deletions(args.alus_file)
 
-def check_not_overlap(refAlus, curLine):
+def check_not_overlap(refAlus, curLine, st):
     left_end = int(curLine[1])
-    right_end = int(curLine[2])
+    right_end = int(curLine[2]) - 1
+    alu_left_end = int(curLine[6])
+    alu_right_end = int(curLine[7])
     left_end_support = int(curLine[9])
     right_end_support = int(curLine[10])
 
     if left_end_support == 0 and right_end_support == 0:
         # must not overlap a reference Alu on same strand
 
-        i = bisect.bisect_left(refAlus[0], left_end - delta)
-        if i < len(refAlus[0]) and refAlus[0][i] < right_end + delta:
-            note('\t'.join(curLine) + '\t0bp and intersecting reference Alu', 1)
-            return False
-
-        i = bisect.bisect_right(refAlus[1], right_end + delta)
-        if i > 0 and refAlus[1][i - 1] > left_end - delta:
+        i = bisect.bisect_left(refAlus, [left_end - delta])
+        if i < len(refAlus) and refAlus[i][0] < right_end + delta:
             note('\t'.join(curLine) + '\t0bp and intersecting reference Alu', 1)
             return False
 
@@ -77,16 +72,23 @@ def check_not_overlap(refAlus, curLine):
 
     # now left and right support are reversed
     if left_end_support > 0:
-        i = bisect.bisect_left(refAlus[0], right_end - delta)
-        if i < len(refAlus[0]) and refAlus[0][i] < right_end + delta:
-            note('\t'.join(curLine) + '\tremoving left end support', 1)
-            left_end_support = 0
+        i = bisect.bisect_left(refAlus, [right_end - delta - 300])
+        while i < len(refAlus) and refAlus[i][0] < right_end + delta + 300:
+            if abs( (refAlus[i][1] - alu_left_end) + [-1, 1][st] * (refAlus[i][0] - right_end) ) < delta:
+                note('\t'.join(curLine) + '\tremoving left end support:\t' + '\t'.join(map(str, refAlus[i])), 1)
+                left_end_support = 0
+                break
+            i += 1
 
     if right_end_support > 0:
-        i = bisect.bisect_left(refAlus[1], left_end - delta)
-        if i < len(refAlus[1]) and refAlus[1][i] < left_end + delta:
-            note('\t'.join(curLine) + '\tremoving right end support', 1)
-            right_end_support = 0
+        i = bisect.bisect_left(refAlus, [left_end - delta - 300])
+        while i < len(refAlus) and refAlus[i][0] < left_end + delta + 300:
+            if abs( (refAlus[i][1] - alu_right_end) + [-1, 1][st] * (refAlus[i][0] - left_end) ) < delta:
+                note('i=' + str(i) + ' refAlus[i]=' + str(refAlus[i]), 1)
+                note('\t'.join(curLine) + '\tremoving right end support\t' + '\t'.join(map(str, refAlus[i])), 1)
+                right_end_support = 0
+                break
+            i += 1
 
     if left_end_support == 0 and right_end_support == 0:
         note('\t'.join(curLine) + '\tno bp support left', 1)
@@ -99,10 +101,7 @@ g = gzopen(args.input_file)
 for line in g:
     line = line.strip().split('\t')
     chr = line[0]
-    if line[5] == '+':
-        st = 0
-    else:
-        st = 1
-    if chr not in refAlus.keys() or check_not_overlap(refAlus[chr][st], line):
+    st = int(line[5] == '-')
+    if chr not in refAlus.keys() or check_not_overlap(refAlus[chr][st], line, st):
         print '\t'.join(line)
 gzclose(g)
