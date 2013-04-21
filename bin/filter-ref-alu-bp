@@ -48,27 +48,51 @@ note('using delta=' + str(delta), 1)
 refAlus = load_deletions(args.alus_file)
 
 def check_not_overlap(refAlus, curLine):
-    ambiguous_insert = False
-    ins_start = int(curLine[2])
-    ins_end = int(curLine[1])
-    # check insert start endpoint
-    i = bisect.bisect_left(refAlus[0], ins_start - delta)
-    left_end = curLine[9]
-    if i < len(refAlus[0]) and refAlus[0][i] < ins_start + delta:
-        # insert start is ambiguous
-        ambiguous_insert = True
-        left_end = '0'
-    # check insert end endpoint
-    i = bisect.bisect_left(refAlus[1], ins_end - delta)
-    right_end = curLine[10]
-    if i < len(refAlus[1]) and refAlus[1][i] < ins_end + delta:
-        # insert end is ambiguous
-        ambiguous_insert = True
-        right_end = '0'
-    res = not ambiguous_insert or left_end != '0' or right_end != '0'
-    if not res:
-        note('filtering out:' + '\t'.join(curLine), 1)
-    return res
+    left_end = int(curLine[1])
+    right_end = int(curLine[2])
+    left_end_support = int(curLine[9])
+    right_end_support = int(curLine[10])
+
+    if left_end_support == 0 and right_end_support == 0:
+        # must not overlap a reference Alu on same strand
+
+        i = bisect.bisect_left(refAlus[0], left_end - delta)
+        if i < len(refAlus[0]) and refAlus[0][i] < right_end + delta:
+            note('\t'.join(curLine) + '\t0bp and intersecting reference Alu', 1)
+            return False
+
+        i = bisect.bisect_right(refAlus[1], right_end + delta)
+        if i > 0 and refAlus[1][i - 1] > left_end - delta:
+            note('\t'.join(curLine) + '\t0bp and intersecting reference Alu', 1)
+            return False
+
+        # this will allow calls with 0bp that do not intersect ref Alus
+        return True
+
+    if int(curLine[11]) < 0:
+        # call made with 2 breakpoints & TSLoss: swap for consistent treatment below
+        tmp = left_end
+        left_end = right_end
+        right_end = tmp
+
+    # now left and right support are reversed
+    if left_end_support > 0:
+        i = bisect.bisect_left(refAlus[0], right_end - delta)
+        if i < len(refAlus[0]) and refAlus[0][i] < right_end + delta:
+            note('\t'.join(curLine) + '\tremoving left end support', 1)
+            left_end_support = 0
+
+    if right_end_support > 0:
+        i = bisect.bisect_left(refAlus[1], left_end - delta)
+        if i < len(refAlus[1]) and refAlus[1][i] < left_end + delta:
+            note('\t'.join(curLine) + '\tremoving right end support', 1)
+            right_end_support = 0
+
+    if left_end_support == 0 and right_end_support == 0:
+        note('\t'.join(curLine) + '\tno bp support left', 1)
+        return False
+
+    return True
 
 
 g = gzopen(args.input_file)
