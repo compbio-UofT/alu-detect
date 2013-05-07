@@ -1,4 +1,4 @@
 #!/bin/bash
 shopt -s lastpipe 2>/dev/null
-MIN_PREC="${MIN_PREC:-.965}"
+MIN_PREC="${MIN_PREC:-.97}"
 awk "\$8>=$MIN_PREC" "$@" | sort -k 10,10nr | exec head -n 1
