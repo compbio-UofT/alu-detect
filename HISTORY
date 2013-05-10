@@ -33,3 +33,7 @@
   - Reads to remap are now split into files by read group. This increases
     compatibility with tegetype. Added option SINGLE_READS_TO_REMAP to use
     existing files.
+
+1.3: May 05, 2013
+  - Introduced new wrapper script alu-detect to controll access to
+    adding a reference, running detect, filtering. Various internal fixes.
