@@ -9,7 +9,7 @@ if [ $# -lt 1 ] ; then
 fi
 
 find_my_name_and_dir "$1"
-INPUT_FILES=($(head -n 2 "$1" | tail -n 1 | grep '^##' | cut -c 3-))
+INPUT_FILES=$(head -n 2 "$1" | tail -n 1 | grep '^##' | cut -c 3-)
 OUTPUT_FILE=${MY_NAME%.*}
 eval "COMMAND () {
 $(cat "$1")
