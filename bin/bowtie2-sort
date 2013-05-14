@@ -1,5 +1,5 @@
 #!/bin/bash
-. lib.alu-detect.sh
+source lib.common.sh
 set -eEu -o pipefail
 
 args=("$@")
