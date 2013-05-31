@@ -36,6 +36,7 @@ rc_dict = {'A': 'T',
            'H': 'D',
            'N': 'N'}
 
+note_debug_level = 3
 
 def is_paired(m):
     return flag(m, IS_PAIRED)
@@ -116,7 +117,7 @@ def mapping_parser(m, cid_parser=default_cid_parser):
     return d
 
 def parse_cigar_string(s):
-    note('parsing cigar [%s]' % s, 3)
+    note('parsing cigar [%s]' % s, note_debug_level)
     res = []
     crt_len = ''
     i = 0
@@ -177,7 +178,7 @@ def set_pairing(s):
                 note('invalid pairing keyword [%s]' % lhs)
             else:
                 pairing[lhs] = int(rhs)
-    note('set pairing mode: ' + str(pairing) + ' ("' + get_pairing_string() + '")', 1)
+    note('set pairing mode: ' + str(pairing) + ' ("' + get_pairing_string() + '")', note_debug_level)
 
 def get_pairing_string():
     if pairing['st_diff'] == 1:
@@ -296,7 +297,7 @@ def autodetect_phred(s):
                 valid = False
                 break
         if valid:
-            note('detected phred value [%d]' % x)
+            note('detected phred value [%d]' % x, note_debug_level)
             return x
     crash('could not detect input phred value')
 
@@ -339,7 +340,7 @@ def get_tail_insert_size(ops, min_tail_match_len=5):
                 tmp = ops[i][1]
                 j = i + step
                 while j != end_idx and ops[j][0] in 'M=X':
-                    note('including op in match stretch: ' + str(ops[j]))
+                    note('including op in match stretch: ' + str(ops[j]), note_debug_level)
                     tmp += ops[j][1]
                     j += step
                 #note('stretch len: ' + str(tmp))
@@ -407,7 +408,7 @@ def get_mapping_set_gen(in_fd, mapping_parser=mapping_parser, header_line_hook=N
 #            or (ignore_secondary and secondary_alignment(d))):
 #        sys.stderr.write(str(d['clone_id'])+"\n")
         if ignore_secondary and secondary_alignment(d):
-            note('ignoring mapping: ' + str(d), 3)
+            note('ignoring mapping: ' + str(d), note_debug_level)
             continue
         if check_pairing and (d['paired'] != (pairing['paired'] == 1)):
             crash('got mapping with bad pairing: ' + str(d))
@@ -418,7 +419,7 @@ def get_mapping_set_gen(in_fd, mapping_parser=mapping_parser, header_line_hook=N
                 crash('incorrect number of mappings (check clone_ids?): ' + str(map_set))
             if ((ignore_duplicate and any(map(is_duplicate, map_set)))
                 or (ignore_failed_qc and any(map(failed_qc, map_set)))):
-                note('ignoring mapping: ' + str(d), 3)
+                note('ignoring mapping: ' + str(d), note_debug_level)
             else:
                 yield map_set
             map_set = []
