@@ -6,6 +6,7 @@
 #include <cstring>
 #include <iostream>
 #include <iomanip>
+#include <set>
 
 #include "globals.hpp"
 #include "Clone.hpp"
@@ -1213,6 +1214,7 @@ run(const Contig& refContig,
   }
 
   //int total_clones = n_pairs;
+  vector<vector<int> > evidence_pair_ids(1 + n_repeats, vector<int>());
   vector<int> total_clones_supporting_insertion(1 + n_repeats, int(0));
   vector<int> total_reads_spanning_insert_start(1 + n_repeats, int(0));
   vector<int> total_reads_spanning_insert_end(1 + n_repeats, int(0));
@@ -1229,7 +1231,6 @@ run(const Contig& refContig,
 						 vector<int>(overlap_end - overlap_start, int(0)));
   vector<vector<int> > evidence_for_insert_end(1 + n_repeats,
 					       vector<int>(overlap_end - overlap_start, int(0)));
-
   // done mapping reads, time to aggregate results
   // compute which clones support which repeats
   for (rep_id = 0; rep_id < n_repeats; rep_id++) {
@@ -1249,6 +1250,7 @@ run(const Contig& refContig,
 	{
 	  pe[pair_id].repeat_support[1 + rep_id] = 1;
 	  total_clones_supporting_insertion[1 + rep_id]++;
+	  evidence_pair_ids[1 + rep_id].push_back(pair_id);
 
 	  for (int k = 0; k < 2; k++) {
 	    nip = (pe[pair_id].left_read + k) % 2;
@@ -1673,6 +1675,17 @@ run(const Contig& refContig,
   if (sum_scores_null_hypothesis[1 + rep_id] <= 0)
     sum_scores_null_hypothesis[1 + rep_id] = 0;
 
+  string supporting_clones="";
+  vector<int>::iterator evidence_iterator;
+  for (evidence_iterator = evidence_pair_ids[1 + rep_id].begin(); evidence_iterator != evidence_pair_ids[1 + rep_id].end(); ++evidence_iterator) {
+//  while (evidence_pair_ids.size() > 0) {
+//	  supporting_clones += *pe[evidence_pair_ids.front()].clone_name + ",";
+	  supporting_clones += *pe[*evidence_iterator].clone_name + ",";
+//	  evidence_pair_ids.pop();
+  }
+  if (supporting_clones.size() > 0) {
+	  supporting_clones = supporting_clones.substr(0,supporting_clones.size() - 1);
+  }
   // notes to self:
   //   base_offset: 1-based, absolute
   //   overlap_start/end: 1-based, off base_offset
@@ -1709,5 +1722,5 @@ run(const Contig& refContig,
   } else {
     out_str << '.';
   }
-  out_str << '\n';
+  out_str << '\t' << supporting_clones << '\n';
 }
