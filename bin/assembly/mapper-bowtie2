@@ -1,0 +1,8 @@
+#!/bin/bash
+
+bowtie2-build $1.Ref.fa $1.Ref.fa >&2
+
+bowtie2 -x $1.Ref.fa --rg SM:1 --rg-id 1 -N 1 --very-sensitive --no-contain --no-dovetail --no-overlap --gbar 1 -1 $2 -2 $3 |
+	samtools view -bS - |
+	samtools sort - $1
+

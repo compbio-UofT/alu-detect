@@ -1,0 +1,219 @@
+#!/bin/bash
+
+# $2: output prefix
+# $3: Alus fa
+
+if [[ "$1" == "-i" ]]; then
+	INDEX=1; shift
+fi
+
+OUTPREPRE=$1; shift
+ALUS_FA=$1; shift
+ONLY_Y=$1; shift
+
+while read LINE; do
+i=$(echo "$LINE" | cut -f1)
+CHR=$(echo "$LINE" | cut -f2)
+START=$(echo "$LINE" | cut -f3)
+END=$(echo "$LINE" | cut -f4)
+STR=$(echo "$LINE" | cut -f7)
+#SAMPLE=""
+echo "$LINE" | 
+	cut -f16 |
+	tr "," "\n" |
+	cut -d":" -f2- |
+	sort |
+	uniq |
+	sed 's/$/:/g' |
+	grep "$SAMPLE" > $OUTPREPRE.$i.readfilter
+READS1="$(grep --no-group-separator -A3 -f $OUTPREPRE.$i.readfilter $OUTPREPRE.reads_1.fq)"
+READS2="$(grep --no-group-separator -A3 -f $OUTPREPRE.$i.readfilter $OUTPREPRE.reads_2.fq)"
+#READS1="$(
+#	grep --no-group-separator -A3 -f \
+#		<(echo "$1" | 
+#			cut -f16 | 
+#			tr "," "\n" | 
+#			cut -d":" -f2- | 
+#			sort | 
+#			uniq | 
+#			sed 's/$/:/g' |
+#			grep "$SAMPLE"
+#		) \
+#		$OUTPREPRE.reads_1.fq
+#	)"
+#READS2="$(
+#	grep --no-group-separator -A3 -f \
+#		<(echo "$1" | 
+#			cut -f16 | 
+#			tr "," "\n" | 
+#			cut -d":" -f2- | 
+#			sort | 
+#			uniq | 
+#			sed 's/$/:/g' |
+#			grep "$SAMPLE"
+#		) \
+#		$OUTPREPRE.reads_2.fq
+#	)"
+[[ $DEBUG -eq 1 ]] && echo "$READS1" > $OUTPREPRE.$i.reads_1.fq
+[[ $DEBUG -eq 1 ]] && echo "$READS2" > $OUTPREPRE.$i.reads_2.fq
+#READS="$(echo "$READS1	$READS2" | tr "\t" "\n")"
+
+#$2: chromosome
+#$3: start
+#$4: end
+#$5: name(s)
+#$6: score
+#$7: strand
+
+echo "$LINE" | cut -f5 | tr "," "\n" | sort | uniq | 
+while read ALU; do
+	if [[ $ONLY_Y && ! "$ALU" =~ "Y" ]]; then
+		continue;
+	fi
+	ALUF="$(echo "$ALU" | tr -d "/")"
+	mkdir $OUTPREPRE.$i.Alu$ALUF
+	OUTPRE=$OUTPREPRE.$i.Alu$ALUF/$i.Alu$ALUF
+	cp $OUTPREPRE.references.fa.fai $OUTPRE.references.fa.fai
+
+	#get reference
+#	rm $OUTPREPRE.references.fa.fai 2>/dev/null
+#	samtools faidx $OUTPREPRE.references.fa
+
+#	TRIES=0
+#	while [[ $TRIES -le 3 ]]; do
+#		echo "Alu$ALU,$i,$CHR,$(expr $START + 1),$END,$STR" >&2
+		REF="$(grep "Alu$ALU,$i,$CHR,$(expr $START + 1),$END,$STR" $OUTPRE.references.fa.fai | cut -f1)"
+
+		echo "Assembling $REF"
+		echo "Assembling $REF" >&2
+		REF_LEN="$(grep "Alu$ALU,$i,$CHR,$(expr $START + 1),$END,$STR" $OUTPRE.references.fa.fai | cut -f2)"
+#		FIRST="$(echo "$REF" | awk -F"," '{print $5-$4+$7+2}')"
+#		FIRST="$(echo "$REF" | awk -F"," '{print $5-$4+$7}')"
+		FIRST="$(echo "$REF" | awk -F"," '{print $7+1}')"
+#		SECOND="$(echo "$REF" | awk -v REFLEN=$REF_LEN -F"," '{print REFLEN - $8 - $5 + $4 - 1}')"
+#		SECOND="$(echo "$REF" | awk -v REFLEN=$REF_LEN -F"," '{print REFLEN - $8 - $5 + $4 + 1}')"
+		SECOND="$(echo "$REF" | awk -v REFLEN=$REF_LEN -F"," '{print REFLEN - $8}')"
+		echo "Extracting reference" >&2
+		samtools faidx \
+			$OUTPREPRE.references.fa \
+			"$REF" \
+			> $OUTPRE.Ref.fa 
+#		[[ -s $OUTPRE.Ref.fa ]] && break
+#		TRIES=$(expr $TRIES + 1)
+#	done
+	if [[ $TRIES -ge 4 ]]; then
+		echo "ERROR: $i,Alu$ALU FAILED!" >&2
+		echo "ERROR: $i,Alu$ALU FAILED!"
+		continue
+	fi
+
+	rm $OUTPRE.Ref.fa.fai
+	samtools faidx $OUTPRE.Ref.fa
+
+if [[ $SKIP_GEN -eq 0 ]]; then
+	#map to reference
+	echo "Mapping to reference" >&2
+	mapper-bowtie2 \
+		$OUTPRE \
+		<(echo "$READS1") \
+		<(echo "$READS2") 
+	cp $OUTPRE.bam $OUTPRE.pre.bam
+	rm $OUTPRE.pre.bam.bai
+	
+	echo "Generating FASTA dictionary" >&2
+	rm $OUTPRE.Ref.dict
+#	java -jar ~/opt/picard-tools-1.93/CreateSequenceDictionary.jar \
+#		R=$OUTPRE.Ref.fa \
+#		O=$OUTPRE.Ref.dict \
+#		>&2
+	samtools view -H $OUTPRE.bam | head -n 2 > $OUTPRE.Ref.dict #generate dictionary from bam file
+	
+	echo "Making SNP list" >&2
+	samtools index $OUTPRE.pre.bam
+
+	# local realignment regions
+	java -Xmx1g -jar ~/opt/GenomeAnalysisTK-2.5-2-gf57256b/GenomeAnalysisTK.jar \
+		-T RealignerTargetCreator \
+		-R $OUTPRE.Ref.fa \
+		-I $OUTPRE.pre.bam \
+		-o $OUTPRE.intervals \
+		>&2
+	# local realignment
+	java -Xmx4g -jar ~/opt/GenomeAnalysisTK-2.5-2-gf57256b/GenomeAnalysisTK.jar \
+		-I $OUTPRE.pre.bam \
+		-R $OUTPRE.Ref.fa \
+		-T IndelRealigner \
+		-targetIntervals $OUTPRE.intervals \
+		-o $OUTPRE.bam \
+		>&2
+	rm $OUTPRE.bam.bai
+	samtools index $OUTPRE.bam
+
+#	mv $OUTPRE.pre.bam $OUTPRE.bam
+#	mv $OUTPRE.pre.bam.bai $OUTPRE.bam.bai
+
+	samtools mpileup -AuDSf \
+		$OUTPRE.Ref.fa \
+		$OUTPRE.bam |
+		bcftools view -cvg - |
+		awk \
+			-v FIRST=$FIRST \
+			-v SECOND=$SECOND \
+			'$0~/^#/ || ($2>=FIRST && $2<=SECOND)' \
+		> $OUTPRE.vcf
+	
+	echo "Calling SNPs/INDELS" >&2
+	java -Xmx2g -jar ~/opt/GenomeAnalysisTK-2.5-2-gf57256b/GenomeAnalysisTK.jar \
+		-R $OUTPRE.Ref.fa \
+		-T FastaAlternateReferenceMaker \
+		-o $OUTPRE.long.fa \
+		--variant $OUTPRE.vcf \
+		>&2
+
+rm $OUTPRE.long.fa.fai
+samtools faidx $OUTPRE.long.fa
+RANGE=":$FIRST-$(echo "$REF" | awk -v REFLEN=$(cut -f2 $OUTPRE.long.fa.fai) -F"," '{print REFLEN - $8}')"
+#RANGE=":$FIRST-$(echo "$REF" | awk -v REFLEN=$(cut -f2 $OUTPRE.long.fa.fai) -F"," '{print REFLEN - $8 - $5 + $4 - 1}')"
+#RANGE=":$FIRST-$SECOND"
+
+cat <(echo ">$REF$RANGE") <(
+samtools faidx \
+	$OUTPRE.long.fa \
+	"1$RANGE" |
+	tail -n +2)\
+	> $OUTPRE.fa
+
+gmapper-ls $OUTPRE.fa $OUTPRE.Ref.fa | samtools view -bS - | samtools sort - $OUTPRE.mapped
+samtools index $OUTPRE.mapped.bam
+
+if [[ -n "$SAVANTBASE" ]]; then
+	echo "Generating Savant project" >&2
+	echo "Using Savant base $SAVANTBASE" >&2
+	SAVANTBASEC="$SAVANTBASE/$(basename $(dirname $OUTPREPRE))/$(basename $OUTPREPRE).$i.Alu$ALUF/$i.Alu$ALUF"
+
+	echo "<?xml version=\"1.0\" ?>" > $OUTPRE.xml
+	echo "<savant version=\"2\" range=\"$REF$RANGE\">" >> $OUTPRE.xml
+	echo "<genome name=\"$(basename $OUTPREPRE).$i.Alu$ALUF.Ref\" uri=\"$SAVANTBASEC.Ref.fa\">" >> $OUTPRE.xml
+	echo "</genome>" >> $OUTPRE.xml
+	echo "<track uri=\"$SAVANTBASEC.mapped.bam\" mode=\"MISMATCH\"/>" >> $OUTPRE.xml
+	echo "<track uri=\"$SAVANTBASEC.bam\" mode=\"MISMATCH\"/>" >> $OUTPRE.xml
+	echo "</savant>" >> $OUTPRE.xml
+	gzip -c $OUTPRE.xml > $OUTPRE.svp
+	rm $OUTPRE.xml
+fi
+fi
+#[[ DEBUG -eq 0 ]] && rm $OUTPRE.$i.Alu$ALUF.Ref.fa* $OUTPRE.$i.Alu$ALUF.bam $OUTPRE.$i.Alu$ALUF.*cf $OUTPRE.$i.Alu$ALUF.long.fill* $OUTPRE.$i.Alu$ALUF.long.fa
+[[ DEBUG -eq 0 ]] && rm \
+	$OUTPRE.Ref.fa.*bt2 \
+	$OUTPRE.long.fa* \
+	$OUTPRE.vcf.idx \
+	$OUTPRE.references.fa.fai \
+	$OUTPRE.Ref.dict \
+	$OUTPRE.intervals
+
+echo >&2
+echo "DONE">&2
+echo >&2
+done 2>$OUTPREPRE.$i.run.log
+[[ DEBUG -eq 0 ]] && rm $OUTPREPRE.$i.readfilter
+done

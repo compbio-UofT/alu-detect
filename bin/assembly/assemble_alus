@@ -1,0 +1,183 @@
+#!/bin/bash
+
+# takes as input one novels list and generates a consensus for each line
+
+# steps
+# get max distance and read lengths from pairing information
+# so window should be [a-TSD-readLength-maxDist,b+TSD+readLength+maxDist)
+#
+# for each novel file
+#	get max gap and max read length
+# 	extract all reads first
+#	for each line in novel
+#		grep for reads
+#		generate reference
+#
+#	option 1: individual assemble
+#		map to reference
+#
+#	option 2: combined assembly
+#		merge lines in novel
+#		map merged read set to reference
+#		
+#	convert to BAM
+#	generate concensus
+
+# INPUTS
+# $1: NCPU
+# $2: output prefix
+# $3: Alu consensus fa
+# $4: Ref fa
+# $5: list name
+# rest: pairing, read, raw_calls, novel prefixes (including reference)
+
+DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
+export PATH=$DIR:/home/harun/bin:$PATH
+
+NCPU="$1";shift
+OUTPRE="$1";shift
+ALU_FA="$1";shift
+REF_FA="$1";shift
+NAME="$1";shift
+
+# set separate NCPU for reading from the reads file (since it's very hard on drives)
+if [[ $NCPU -gt 3 ]]; then
+	FNCPU=3
+else
+	FNCPU=$NCPU
+fi
+
+echo "Output prefix:	$OUTPRE" >&2
+echo "Threads:	$NCPU" >&2
+echo >&2
+PAIRINGS=""
+mkdir "$(dirname "$OUTPRE")"
+
+[[ $SKIP_READS -eq 0 ]] && rm $OUTPRE.reads.fq 2>/dev/null
+rm "$OUTPRE.tmp.novel.merged.bed" 2>/dev/null
+
+echo "Getting input prefixes"
+for INPRE; do
+	echo "Input prefix:	$INPRE" >&2
+	PAIRINGS="$(eval echo "$INPRE*pairing") $PAIRINGS"
+	NOVEL_BED="$(eval echo "$INPRE*$NAME.bed")"
+	NOVELS="$NOVEL_BED $NOVELS"
+done
+
+# This is very hard on the hard drive, so very few threads used
+if [[ $SKIP_READS -eq 0 ]]; then
+echo "Extracting reads" >&2
+for INPRE; do
+	echo "Input prefix:	$INPRE" >&2
+	NOVEL_BED="$(eval echo "$INPRE*$NAME.bed")"
+	INNAME="$(basename "$INPRE")"
+	PPP="$(eval echo "$INPRE*.reads.to_remap*.fq.gz")"
+	echo "Call file:	$NOVEL_BED" >&2
+	echo "Name:		$INNAME" >&2
+	echo "Read file(s):	$PPP" >&2
+	echo >&2
+	echo $NOVEL_BED $INNAME $OUTPRE $PPP
+done | parallel --max-procs $FNCPU --colsep " " -u get_reads {}
+fi
+
+if [[ $SKIP_FILTER -eq 0 ]]; then
+	echo "Filtering reads" >&2
+	cat $OUTPRE.reads.*.fq | filter_reads $OUTPRE.reads
+fi
+
+GAP=$(cat $PAIRINGS | 
+	awk -F"[,=]" '
+		BEGIN{s=0;t=0}
+		{
+			if ($8>t)	{
+				t=$8
+			}; 
+			if ($14>s) {
+				s=$14
+			}; 
+			if ($16>s) {
+				s=$16
+			}
+		}
+		END{print t+s}')
+
+if [[ $SKIP_MERGE -eq 0 ]]; then
+	echo "Merging call files" >&2
+	merge $NOVELS > "$OUTPRE.novel.merged.bed"
+
+fi
+NOVEL_BED="$OUTPRE.novel.merged.bed"
+
+# 1: alu name
+# 2: alu ref seq
+# 3: line header
+# 4: left flank
+# 5: right flank
+
+if [[ $SKIP_REF -eq 0 ]]; then
+	echo "Generating references" >&2
+
+	paste <(
+		samtools faidx \
+			"$ALU_FA" \
+			$(cut -f4 "$NOVEL_BED" | tr "," "\n" | sed 's/^/Alu/g' | tr "\n" " ") |
+			awk -f $DIR/shrink_fasta.awk \
+		)\
+		<(
+		paste \
+			<(awk -v GAP=$GAP \
+			'{
+				LGAP=GAP;RGAP=GAP;
+				if (LGAP>$2+1) {
+					LGAP=$2+1
+				};
+				if ($12>=0) {
+					print $4"\t"NR","$1","$2+1","$3","$6","LGAP+$3-$2-2","RGAP+$3-$2-2","$12
+				} else {
+					print $4"\t"NR","$1","$2+1","$3","$6","LGAP","RGAP","$12
+				}
+			}' "$NOVEL_BED"\
+			) \
+			<(samtools faidx \
+				"$REF_FA" \
+				$(awk -v GAP=$GAP \
+					'{
+						LGAP=GAP;RGAP=GAP;
+						if (LGAP>$2+1) {
+							LGAP=$2+1
+						};
+						if ($12 >=0) {
+							print $1":"$2+2-LGAP"-"$3-1" "$1":"$2+2"-"$3-1+RGAP
+						} else {
+							print $1":"$2+2-LGAP"-"$2+1" "$1":"$3"-"$3-1+RGAP
+						}	
+					}' "$NOVEL_BED" |
+					tr "\n" " "\
+				) |
+				awk -f $DIR/shrink_fasta.awk |
+				awk '{if (NR % 2){SEQ=$2} else {print SEQ"\t"$2}}'\
+			) |
+			awk 'BEGIN{OFS="\t"}{gsub(/[^,]+/,"",$1);for (i=0;i<=length($1);i++){print $0}}' |
+			cut -f2- \
+		) |
+		awk '{print ">"$1","$3"\n"$4$2$5}' | 
+			sed 'n;s/.\{60\}/&\n/g' | 
+			awk '$0 != ""'\
+			> "$OUTPRE.references.fa"
+
+	echo "Generating reference index" >&2
+	rm "$OUTPRE.references.fa.fai" 2>/dev/null
+	samtools faidx "$OUTPRE.references.fa"
+fi
+
+if [[ $SKIP_ASSEM -eq 0 ]]; then
+	echo "Starting assembly" >&2
+	awk -v ONLY_Y=$ONLY_Y -v STRICT=$STRICT '((!STRICT || $10>0 && $11>0 && $14>1) && (!ONLY_Y || $4 ~ "Y")){print NR"\t"$0}' "$NOVEL_BED" |
+		parallel --max-procs $NCPU -u --pipe {} generate_consensus \
+			"$OUTPRE"\
+			"$ALU_FA"\
+			"$ONLY_Y"
+fi
+
+#	awk '$1=="16359" || $1=="20317"' |
+#	awk '$1==4630 || $1==5862 || $1==1154' |
