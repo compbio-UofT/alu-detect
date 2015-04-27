@@ -159,7 +159,7 @@ $ ./alu-detect setup
 For this step you need: the reference fasta file, bowtie2 indexes for that
 reference, and repeat annotations for that reference. Run, e.g.:
 
-$ ./alu-detect setup hg18
+$ ./alu-detect add-ref hg18
 
 This will ask for: the reference fasta file, the prefix of the bowtie2 index
 files (full path minus the .1.bt2 suffix), and a bash regexp (can use wildcards)
@@ -167,11 +167,11 @@ describing the path to the relevant .out files output by RepeatMasker.
 
 The paths can also be specified on the command line. Type only
 
-$ ./alu-detect setup
+$ ./alu-detect add-ref
 
 for a list of command line options. E.g.:
 
-$ ./alu-detect setup \
+$ ./alu-detect add-ref \
     -f /data/hg18.fa \
     -x /data/bowtie2-index/hg18 \
     -o "/tmp/RepeatMasker-hg18/chr*out" \
