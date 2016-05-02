@@ -1,0 +1,28 @@
+Extract discordant mappings.
+
+  For this, alu-detect uses: add-extra-sam-flags and
+  filter-mappings. Both take pairing information into account.
+
+  add-extra-sam-flags adds the following flags to SAM field #2:
+
+  - 0x1000: mqv (of this read only) >= minimum mqv (default: 5)
+
+  - 0x2000: mapping left end has tail of >= min_tail_insert_size bp
+    (default: 15bp) in cigar ops H/S/I.
+
+  - 0x4000: mapping right end has tail of >= min_tail_insert_size bp
+    (default: 15bp) in cigar ops H/S/I.
+
+  - 0x8000: paired mapping is concordant (both reads mapped, correct
+    strand position, within min/max fragment size)
+
+  - 0x10000: read length < min_read_len (default: 20bp)
+
+  filter-mappings is used to extract discordant mappings as follows:
+
+  - for unpaired reads, extract mappings: that are unmapped (0x4) or
+    have large left/right tail (0x2000 or 0x4000)
+
+  - for paired reads, extract paired mappings where: the pair is not
+    mapped concordantly (0/0x8000), or either read has large
+    left/right tail (0x2000 or 0x4000).

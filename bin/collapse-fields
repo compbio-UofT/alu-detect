@@ -1,0 +1,21 @@
+#!/usr/bin/awk -f
+
+BEGIN {
+  if (first=="") first = 1;
+  if (last=="") last = 2;
+  if (new_fs=="") new_fs = "\t";
+}
+
+{
+  for (i = 1; i <= NF; i++) {
+    if (i > 1) {
+      if (i <= first || i > last) {
+        printf("%s", OFS);
+      } else {
+        printf("%s", new_fs);
+      }
+    }
+    printf("%s", $i);
+  }
+  printf("\n");
+}

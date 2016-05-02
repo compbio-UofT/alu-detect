@@ -1,0 +1,4 @@
+export REF_FA="/data/matei/data/index/hg19/hg19.fa.gz"
+export CHROMINFO="/data/matei/data/index/hg19/hg19.fa.gz.fai"
+export BOWTIE2_INDEX="/data/matei/data/index/hg19/bowtie/hg19"
+export ALUS_BED="/home/matei/git/alu-detect/data/alus.hg19.bed.gz"

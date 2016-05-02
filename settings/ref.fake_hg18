@@ -1,0 +1,4 @@
+export REF_FA="/home/matei/git/alu-detect/data/fake_hg18.fa"
+export CHROMINFO="/home/matei/git/alu-detect/data/fake_hg18.fa.fai"
+export BOWTIE2_INDEX="/filer/alu-detect/simulation/2012.07.13/fake_hg18/fake_hg18"
+export ALUS_BED="/home/matei/git/alu-detect/data/alus.fake_hg18.bed.gz"

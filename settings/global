@@ -1,0 +1,4 @@
+[[ "$PATH" =~ /home/matei/git/alu-detect/bin ]] || PATH="/home/matei/git/alu-detect/bin:$PATH"
+[[ "$AWKPATH" =~ /home/matei/git/alu-detect/bin ]] || export AWKPATH="/home/matei/git/alu-detect/bin${AWKPATH:+:}$AWKPATH"
+export ALU_ALL_FA="/home/matei/git/alu-detect/data/alus.pos.fa"
+export ALU_NO_POLYA_FA="/home/matei/git/alu-detect/data/alus.hidden-polya.fa"
